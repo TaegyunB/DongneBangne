@@ -25,7 +25,7 @@ Signaling 서버는 다음과 같은 정보를 교환하는 역할을 함
 3. ICE Candidates 교환: 피어가 서로를 찾고 연결할 수 있도록 도와주는 네트워크 경로 정보를 주고받음
 
 **Signaling 과정**
-<img src="/images/Signaling_Process.png" width="600" height="400">
+![alt text](image-0.png)
 1. Offer 생성: 연결을 시작하는 피어(A)는 RTCPeerConnection 객체를 통해 연결 요청(Offer)을 생성함
 2. Offer 전달: 생성된 Offer를 Signaling 서버를 통해 상대 피어(B)에게 전달함
 3. Answer 생성: 피어(B)는 Offer를 받고, 자신의 설정 정보를 포함한 응답(Answer)을 생성함
