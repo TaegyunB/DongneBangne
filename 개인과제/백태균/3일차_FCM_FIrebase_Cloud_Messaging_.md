@@ -71,17 +71,25 @@ implementation  'com.google.firebase:firebase-admin:7.3.0'
 @Service
 public class Firebaseinitialization {
     
+    @Value("${firebase.service-account-key}")
+    private String serviceAccountKey;
+
     @PostConstruct
     public void initialize() {
         try {
-            FileInputStream serviceAccount = new FileInputStream("./src/main/resources/firebase-service-account.json");
+            // 환경변수나 외부 설정에서 키 가져오기
+            InputStream serviceAccount = new ByteArrayInputStream(serviceAccountKey.getBytes());
 
-            FirebaseOptions options = new FirebaseOptions.Builder().setCredentials(GoogleCredentials.fromStream(serviceAccount)).build();
+            FirebaseOptions options = new FirebaseOptions.Builder()
+            .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+            .build();
 
-            FirebaseApp.initializeApp(options);
+            if(FirebaseApp.getApps().isEmpty()) {
+                FirebaseApp.initializeApp(options);
+            }
 
         } catch(IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Firebase 초기화 실패", e);
         }
     }
 }
@@ -116,53 +124,78 @@ B. FirebaseController
 - 클라이언트로부터 푸시 알림 전송 요청을 받아 FirebaseCloudMessageService 로 전달하는 역할
 ```java
 @RestController
+@RequiredArgsConstructor
 public class FirebaseController {
     
     private final FirebaseMessageService firebaseMessageService;
 
-    @Autowired
-    public FirebaseController(FirebaseMessageSerivce 
-    firebaseMessageService) {
-        this.firebaseMessageService = firebaseMessageService;
-    }
-
     @PostMapping("/api/v1/fcm/sendMessage")
     public ResponseEntity<String> sendMessage(@RequestBody FcmMessageRequestDto requestDto) {
-        String response = firebaseMessageService.sendMessage(requestDto);
-        return ResponseEnttiy.ok(response);
+        try {
+            String response = firebaseMessageService.sendMessage(requestDto);
+        return ResponseEntity.ok(response);
+        } catch(Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body("메시지 전송 실패: " + e.getMessage());
+        }
     }
-
 }
 ```
 
-C. FirebaseCloudMessageService
+C. FirebaseMessageService
 - 전달받은 파라미터에 따라 푸시 알림 메시지를 전송함
 - [GET] userService.findByUserFcm(userId)로 알림 발송할 유저의 firebasetoken 정보를 조회하여 해당 디바이스로 전달받은 파라미터를 푸시 알림 메시지로 전송함
 ```java
 @Service
-public class FirebaseCloudMessageService {
+@RequiredArgsConstructor
+@Slf4j
+public class FirebaseMessageService {
     
     private final UserService userService;
 
     public String sendMessage(FcmMessageRequestDto requestDto) {
-        // 사용자의 Firebase 토큰 값을 조회
-        String userFirebaseToken = userService.findFirebaseTokenByUserId(request.Dto.userId);
-
-        // 메시지 구성
-        Message message = Message.builder()
-            .putData("title", requestDto.getTitle())
-            .putData("content", requestDto.getContent())
-            .setToken(userFirebaseToken)  // 조회한 토큰 값을 사용
-            .build();
-
         try {
+            // 사용자의 Firebase 토큰 값을 조회
+            String userFirebaseToken = userService.findFirebaseTokenByUserId(requestDto.getUserId());
+
+            // 토큰 유효성 검사
+            if(userFirebaseToken == null || userFirebaseToken.isEmpty()) {
+                throw new IllegalArgumentException("사용자의 FCM 토큰이 없습니다.");
+            }
+
+            // 메시지 구성
+            Message message = Message.builder()
+                .putData("title", requestDto.getTitle())
+                .putData("body", requestDto.getBody())
+                .setToken(userFirebaseToken)  // 조회한 토큰 값을 사용
+                .setNotification(Notification.builder()  // 알림 표시용
+                    .setTitle(requestDto.getTitle())
+                    .setBody(requestDto.getBody())
+                    .build())
+                .build();
+
             // 메시지 전송
-            String response = FirebaseMessagin.getInstance().send(message);
-            return "Message sent successfully." + response;
-        } catch (FirebaseMessagingExceptino e) {
-            e.printStackTrace();
-            return "Failed to send message";
+            String response = FirebaseMessaging.getInstance().send(message);  // 오타 수정
+            log.info("FCM 메시지 전송 성공: {}", response);
+            return "메시지 전송 성공: " + response;
+            
+        } catch (FirebaseMessagingException e) {
+            log.error("FCM 메시지 전송 실패", e);
+            
+            // 토큰 만료 시 처리
+            if (e.getErrorCode().equals("registration-token-not-registered")) {
+                handleExpiredToken(requestDto.getUserId());
+                return "토큰이 만료되었습니다. 토큰을 갱신해주세요.";
+            }
+            
+            throw new RuntimeException("FCM 메시지 전송 실패: " + e.getMessage(), e);
         }
+    }
+    
+    // 토큰 만료 처리
+    private void handleExpiredToken(String userId) {
+        userService.removeFirebaseToken(userId);
+        log.warn("만료된 토큰 제거: userId={}", userId);
     }
 }
 
