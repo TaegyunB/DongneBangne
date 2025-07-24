@@ -1,0 +1,25 @@
+spring:
+  # 애플리케이션 이름
+  application:
+    name: backend
+
+  # MySQL 설정
+  datasource:
+    url: jdbc:mysql://localhost:3306/dongnae
+    username: root
+    password: root
+
+  # JPA 설정
+  jpa:
+    hibernate:
+      ddl-auto: create
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        default_batch_fetch_size: 1000  # 최적화 옵션
+
+# SQL 쿼리를 로그로 출력
+logging:
+  level:
+    org.hibernate.SQL: debug
