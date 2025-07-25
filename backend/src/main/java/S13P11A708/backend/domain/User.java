@@ -3,9 +3,15 @@ package S13P11A708.backend.domain;
 import S13P11A708.backend.domain.common.BaseEntity;
 import S13P11A708.backend.domain.enums.UserRole;
 import jakarta.persistence.*;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 
+import java.time.LocalDateTime;
+
+@Builder
 @Entity
 @Getter
 @NoArgsConstructor
@@ -39,6 +45,14 @@ public class User extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "senior_center_id")
     private SeniorCenter seniorCenter;
+
+    //jpa에서 자동 처리해서 builder에서 호출 필요 없게
+    @CreatedDate
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    private LocalDateTime updatedAt;
 
     // 카카오 닉네임에서 제공하는 닉네임 말고 커뮤니티에서 사용하는 유저네임을 저장해야하지 않을까
 //    @Column(name = "user_name", nullable = false)
