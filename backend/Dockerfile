@@ -1,5 +1,5 @@
 # OpenJDK 17 기반 경량 이미지 사용
-FROM openjdk:17-jre-slim
+FROM openjdk:17-jdk-slim
 
 # 어르신 케어 서비스 메타데이터
 LABEL description="경로단 간 커뮤니티 서비스 백엔드"
