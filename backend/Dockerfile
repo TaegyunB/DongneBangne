@@ -14,4 +14,4 @@ COPY build/libs/backend-0.0.1-SNAPSHOT.jar backend.jar
 EXPOSE 8080
 
 # 애플리케이션 실행
-CMD ["java", "-jars", "backend.jar"]
+CMD ["java", "-jar", "backend.jar"]
