@@ -1,14 +1,15 @@
 package S13P11A708.backend.config;
 
+import S13P11A708.backend.security.CustomOAuth2UserService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import S13P11A708.backend.security.CustomOAuth2UserService;
 
 import java.util.List;
 
@@ -16,36 +17,30 @@ import java.util.List;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, CustomOAuth2UserService customOAuth2UserService) throws Exception {
-        http
-                .csrf(csrf -> csrf.disable())
-                .cors(cors -> {})
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/oauth2/**").permitAll()
-                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/user/**").hasAnyRole("USER", "ADMIN")
-                        .requestMatchers("/api/v1/**").authenticated()
-                        .anyRequest().authenticated()
-                )
-                .oauth2Login(oauth -> oauth
-                        .defaultSuccessUrl("/home", true)
-                        .userInfoEndpoint(userInfo -> userInfo
-                                .userService(customOAuth2UserService())
-                        )
-                )
-                .logout(logout -> logout
-                        .logoutSuccessUrl("/")
-                        .invalidateHttpSession(true)
-                        .deleteCookies("JSESSIONID")
-                );
+    private final CustomOAuth2UserService customOAuth2UserService;
 
-        return http.build();
+    public SecurityConfig(CustomOAuth2UserService customOAuth2UserService){
+        this.customOAuth2UserService = customOAuth2UserService;
     }
 
     @Bean
-    public CustomOAuth2UserService customOAuth2UserService() {
-        return new CustomOAuth2UserService();
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+                .csrf(csrf -> csrf.disable());
+        http
+                .formLogin((login) -> login.disable());
+        http
+                .httpBasic((basic) -> basic.disable());
+        http
+                .oauth2Login((oauth2) -> oauth2
+                        .userInfoEndpoint((userInfoEndpointConfig ->
+                                userInfoEndpointConfig.userService(customOAuth2UserService))));
+        http
+                .authorizeHttpRequests((auth) -> auth
+                        .requestMatchers("/", "/oauth2/**", "/login/**").permitAll()
+                        .anyRequest().authenticated());
+
+        return http.build();
     }
 
     @Bean

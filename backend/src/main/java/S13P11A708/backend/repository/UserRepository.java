@@ -2,11 +2,11 @@ package S13P11A708.backend.repository;
 
 import S13P11A708.backend.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.security.web.webauthn.api.ImmutablePublicKeyCredentialUserEntity;
 
-import java.util.Optional;
-
-@Repository
+@EnableJpaRepositories
 public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findByKakaoId(Long kakaoId);
+
+    User findByUsername(String username);
 }

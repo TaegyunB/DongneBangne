@@ -3,9 +3,7 @@ package S13P11A708.backend.domain;
 import S13P11A708.backend.domain.common.BaseEntity;
 import S13P11A708.backend.domain.enums.UserRole;
 import jakarta.persistence.*;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 
@@ -14,7 +12,9 @@ import java.time.LocalDateTime;
 @Builder
 @Entity
 @Getter
+@Setter
 @NoArgsConstructor
+@AllArgsConstructor
 @Table(name = "user")
 public class User extends BaseEntity {
 
@@ -38,9 +38,9 @@ public class User extends BaseEntity {
     @Column(name = "profile_image")
     private String profileImage;
 
-    @Enumerated(EnumType.STRING)
+   // @Enumerated(EnumType.STRING)
     @Column(name = "user_role")
-    private UserRole userRole;
+    private String userRole;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "senior_center_id")
@@ -62,7 +62,7 @@ public class User extends BaseEntity {
     //==Setter 메서드==//
 
     //==조회 메서드==//
-    public boolean isAdmin() {
-        return this.userRole == UserRole.ADMIN;
-    }
+    //public boolean isAdmin() {
+    //    return this.userRole == UserRole.ADMIN;
+    //}
 }
