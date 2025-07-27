@@ -13,7 +13,7 @@ services:
       # JVM 메모리 최적화
       - JAVA_OPTS=-Xmx512m -Xms256m
       # 데이터베이스 연결 설정 (기존 MySQL 설정 사용)
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/dongnae?serverTimezone=UTC&characterEncoding=UTF-8
+      - SPRING_DATASOURCE_URL=jdbc:mysql://127.0.0.1:3306/dongnae?serverTimezone=UTC&characterEncoding=UTF-8
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=bangnae
     depends_on:
