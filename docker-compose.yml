@@ -38,8 +38,6 @@ services:
       # 기본 root 계정 설정
       - MYSQL_ROOT_PASSWORD=bangnae
       - MYSQL_DATABASE=dongnae
-      - MYSQL_CHARACTER_SET_SERVER=utf8mb4
-      - MYSQL_COLLATION_SERVER=utf8mb4_unicode_ci
     volumes:
       # 데이터 지속성을 위한 볼륨
       - mysql_data:/var/lib/mysql
