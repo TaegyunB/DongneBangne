@@ -39,7 +39,7 @@ services:
       - "3307:3306"  # 외부 포트는 3307 유지 (충돌 방지)
     environment:
       # 통합된 계정 설정
-      - MYSQL_ROOT_PASSWORD=dongnaepass
+      - MYSQL_ROOT_PASSWORD=bangnae
       - MYSQL_DATABASE=dongnae
       - MYSQL_USER=dongnaeuser
       - MYSQL_PASSWORD=dongnaepass
