@@ -28,27 +28,30 @@ services:
       retries: 3
       start_period: 60s
 
-  # MySQL 데이터베이스 (수정된 설정)
+  # MySQL 데이터베이스
   mysql:
     image: mysql:8.0
     container_name: dongnae-mysql
     ports:
-      - "3306:3306"
+      - "3307:3306"  # 호스트 포트 충돌 방지
     environment:
       # 기본 root 계정 설정
       - MYSQL_ROOT_PASSWORD=bangnae
       - MYSQL_DATABASE=dongnae
-      # 추가 사용자 생성 (선택사항)
-      - MYSQL_USER=root
-      - MYSQL_PASSWORD=bangnae
       - MYSQL_CHARACTER_SET_SERVER=utf8mb4
       - MYSQL_COLLATION_SERVER=utf8mb4_unicode_ci
     volumes:
-      # 기존 데이터 볼륨 사용 (데이터 유지)
+      # 데이터 지속성을 위한 볼륨
       - mysql_data:/var/lib/mysql
     networks:
       - dongnae-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pbangnae"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
 
 #   Nginx 리버스 프록시 (선택사항 - 일단 주석 처리)
