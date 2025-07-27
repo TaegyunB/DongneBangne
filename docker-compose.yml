@@ -12,17 +12,20 @@ services:
       - SPRING_PROFILES_ACTIVE=prod
       # JVM 메모리 최적화
       - JAVA_OPTS=-Xmx512m -Xms256m
-      # 데이터베이스 연결 설정 (기존 MySQL 설정 사용)
+      # 데이터베이스 연결 설정 (모든 설정이 일치함)
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/dongnae?serverTimezone=UTC&characterEncoding=UTF-8
-      - SPRING_DATASOURCE_USERNAME=root
-      - SPRING_DATASOURCE_PASSWORD=bangnae
+      - SPRING_DATASOURCE_USERNAME=dongnaeuser
+      - SPRING_DATASOURCE_PASSWORD=dongnaepass
+      - SPRING_DATASOURCE_DRIVER_CLASS_NAME=com.mysql.cj.jdbc.Driver
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.MySQLDialect
     depends_on:
       - mysql
     networks:
       - dongnae-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8080 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -33,11 +36,13 @@ services:
     image: mysql:8.0
     container_name: dongnae-mysql
     ports:
-      - "3307:3306"  # 호스트 포트 충돌 방지
+      - "3307:3306"  # 외부 포트는 3307 유지 (충돌 방지)
     environment:
-      # 기본 root 계정 설정
-      - MYSQL_ROOT_PASSWORD=bangnae
+      # 통합된 계정 설정
+      - MYSQL_ROOT_PASSWORD=dongnaepass
       - MYSQL_DATABASE=dongnae
+      - MYSQL_USER=dongnaeuser
+      - MYSQL_PASSWORD=dongnaepass
     volumes:
       # 데이터 지속성을 위한 볼륨
       - mysql_data:/var/lib/mysql
@@ -45,28 +50,12 @@ services:
       - dongnae-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pbangnae"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "dongnaeuser", "-pdongnaepass"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
-
-#   Nginx 리버스 프록시 (선택사항 - 일단 주석 처리)
-#  nginx:
-#     image: nginx:alpine
-#     container_name: dongnae-nginx
-#     ports:
-#       - "80:80"
-#       - "443:443"
-#     volumes:
-#       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-#       - ./nginx/ssl:/etc/nginx/ssl:ro
-#     depends_on:
-#       - dongnae-backend
-#     networks:
-#       - dongnae-network
-#     restart: unless-stopped
 
 networks:
   dongnae-network:
