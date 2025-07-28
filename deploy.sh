@@ -80,17 +80,38 @@ fi
 
 echo "✅ 포트 8080, 3000 모두 해제 완료"
 
-# MySQL 컨테이너 확인/시작
-echo "🗄️ MySQL 컨테이너 확인 중..."
-if ! docker ps | grep -q "dongnae-mysql"; then
+# MySQL 컨테이너 및 네트워크 확인/설정
+echo "🗄️ MySQL 컨테이너 및 네트워크 확인 중..."
+
+if docker ps | grep -q "dongnae-mysql"; then
+    echo "✅ MySQL 컨테이너 이미 실행 중"
+    
+    # 기존 MySQL 컨테이너의 네트워크 확인
+    echo "🔍 MySQL 컨테이너 네트워크 상태 확인..."
+    MYSQL_NETWORK=$(docker inspect dongnae-mysql --format='{{.NetworkSettings.Networks}}' | grep -o '[^{]*dongnae[^}]*' | head -1 | sed 's/.*\([^[:space:]]*dongnae[^[:space:]]*\).*/\1/')
+    
+    if [ -z "$MYSQL_NETWORK" ]; then
+        # NetworkMode에서 네트워크 이름 추출
+        MYSQL_NETWORK=$(docker inspect dongnae-mysql --format='{{.HostConfig.NetworkMode}}')
+    fi
+    
+    echo "현재 MySQL 네트워크: $MYSQL_NETWORK"
+    
+    # 동일한 네트워크 사용을 위해 변수 설정
+    DOCKER_NETWORK="$MYSQL_NETWORK"
+    
+else
     echo "🚀 MySQL 컨테이너 시작 중..."
     
+    # 기본 네트워크 이름 설정
+    DOCKER_NETWORK="s13p11a708-pipeline_dongnae-network"
+    
     # 네트워크 생성
-    docker network create dongnae-network 2>/dev/null || true
+    docker network create $DOCKER_NETWORK 2>/dev/null || true
     
     docker run -d \
         --name dongnae-mysql \
-        --network dongnae-network \
+        --network $DOCKER_NETWORK \
         -e MYSQL_ROOT_PASSWORD=bangnae \
         -e MYSQL_DATABASE=dongnae \
         -e MYSQL_USER=dongnaeuser \
@@ -101,17 +122,30 @@ if ! docker ps | grep -q "dongnae-mysql"; then
     
     echo "⏳ MySQL 완전 시작 대기 중..."
     sleep 30
-else
-    echo "✅ MySQL 이미 실행 중"
-    # 기존 네트워크 확인
-    docker network create dongnae-network 2>/dev/null || true
 fi
 
-# Backend 컨테이너 시작 (포트 8080)
+echo "🌐 사용할 Docker 네트워크: $DOCKER_NETWORK"
+
+# MySQL 연결 테스트
+echo "🏥 MySQL 연결 테스트..."
+for i in {1..10}; do
+    if docker exec dongnae-mysql mysqladmin ping -h localhost -u dongnaeuser -pdongnaepass --silent >/dev/null 2>&1; then
+        echo "✅ MySQL 연결 가능"
+        break
+    fi
+    if [ $i -eq 10 ]; then
+        echo "❌ MySQL 연결 실패"
+        exit 1
+    fi
+    echo "⏳ MySQL 연결 대기 중... ($i/10)"
+    sleep 3
+done
+
+# Backend 컨테이너 시작 (MySQL과 같은 네트워크 사용)
 echo "🔧 Backend 컨테이너 시작 중..."
 docker run -d \
     --name dongnae-backend \
-    --network dongnae-network \
+    --network $DOCKER_NETWORK \
     -p 8080:8080 \
     -e SPRING_PROFILES_ACTIVE=prod \
     -e SPRING_DATASOURCE_URL="jdbc:mysql://dongnae-mysql:3306/dongnae?serverTimezone=UTC&characterEncoding=UTF-8" \
@@ -123,11 +157,11 @@ docker run -d \
     --restart unless-stopped \
     $BACKEND_IMAGE
 
-# Frontend 컨테이너 시작 (포트 3000)
+# Frontend 컨테이너 시작 (같은 네트워크)
 echo "🎨 Frontend 컨테이너 시작 중... (포트 3000)"
 docker run -d \
     --name dongnae-frontend \
-    --network dongnae-network \
+    --network $DOCKER_NETWORK \
     -p 3000:80 \
     -e NODE_ENV=production \
     --restart unless-stopped \
