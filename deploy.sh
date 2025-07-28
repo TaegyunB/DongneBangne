@@ -8,9 +8,11 @@ set -e  # 에러 발생 시 스크립트 중단
 echo "🚀 동네 앱 풀스택 자동 배포 시작"
 echo "배포 시간: $(date)"
 
-# 환경 변수 설정 (Pipeline에서 전달받거나 기본값 사용)
-BACKEND_IMAGE=${BACKEND_IMAGE:-"taegyunb99/dongnae-backend:latest"}
-FRONTEND_IMAGE=${FRONTEND_IMAGE:-"taegyunb99/dongnae-frontend:latest"}
+# Jenkins에서 전달된 빌드번호를 이미지 태그로 사용 (없으면 latest 사용)
+BUILD_TAG=${BUILD_NUMBER:-latest}
+BACKEND_IMAGE="taegyunb99/dongnae-backend:${BUILD_TAG}"
+FRONTEND_IMAGE="taegyunb99/dongnae-frontend:${BUILD_TAG}"
+
 
 BACKEND_CONTAINER="dongnae"
 FRONTEND_CONTAINER="dongnae-frontend"
