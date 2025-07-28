@@ -27,8 +27,6 @@
 
 <style scoped>
 .toolbar {
-  background: white;
-  border-bottom: 1px solid #e0e0e0;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   position: sticky;
   top: 0;
@@ -36,7 +34,7 @@
 }
 
 .toolbar-container {
-  max-width: 1200px;
+  /* max-width: 1200px; */
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -61,11 +59,9 @@
 .nav-item {
   text-decoration: none;
   color: #333;
-  /* 볼드 */
-  font-weight: 700;
+  font-weight: 700; /* 볼드 */
   padding: 8px 16px;
   border-radius: 6px;
-  /* transition: all 0.2s; */
 }
 
 /* 마우스 위에 가져다 댈 때 */
