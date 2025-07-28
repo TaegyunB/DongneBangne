@@ -1,85 +1,80 @@
-<script setup>
-import { RouterLink, RouterView } from 'vue-router'
-import HelloWorld from './components/HelloWorld.vue'
-</script>
-
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="125" height="125" />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-
-      <nav>
-        <RouterLink to="/">Home</RouterLink>
-        <RouterLink to="/about">About</RouterLink>
-      </nav>
+  <!-- 툴바 -->
+  <nav class="toolbar">
+    <div class="toolbar-container">
+      <img src="@/assets/logo.png" alt="로고" class="logo">
+      
+      <div class="nav-menu">
+        <a href="#" class="nav-item">게임</a>
+        <a href="#" class="nav-item">도전과제</a>
+        <a href="#" class="nav-item">게시판</a>
+        <a href="#" class="nav-item">순위</a>
+        <a href="#" class="nav-item">AI 신문</a>
+      </div>
+      
+      <img src="@/assets/profile.png" alt="프로필" class="profile">
     </div>
-  </header>
-
-  <RouterView />
+  </nav>
+  
+  <!-- 이 아래 부분에 이제 본문 위치 -->
+  <main class="">
+    <RouterView />
+  </main>
 </template>
 
+<script setup>
+</script>
+
 <style scoped>
-header {
-  line-height: 1.5;
-  max-height: 100vh;
+.toolbar {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.toolbar-container {
+  /* max-width: 1200px; */
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  height: 60px;
 }
 
 .logo {
-  display: block;
-  margin: 0 auto 2rem;
+  height: 60px;
+  /* 클릭 시 메인 페이지로 */
+  cursor: pointer;
 }
 
-nav {
-  width: 100%;
-  font-size: 12px;
-  text-align: center;
-  margin-top: 2rem;
+.nav-menu {
+  display: flex;
+  gap: 30px;
+  flex: 1;
+  justify-content: center;
 }
 
-nav a.router-link-exact-active {
-  color: var(--color-text);
+.nav-item {
+  text-decoration: none;
+  color: #333;
+  font-weight: 700; /* 볼드 */
+  padding: 8px 16px;
+  border-radius: 6px;
 }
 
-nav a.router-link-exact-active:hover {
-  background-color: transparent;
+/* 마우스 위에 가져다 댈 때 */
+.nav-item:hover {
+  background: #f0f0f0;
+  color: #007bff;
 }
 
-nav a {
-  display: inline-block;
-  padding: 0 1rem;
-  border-left: 1px solid var(--color-border);
+.profile {
+  height: 40px;
+  width: 40px;
+  /* 클릭 시 프로필 페이지로 */
+  cursor: pointer;
 }
 
-nav a:first-of-type {
-  border: 0;
-}
-
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  nav {
-    text-align: left;
-    margin-left: -1rem;
-    font-size: 1rem;
-
-    padding: 1rem 0;
-    margin-top: 1rem;
-  }
-}
 </style>
