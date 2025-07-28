@@ -1,18 +1,17 @@
 #!/bin/bash
 
-# 동네 앱 자동 배포 스크립트 (Frontend + Backend)
-# 무중단 배포를 위한 블루-그린 배포 방식
+# 동네 앱 자동 배포 스크립트 (Nginx 리버스 프록시)
+# Frontend: Nginx에서 정적 파일 + API 프록시
+# Backend: 8080 포트에서 API 서버
 
 set -e  # 에러 발생 시 스크립트 중단
 
-echo "🚀 동네 앱 풀스택 자동 배포 시작"
+echo "🚀 동네 앱 Nginx 리버스 프록시 배포 시작"
 echo "배포 시간: $(date)"
 
-# Jenkins에서 전달된 빌드번호를 이미지 태그로 사용 (없으면 latest 사용)
-BUILD_TAG=${BUILD_NUMBER:-latest}
-BACKEND_IMAGE="taegyunb99/dongnae-backend:${BUILD_TAG}"
-FRONTEND_IMAGE="taegyunb99/dongnae-frontend:${BUILD_TAG}"
-
+# 환경 변수 설정 (Pipeline에서 전달받거나 기본값 사용)
+BACKEND_IMAGE=${BACKEND_IMAGE:-"taegyunb99/dongnae-backend:latest"}
+FRONTEND_IMAGE=${FRONTEND_IMAGE:-"taegyunb99/dongnae-frontend:latest"}
 
 BACKEND_CONTAINER="dongnae"
 FRONTEND_CONTAINER="dongnae-frontend"
@@ -22,9 +21,9 @@ MYSQL_CONTAINER="dongnae-mysql"
 
 echo "📦 배포할 이미지:"
 echo "  Backend:  $BACKEND_IMAGE"
-echo "  Frontend: $FRONTEND_IMAGE"
+echo "  Frontend: $FRONTEND_IMAGE (Nginx + Vue.js)"
 
-# Docker 명령어 함수 (sudo 제거)
+# Docker 명령어 함수
 docker_cmd() {
     docker "$@"
 }
@@ -34,37 +33,7 @@ echo "📦 최신 Docker 이미지 다운로드 중..."
 docker_cmd pull $BACKEND_IMAGE
 docker_cmd pull $FRONTEND_IMAGE
 
-# 2. Frontend 컨테이너 백업 및 배포
-echo "🎨 Frontend 배포 시작..."
-if docker_cmd ps -q -f name=^${FRONTEND_CONTAINER}$ > /dev/null 2>&1; then
-    echo "💾 기존 Frontend 컨테이너 백업 중..."
-    docker_cmd rm -f $BACKUP_FRONTEND_CONTAINER > /dev/null 2>&1 || true
-    docker_cmd stop $FRONTEND_CONTAINER || true
-    docker_cmd rename $FRONTEND_CONTAINER $BACKUP_FRONTEND_CONTAINER || true
-    echo "✅ Frontend 컨테이너 백업 완료 (포트 80 해제됨)"
-else
-    echo "ℹ️ 실행 중인 Frontend 컨테이너가 없음"
-fi
-
-# Frontend 포트 정리
-echo "🔍 포트 80 사용 상태 확인 중..."
-if netstat -tlnp 2>/dev/null | grep -q ":80 " || lsof -i :80 2>/dev/null; then
-    echo "⚠️ 포트 80이 여전히 사용 중 - 추가 정리 진행"
-    docker_cmd ps -q --filter "publish=80" | xargs -r docker_cmd stop
-    sleep 3
-else
-    echo "✅ 포트 80 사용 가능"
-fi
-
-# 새 Frontend 컨테이너 시작
-echo "🚀 새 Frontend 컨테이너 시작 중..."
-docker_cmd run -d \
-  --name $FRONTEND_CONTAINER \
-  -p 80:80 \
-  --restart unless-stopped \
-  $FRONTEND_IMAGE
-
-# 3. Backend 컨테이너 백업 및 배포 (기존 로직 유지)
+# 2. Backend 배포 (기존 로직 유지)
 echo "🔧 Backend 배포 시작..."
 if docker_cmd ps -q -f name=^${BACKEND_CONTAINER}$ > /dev/null 2>&1; then
     echo "💾 현재 Backend 서비스 백업 중..."
@@ -76,7 +45,7 @@ else
     echo "ℹ️ 실행 중인 Backend 컨테이너가 없음"
 fi
 
-# Backend 포트 사용 상태 확인 및 정리
+# Backend 포트 정리
 echo "🔍 포트 8080 사용 상태 확인 중..."
 if netstat -tlnp 2>/dev/null | grep -q ":8080 " || lsof -i :8080 2>/dev/null; then
     echo "⚠️ 포트 8080이 여전히 사용 중 - 추가 정리 진행"
@@ -86,7 +55,7 @@ else
     echo "✅ 포트 8080 사용 가능"
 fi
 
-# 4. 데이터베이스 연결 확인 (기존 로직 유지)
+# 3. 데이터베이스 연결 확인
 echo "🗄️ 데이터베이스 연결 확인 중..."
 if ! docker_cmd ps | grep -q $MYSQL_CONTAINER; then
     echo "⚠️ MySQL 컨테이너가 실행되지 않음. docker-compose로 시작 중..."
@@ -97,7 +66,7 @@ else
     echo "✅ MySQL 컨테이너 실행 중"
 fi
 
-# MySQL이 완전히 준비될 때까지 대기
+# MySQL 준비 상태 확인
 echo "⏳ MySQL 준비 상태 확인 중..."
 MYSQL_READY=0
 MYSQL_RETRY=0
@@ -119,14 +88,14 @@ if [ $MYSQL_READY -eq 0 ]; then
     exit 1
 fi
 
-# 5. 새 Backend 컨테이너 시작
+# 4. 새 Backend 컨테이너 시작
 echo "🔄 새로운 Backend 서비스 시작 중..."
 
 # MySQL 네트워크 확인
 MYSQL_NETWORK=$(docker_cmd inspect $MYSQL_CONTAINER --format='{{range $net, $config := .NetworkSettings.Networks}}{{$net}}{{end}}' | head -1)
 echo "📋 MySQL 네트워크: $MYSQL_NETWORK"
 
-# 새 Backend 컨테이너 시작
+# Backend 컨테이너 시작
 echo "🚀 새 Backend 컨테이너 시작 중..."
 docker_cmd run -d \
   --name $BACKEND_CONTAINER \
@@ -144,37 +113,45 @@ docker_cmd run -d \
   --restart unless-stopped \
   $BACKEND_IMAGE
 
-# 6. 컨테이너 시작 확인
-echo "📋 컨테이너 상태 확인..."
-sleep 5
-docker_cmd ps | grep dongnae || echo "⚠️ 컨테이너 상태 확인 필요"
+# 5. Frontend (Nginx) 배포
+echo "🌐 Frontend (Nginx) 배포 시작..."
+if docker_cmd ps -q -f name=^${FRONTEND_CONTAINER}$ > /dev/null 2>&1; then
+    echo "💾 현재 Frontend 컨테이너 백업 중..."
+    docker_cmd rm -f $BACKUP_FRONTEND_CONTAINER > /dev/null 2>&1 || true
+    docker_cmd stop $FRONTEND_CONTAINER || true
+    docker_cmd rename $FRONTEND_CONTAINER $BACKUP_FRONTEND_CONTAINER || true
+    echo "✅ 기존 Frontend 컨테이너 백업 완료 (포트 80 해제됨)"
+else
+    echo "ℹ️ 실행 중인 Frontend 컨테이너가 없음"
+fi
 
-# 7. Frontend 헬스체크
-echo "🌐 Frontend 헬스체크 중..."
-FRONTEND_READY=0
-FRONTEND_RETRY=0
-MAX_FRONTEND_RETRIES=6
+# Frontend 포트 정리 (80번 포트)
+echo "🔍 포트 80 사용 상태 확인 중..."
+if netstat -tlnp 2>/dev/null | grep -q ":80 " || lsof -i :80 2>/dev/null; then
+    echo "⚠️ 포트 80이 여전히 사용 중 - 추가 정리 진행"
+    docker_cmd ps -q --filter "publish=80" | xargs -r docker_cmd stop
+    sleep 3
+else
+    echo "✅ 포트 80 사용 가능"
+fi
 
-while [ $FRONTEND_RETRY -lt $MAX_FRONTEND_RETRIES ] && [ $FRONTEND_READY -eq 0 ]; do
-    if docker_cmd exec $FRONTEND_CONTAINER curl -f -s http://localhost/ > /dev/null 2>&1; then
-        echo "✅ Frontend 서비스 정상 동작 확인!"
-        FRONTEND_READY=1
-    else
-        echo "⏳ Frontend 시작 대기 중... ($((FRONTEND_RETRY+1))/$MAX_FRONTEND_RETRIES)"
-        sleep 5
-        FRONTEND_RETRY=$((FRONTEND_RETRY+1))
-    fi
-done
+# Frontend (Nginx) 컨테이너 시작
+echo "🚀 새 Frontend (Nginx) 컨테이너 시작 중..."
+docker_cmd run -d \
+  --name $FRONTEND_CONTAINER \
+  --network $MYSQL_NETWORK \
+  -p 80:80 \
+  --restart unless-stopped \
+  $FRONTEND_IMAGE
 
-# 8. Backend 헬스체크 (기존 로직 유지)
+# 6. Backend 헬스체크
 echo "🏥 Backend 서비스 헬스체크 중..."
-RETRY_COUNT=0
-MAX_RETRIES=15
+BACKEND_RETRY=0
+MAX_BACKEND_RETRIES=15
 
-while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+while [ $BACKEND_RETRY -lt $MAX_BACKEND_RETRIES ]; do
     if ! docker_cmd ps -q -f name=^${BACKEND_CONTAINER}$ > /dev/null 2>&1; then
-        echo "❌ Backend 컨테이너가 중지됨! 로그 확인 중..."
-        docker_cmd logs $BACKEND_CONTAINER --tail 50
+        echo "❌ Backend 컨테이너가 중지됨!"
         break
     fi
 
@@ -185,56 +162,111 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
         echo "✅ Backend 서비스 정상 동작 확인!"
         break
     else
-        echo "⏳ Backend 서비스 시작 대기 중... ($((RETRY_COUNT+1))/$MAX_RETRIES)"
+        echo "⏳ Backend 서비스 시작 대기 중... ($((BACKEND_RETRY+1))/$MAX_BACKEND_RETRIES)"
         sleep 10
-        RETRY_COUNT=$((RETRY_COUNT+1))
+        BACKEND_RETRY=$((BACKEND_RETRY+1))
+    fi
+done
+
+# 7. Frontend (Nginx) 헬스체크
+echo "🌐 Frontend (Nginx) 헬스체크 중..."
+FRONTEND_RETRY=0
+MAX_FRONTEND_RETRIES=10
+
+while [ $FRONTEND_RETRY -lt $MAX_FRONTEND_RETRIES ]; do
+    if ! docker_cmd ps -q -f name=^${FRONTEND_CONTAINER}$ > /dev/null 2>&1; then
+        echo "❌ Frontend 컨테이너가 중지됨!"
+        break
+    fi
+
+    # Nginx 기본 페이지 확인
+    if docker_cmd exec $FRONTEND_CONTAINER curl -f -s http://localhost/ > /dev/null 2>&1; then
+        echo "✅ Frontend (Nginx) 서비스 정상 동작 확인!"
+        break
+    else
+        echo "⏳ Frontend 서비스 시작 대기 중... ($((FRONTEND_RETRY+1))/$MAX_FRONTEND_RETRIES)"
+        sleep 5
+        FRONTEND_RETRY=$((FRONTEND_RETRY+1))
+    fi
+done
+
+# 8. 리버스 프록시 연결 테스트
+echo "🔗 리버스 프록시 연결 테스트 중..."
+PROXY_RETRY=0
+MAX_PROXY_RETRIES=5
+
+while [ $PROXY_RETRY -lt $MAX_PROXY_RETRIES ]; do
+    # Frontend에서 Backend API 호출 테스트
+    if docker_cmd exec $FRONTEND_CONTAINER curl -f -s http://localhost:8080/actuator/health > /dev/null 2>&1; then
+        echo "✅ Nginx → Backend 프록시 연결 확인!"
+        break
+    else
+        echo "⏳ 프록시 연결 대기 중... ($((PROXY_RETRY+1))/$MAX_PROXY_RETRIES)"
+        sleep 5
+        PROXY_RETRY=$((PROXY_RETRY+1))
     fi
 done
 
 # 9. 배포 결과 처리
-if [ $RETRY_COUNT -eq $MAX_RETRIES ] || [ $FRONTEND_READY -eq 0 ]; then
+if [ $BACKEND_RETRY -eq $MAX_BACKEND_RETRIES ] || [ $FRONTEND_RETRY -eq $MAX_FRONTEND_RETRIES ]; then
     echo "❌ 서비스 시작 실패! 롤백 진행..."
-
+    
     # 실패한 컨테이너들 삭제
     docker_cmd rm -f $FRONTEND_CONTAINER $BACKEND_CONTAINER 2>/dev/null || true
-
+    
     # 백업 컨테이너들로 복원
     if docker_cmd ps -a -q -f name=^${BACKUP_FRONTEND_CONTAINER}$ > /dev/null 2>&1; then
+        echo "🔄 Frontend 이전 버전으로 복원..."
         docker_cmd rename $BACKUP_FRONTEND_CONTAINER $FRONTEND_CONTAINER
         docker_cmd start $FRONTEND_CONTAINER
     fi
-
+    
     if docker_cmd ps -a -q -f name=^${BACKUP_BACKEND_CONTAINER}$ > /dev/null 2>&1; then
+        echo "🔄 Backend 이전 버전으로 복원..."
         docker_cmd rename $BACKUP_BACKEND_CONTAINER $BACKEND_CONTAINER
         docker_cmd start $BACKEND_CONTAINER
     fi
-
+    
     echo "❌ 풀스택 배포 실패 - 이전 버전으로 롤백됨"
     exit 1
 else
     echo "🎉 풀스택 배포 성공!"
-
+    
     # 백업 컨테이너들 정리
     docker_cmd rm -f $BACKUP_FRONTEND_CONTAINER $BACKUP_BACKEND_CONTAINER 2>/dev/null || true
-
-    # 외부 접근 테스트
+    
+    # 10. 외부 접근 테스트
     echo "🌐 외부 접근성 테스트 중..."
+    
+    # Frontend (메인 페이지) 테스트
     if curl -f -s http://i13a708.p.ssafy.io > /dev/null 2>&1; then
-        echo "✅ Frontend 외부 접근 가능"
+        echo "✅ Frontend 외부 접근 가능 (http://i13a708.p.ssafy.io)"
     else
         echo "⚠️ Frontend 외부 접근 실패"
     fi
-
+    
+    # Backend API 직접 접근 테스트
     if curl -f -s http://i13a708.p.ssafy.io:8080 > /dev/null 2>&1; then
-        echo "✅ Backend 외부 접근 가능"
+        echo "✅ Backend API 직접 접근 가능 (http://i13a708.p.ssafy.io:8080)"
     else
-        echo "⚠️ Backend 외부 접근 실패"
+        echo "⚠️ Backend API 직접 접근 실패"
     fi
-
-    echo "✅ 동네 앱 풀스택 배포 완료!"
-    echo "🌐 Frontend 접속: http://i13a708.p.ssafy.io"
-    echo "🌐 Backend 접속: http://i13a708.p.ssafy.io:8080"
-
+    
+    # Nginx를 통한 API 프록시 테스트
+    if curl -f -s http://i13a708.p.ssafy.io/api/health > /dev/null 2>&1; then
+        echo "✅ Nginx 프록시를 통한 API 접근 가능 (http://i13a708.p.ssafy.io/api/*)"
+    else
+        echo "ℹ️ Nginx API 프록시 경로 확인 필요 (/api/* → Backend)"
+    fi
+    
+    echo "✅ 동네 앱 Nginx 리버스 프록시 배포 완료!"
+    echo ""
+    echo "🌐 서비스 접속 정보:"
+    echo "  Frontend: http://i13a708.p.ssafy.io (Nginx + Vue.js)"
+    echo "  Backend:  http://i13a708.p.ssafy.io:8080 (Spring Boot API)"
+    echo "  API via Proxy: http://i13a708.p.ssafy.io/api/* (Nginx → Backend)"
+    echo ""
+    
     # 최종 상태 확인
     echo "📋 최종 컨테이너 상태:"
     docker_cmd ps | grep dongnae
