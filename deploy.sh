@@ -19,10 +19,66 @@ echo "📦 최신 Docker 이미지 다운로드 중..."
 docker pull $BACKEND_IMAGE
 docker pull $FRONTEND_IMAGE
 
-# 기존 dongnae 컨테이너들만 정리 (시스템 nginx는 그대로 둠)
-echo "🧹 기존 dongnae 컨테이너 정리 중..."
-docker stop dongnae-frontend dongnae-backend 2>/dev/null || true
-docker rm dongnae-frontend dongnae-backend 2>/dev/null || true
+# 기존 dongnae 컨테이너들 완전 정리 (시스템 nginx는 그대로 둠)
+echo "🧹 기존 dongnae 컨테이너 완전 정리 중..."
+
+# 현재 실행 중인 컨테이너 확인
+echo "📋 현재 실행 중인 컨테이너:"
+docker ps --format "table {{.Names}}\t{{.Ports}}"
+
+# Backend 관련 컨테이너들 중지 (MySQL 제외)
+echo "🛑 Backend 관련 컨테이너 중지 중..."
+docker stop dongnae 2>/dev/null || echo "dongnae 컨테이너 없음"
+docker stop dongnae-backend 2>/dev/null || echo "dongnae-backend 컨테이너 없음"
+docker stop dongnae-frontend 2>/dev/null || echo "dongnae-frontend 컨테이너 없음"
+
+# Backend 관련 컨테이너들 삭제 (MySQL 제외)
+echo "🗑️ Backend 관련 컨테이너 삭제 중..."
+docker rm dongnae 2>/dev/null || echo "dongnae 컨테이너 삭제 완료"
+docker rm dongnae-backend 2>/dev/null || echo "dongnae-backend 컨테이너 삭제 완료"
+docker rm dongnae-frontend 2>/dev/null || echo "dongnae-frontend 컨테이너 삭제 완료"
+
+# 포트 8080 사용 컨테이너 정리
+echo "🔍 포트 8080 사용 컨테이너 정리..."
+PORT_8080_CONTAINERS=$(docker ps --filter "publish=8080" -q)
+if [ ! -z "$PORT_8080_CONTAINERS" ]; then
+    echo "⚠️ 포트 8080을 사용하는 다른 컨테이너 발견:"
+    docker ps --filter "publish=8080" --format "table {{.Names}}\t{{.Ports}}"
+    echo "중지 및 삭제 중..."
+    echo $PORT_8080_CONTAINERS | xargs docker stop
+    echo $PORT_8080_CONTAINERS | xargs docker rm
+fi
+
+# 포트 3000 사용 컨테이너 정리
+echo "🔍 포트 3000 사용 컨테이너 정리..."
+PORT_3000_CONTAINERS=$(docker ps --filter "publish=3000" -q)
+if [ ! -z "$PORT_3000_CONTAINERS" ]; then
+    echo "⚠️ 포트 3000을 사용하는 다른 컨테이너 발견:"
+    docker ps --filter "publish=3000" --format "table {{.Names}}\t{{.Ports}}"
+    echo "중지 및 삭제 중..."
+    echo $PORT_3000_CONTAINERS | xargs docker stop
+    echo $PORT_3000_CONTAINERS | xargs docker rm
+fi
+
+# 포트 해제 대기
+echo "⏳ 포트 해제 완료 대기 중..."
+sleep 5
+
+# 최종 포트 상태 확인
+echo "📊 포트 상태 확인:"
+if netstat -tlnp 2>/dev/null | grep -q ":8080 "; then
+    echo "❌ 포트 8080이 여전히 사용 중:"
+    netstat -tlnp | grep ":8080 "
+    exit 1
+fi
+
+if netstat -tlnp 2>/dev/null | grep -q ":3000 "; then
+    echo "❌ 포트 3000이 여전히 사용 중:"
+    netstat -tlnp | grep ":3000 "
+    exit 1
+fi
+
+echo "✅ 포트 8080, 3000 모두 해제 완료"
 
 # MySQL 컨테이너 확인/시작
 echo "🗄️ MySQL 컨테이너 확인 중..."
