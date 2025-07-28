@@ -6,7 +6,7 @@ services:
     image: taegyunb99/dongnae-frontend:latest
     container_name: dongnae-frontend
     ports:
-      - "8081:80"      # HTTP
+      - "80:80"      # HTTP
     environment:
       # Vue.js 환경변수 (VITE_ 접두사)
       - NODE_ENV=production
