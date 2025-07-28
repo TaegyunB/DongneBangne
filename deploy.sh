@@ -1,18 +1,26 @@
 #!/bin/bash
 
-# 동네 앱 자동 배포 스크립트
+# 동네 앱 자동 배포 스크립트 (Frontend + Backend)
 # 무중단 배포를 위한 블루-그린 배포 방식
 
 set -e  # 에러 발생 시 스크립트 중단
 
-echo "🚀 동네 앱 자동 배포 시작"
+echo "🚀 동네 앱 풀스택 자동 배포 시작"
 echo "배포 시간: $(date)"
 
-# 환경 변수 설정
-DOCKER_IMAGE="taegyunb99/dongnae-backend"
-CONTAINER_NAME="dongnae"
-BACKUP_CONTAINER_NAME="dongnae-backup"
+# 환경 변수 설정 (Pipeline에서 전달받거나 기본값 사용)
+BACKEND_IMAGE=${BACKEND_IMAGE:-"taegyunb99/dongnae-backend:latest"}
+FRONTEND_IMAGE=${FRONTEND_IMAGE:-"taegyunb99/dongnae-frontend:latest"}
+
+BACKEND_CONTAINER="dongnae"
+FRONTEND_CONTAINER="dongnae-frontend"
+BACKUP_BACKEND_CONTAINER="dongnae-backup"
+BACKUP_FRONTEND_CONTAINER="dongnae-frontend-backup"
 MYSQL_CONTAINER="dongnae-mysql"
+
+echo "📦 배포할 이미지:"
+echo "  Backend:  $BACKEND_IMAGE"
+echo "  Frontend: $FRONTEND_IMAGE"
 
 # Docker 명령어 함수 (sudo 제거)
 docker_cmd() {
@@ -21,38 +29,62 @@ docker_cmd() {
 
 # 1. 최신 이미지 다운로드
 echo "📦 최신 Docker 이미지 다운로드 중..."
-docker_cmd pull $DOCKER_IMAGE:latest
+docker_cmd pull $BACKEND_IMAGE
+docker_cmd pull $FRONTEND_IMAGE
 
-# 2. 현재 실행 중인 컨테이너 백업 (포트 해제 포함)
-echo "💾 현재 서비스 백업 중..."
-if docker_cmd ps -q -f name=^${CONTAINER_NAME}$ > /dev/null 2>&1; then
-    echo "기존 컨테이너를 백업용으로 중지 및 이름 변경"
-    # 기존 백업 컨테이너가 있다면 먼저 삭제
-    docker_cmd rm -f $BACKUP_CONTAINER_NAME > /dev/null 2>&1 || true
-
-    # 현재 컨테이너 중지 (포트 해제)
-    docker_cmd stop $CONTAINER_NAME || true
-    # 이름 변경 (백업용)
-    docker_cmd rename $CONTAINER_NAME $BACKUP_CONTAINER_NAME || true
-
-    echo "✅ 기존 컨테이너 백업 완료 (포트 8080 해제됨)"
+# 2. Frontend 컨테이너 백업 및 배포
+echo "🎨 Frontend 배포 시작..."
+if docker_cmd ps -q -f name=^${FRONTEND_CONTAINER}$ > /dev/null 2>&1; then
+    echo "💾 기존 Frontend 컨테이너 백업 중..."
+    docker_cmd rm -f $BACKUP_FRONTEND_CONTAINER > /dev/null 2>&1 || true
+    docker_cmd stop $FRONTEND_CONTAINER || true
+    docker_cmd rename $FRONTEND_CONTAINER $BACKUP_FRONTEND_CONTAINER || true
+    echo "✅ Frontend 컨테이너 백업 완료 (포트 80 해제됨)"
 else
-    echo "ℹ️ 실행 중인 컨테이너가 없음"
+    echo "ℹ️ 실행 중인 Frontend 컨테이너가 없음"
 fi
 
-# 3. 포트 사용 상태 확인 및 정리
+# Frontend 포트 정리
+echo "🔍 포트 80 사용 상태 확인 중..."
+if netstat -tlnp 2>/dev/null | grep -q ":80 " || lsof -i :80 2>/dev/null; then
+    echo "⚠️ 포트 80이 여전히 사용 중 - 추가 정리 진행"
+    docker_cmd ps -q --filter "publish=80" | xargs -r docker_cmd stop
+    sleep 3
+else
+    echo "✅ 포트 80 사용 가능"
+fi
+
+# 새 Frontend 컨테이너 시작
+echo "🚀 새 Frontend 컨테이너 시작 중..."
+docker_cmd run -d \
+  --name $FRONTEND_CONTAINER \
+  -p 80:80 \
+  --restart unless-stopped \
+  $FRONTEND_IMAGE
+
+# 3. Backend 컨테이너 백업 및 배포 (기존 로직 유지)
+echo "🔧 Backend 배포 시작..."
+if docker_cmd ps -q -f name=^${BACKEND_CONTAINER}$ > /dev/null 2>&1; then
+    echo "💾 현재 Backend 서비스 백업 중..."
+    docker_cmd rm -f $BACKUP_BACKEND_CONTAINER > /dev/null 2>&1 || true
+    docker_cmd stop $BACKEND_CONTAINER || true
+    docker_cmd rename $BACKEND_CONTAINER $BACKUP_BACKEND_CONTAINER || true
+    echo "✅ 기존 Backend 컨테이너 백업 완료 (포트 8080 해제됨)"
+else
+    echo "ℹ️ 실행 중인 Backend 컨테이너가 없음"
+fi
+
+# Backend 포트 사용 상태 확인 및 정리
 echo "🔍 포트 8080 사용 상태 확인 중..."
 if netstat -tlnp 2>/dev/null | grep -q ":8080 " || lsof -i :8080 2>/dev/null; then
     echo "⚠️ 포트 8080이 여전히 사용 중 - 추가 정리 진행"
-    # 8080 포트를 사용하는 모든 dongnae 관련 컨테이너 중지
-    docker_cmd ps -a --filter "name=dongnae" --format "table {{.Names}}\t{{.Status}}" | grep -v "NAMES"
-    docker_cmd stop $(docker_cmd ps -q --filter "name=dongnae") 2>/dev/null || true
+    docker_cmd ps -q --filter "publish=8080" | xargs -r docker_cmd stop
     sleep 3
 else
     echo "✅ 포트 8080 사용 가능"
 fi
 
-# 4. 데이터베이스 연결 확인
+# 4. 데이터베이스 연결 확인 (기존 로직 유지)
 echo "🗄️ 데이터베이스 연결 확인 중..."
 if ! docker_cmd ps | grep -q $MYSQL_CONTAINER; then
     echo "⚠️ MySQL 컨테이너가 실행되지 않음. docker-compose로 시작 중..."
@@ -85,28 +117,17 @@ if [ $MYSQL_READY -eq 0 ]; then
     exit 1
 fi
 
-# 5. 새 컨테이너 시작
-echo "🔄 새로운 서비스 시작 중..."
+# 5. 새 Backend 컨테이너 시작
+echo "🔄 새로운 Backend 서비스 시작 중..."
 
 # MySQL 네트워크 확인
 MYSQL_NETWORK=$(docker_cmd inspect $MYSQL_CONTAINER --format='{{range $net, $config := .NetworkSettings.Networks}}{{$net}}{{end}}' | head -1)
 echo "📋 MySQL 네트워크: $MYSQL_NETWORK"
 
-# 최종 포트 확인
-echo "🔍 최종 포트 8080 확인..."
-if docker_cmd ps --filter "publish=8080" --format "{{.Names}}" | grep -q .; then
-    echo "❌ 여전히 포트 8080을 사용하는 컨테이너 발견:"
-    docker_cmd ps --filter "publish=8080" --format "table {{.Names}}\t{{.Ports}}\t{{.Status}}"
-    echo "🔄 강제 정리 진행..."
-    docker_cmd ps --filter "publish=8080" -q | xargs -r docker_cmd stop
-    docker_cmd ps -a --filter "publish=8080" -q | xargs -r docker_cmd rm
-    sleep 2
-fi
-
-# 새 컨테이너 시작
-echo "🚀 새 컨테이너 시작 중..."
+# 새 Backend 컨테이너 시작
+echo "🚀 새 Backend 컨테이너 시작 중..."
 docker_cmd run -d \
-  --name $CONTAINER_NAME \
+  --name $BACKEND_CONTAINER \
   --network $MYSQL_NETWORK \
   -p 8080:8080 \
   -e SPRING_PROFILES_ACTIVE=prod \
@@ -119,109 +140,98 @@ docker_cmd run -d \
   -e SPRING_SECURITY_USER_NAME="admin" \
   -e SPRING_SECURITY_USER_PASSWORD="dongnae2024!" \
   --restart unless-stopped \
-  $DOCKER_IMAGE:latest
+  $BACKEND_IMAGE
 
 # 6. 컨테이너 시작 확인
 echo "📋 컨테이너 상태 확인..."
 sleep 5
 docker_cmd ps | grep dongnae || echo "⚠️ 컨테이너 상태 확인 필요"
 
-# 7. 초기 로그 확인 (디버깅용)
-echo "📊 초기 애플리케이션 로그 확인..."
-sleep 10
-docker_cmd logs $CONTAINER_NAME --tail 20 || echo "⚠️ 로그 확인 실패"
+# 7. Frontend 헬스체크
+echo "🌐 Frontend 헬스체크 중..."
+FRONTEND_READY=0
+FRONTEND_RETRY=0
+MAX_FRONTEND_RETRIES=6
 
-# 8. 헬스체크 (Docker exec을 통한 내부 접근)
-echo "🏥 서비스 헬스체크 중..."
+while [ $FRONTEND_RETRY -lt $MAX_FRONTEND_RETRIES ] && [ $FRONTEND_READY -eq 0 ]; do
+    if docker_cmd exec $FRONTEND_CONTAINER curl -f -s http://localhost/ > /dev/null 2>&1; then
+        echo "✅ Frontend 서비스 정상 동작 확인!"
+        FRONTEND_READY=1
+    else
+        echo "⏳ Frontend 시작 대기 중... ($((FRONTEND_RETRY+1))/$MAX_FRONTEND_RETRIES)"
+        sleep 5
+        FRONTEND_RETRY=$((FRONTEND_RETRY+1))
+    fi
+done
+
+# 8. Backend 헬스체크 (기존 로직 유지)
+echo "🏥 Backend 서비스 헬스체크 중..."
 RETRY_COUNT=0
-MAX_RETRIES=15  # 2.5분 대기
+MAX_RETRIES=15
 
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    # 컨테이너가 실행 중인지 먼저 확인
-    if ! docker_cmd ps -q -f name=^${CONTAINER_NAME}$ > /dev/null 2>&1; then
-        echo "❌ 컨테이너가 중지됨! 로그 확인 중..."
-        docker_cmd logs $CONTAINER_NAME --tail 50
+    if ! docker_cmd ps -q -f name=^${BACKEND_CONTAINER}$ > /dev/null 2>&1; then
+        echo "❌ Backend 컨테이너가 중지됨! 로그 확인 중..."
+        docker_cmd logs $BACKEND_CONTAINER --tail 50
         break
     fi
 
-    # Docker exec을 통한 내부 헬스체크 (네트워크 격리 문제 해결)
-    if docker_cmd exec $CONTAINER_NAME curl -f -s http://localhost:8080/actuator/health > /dev/null 2>&1; then
-        echo "✅ 서비스 정상 동작 확인! (Actuator 헬스체크 응답)"
+    if docker_cmd exec $BACKEND_CONTAINER curl -f -s http://localhost:8080/actuator/health > /dev/null 2>&1; then
+        echo "✅ Backend 서비스 정상 동작 확인!"
         break
-    elif docker_cmd exec $CONTAINER_NAME curl -f -s http://localhost:8080 > /dev/null 2>&1; then
-        echo "✅ 서비스 정상 동작 확인! (HTTP 200 응답)"
-        break
-    elif docker_cmd exec $CONTAINER_NAME sh -c "curl -s http://localhost:8080 | grep -q 'login\|Spring\|<!DOCTYPE\|Whitelabel'" > /dev/null 2>&1; then
-        echo "✅ 서비스 정상 동작 확인! (Spring 애플리케이션 응답)"
-        break
-    elif docker_cmd logs $CONTAINER_NAME 2>&1 | grep -q "Started.*Application.*in.*seconds" > /dev/null 2>&1; then
-        echo "✅ 서비스 정상 동작 확인! (Spring Boot 시작 완료 로그 확인)"
+    elif docker_cmd exec $BACKEND_CONTAINER curl -f -s http://localhost:8080 > /dev/null 2>&1; then
+        echo "✅ Backend 서비스 정상 동작 확인!"
         break
     else
-        echo "⏳ 서비스 시작 대기 중... ($((RETRY_COUNT+1))/$MAX_RETRIES)"
-
-        # 3번마다 로그 일부 출력 (디버깅용)
-        if [ $((RETRY_COUNT % 3)) -eq 2 ]; then
-            echo "📊 현재 애플리케이션 상태:"
-            docker_cmd logs $CONTAINER_NAME --tail 3 || echo "로그 확인 실패"
-        fi
-
+        echo "⏳ Backend 서비스 시작 대기 중... ($((RETRY_COUNT+1))/$MAX_RETRIES)"
         sleep 10
         RETRY_COUNT=$((RETRY_COUNT+1))
     fi
 done
 
-# 9. 헬스체크 결과에 따른 처리
-if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
-    echo "❌ 서비스 시작 실패! 상세 로그 출력 중..."
+# 9. 배포 결과 처리
+if [ $RETRY_COUNT -eq $MAX_RETRIES ] || [ $FRONTEND_READY -eq 0 ]; then
+    echo "❌ 서비스 시작 실패! 롤백 진행..."
 
-    # 실패 시 전체 로그 출력
-    echo "📊 전체 애플리케이션 로그:"
-    docker_cmd logs $CONTAINER_NAME
+    # 실패한 컨테이너들 삭제
+    docker_cmd rm -f $FRONTEND_CONTAINER $BACKEND_CONTAINER 2>/dev/null || true
 
-    echo "🔄 롤백 진행..."
-
-    # 새 컨테이너 완전 삭제
-    echo "🗑️ 실패한 컨테이너 삭제 중..."
-    docker_cmd rm -f $CONTAINER_NAME || true
-
-    # 백업 컨테이너로 복원
-    if docker_cmd ps -a -q -f name=^${BACKUP_CONTAINER_NAME}$ > /dev/null 2>&1; then
-        echo "🔄 이전 버전 컨테이너로 복원 중..."
-        docker_cmd rename $BACKUP_CONTAINER_NAME $CONTAINER_NAME
-        docker_cmd start $CONTAINER_NAME
-        echo "✅ 이전 버전으로 롤백 완료"
-    else
-        echo "⚠️ 백업 컨테이너가 없어 롤백 불가능"
-        echo "📋 새 컨테이너 수동 확인 필요"
+    # 백업 컨테이너들로 복원
+    if docker_cmd ps -a -q -f name=^${BACKUP_FRONTEND_CONTAINER}$ > /dev/null 2>&1; then
+        docker_cmd rename $BACKUP_FRONTEND_CONTAINER $FRONTEND_CONTAINER
+        docker_cmd start $FRONTEND_CONTAINER
     fi
 
-    echo "❌ 배포 실패"
-    echo "📋 현재 컨테이너 상태:"
-    docker_cmd ps -a | grep dongnae
+    if docker_cmd ps -a -q -f name=^${BACKUP_BACKEND_CONTAINER}$ > /dev/null 2>&1; then
+        docker_cmd rename $BACKUP_BACKEND_CONTAINER $BACKEND_CONTAINER
+        docker_cmd start $BACKEND_CONTAINER
+    fi
 
+    echo "❌ 풀스택 배포 실패 - 이전 버전으로 롤백됨"
     exit 1
 else
-    echo "🎉 새 버전 배포 성공!"
+    echo "🎉 풀스택 배포 성공!"
 
-    # 10. 백업 컨테이너 정리
-    if docker_cmd ps -a -q -f name=^${BACKUP_CONTAINER_NAME}$ > /dev/null 2>&1; then
-        echo "🗑️ 이전 버전 컨테이너 삭제 중..."
-        docker_cmd rm -f $BACKUP_CONTAINER_NAME || true
-        echo "✅ 이전 버전 컨테이너 정리 완료"
-    fi
+    # 백업 컨테이너들 정리
+    docker_cmd rm -f $BACKUP_FRONTEND_CONTAINER $BACKUP_BACKEND_CONTAINER 2>/dev/null || true
 
-    # 11. 외부 접근 테스트 (옵션)
+    # 외부 접근 테스트
     echo "🌐 외부 접근성 테스트 중..."
-    if curl -f -s http://i13a708.p.ssafy.io:8080 > /dev/null 2>&1; then
-        echo "✅ 외부에서 서비스 접근 가능"
+    if curl -f -s http://i13a708.p.ssafy.io > /dev/null 2>&1; then
+        echo "✅ Frontend 외부 접근 가능"
     else
-        echo "⚠️ 외부 접근 실패 (방화벽/네트워크 설정 확인 필요)"
+        echo "⚠️ Frontend 외부 접근 실패"
     fi
 
-    echo "✅ 동네 앱 배포 완료!"
-    echo "🌐 서비스 접속: http://i13a708.p.ssafy.io:8080"
-    echo "📊 헬스체크: http://i13a708.p.ssafy.io:8080/actuator/health"
+    if curl -f -s http://i13a708.p.ssafy.io:8080 > /dev/null 2>&1; then
+        echo "✅ Backend 외부 접근 가능"
+    else
+        echo "⚠️ Backend 외부 접근 실패"
+    fi
+
+    echo "✅ 동네 앱 풀스택 배포 완료!"
+    echo "🌐 Frontend 접속: http://i13a708.p.ssafy.io"
+    echo "🌐 Backend 접속: http://i13a708.p.ssafy.io:8080"
 
     # 최종 상태 확인
     echo "📋 최종 컨테이너 상태:"
