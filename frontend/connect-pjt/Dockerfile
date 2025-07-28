@@ -9,16 +9,18 @@ RUN apk add --no-cache python3 make g++ libc6-compat
 # package.json 복사
 COPY package*.json ./
 
-# 완전히 새로운 설치 (캐시 무시)
+# 기존 파일들 정리
 RUN rm -rf node_modules package-lock.json .npm 2>/dev/null || true
+
+# npm 캐시 정리 및 설정
 RUN npm cache clean --force
 RUN npm config set registry https://registry.npmjs.org/
 
 # 최신 npm 사용
 RUN npm install -g npm@latest
 
-# Rollup 문제 해결을 위한 특별 설치
-RUN npm install --no-optional --legacy-peer-deps
+# 의존성 설치 (vite 포함)
+RUN npm install
 
 # 소스코드 복사
 COPY . .
@@ -28,11 +30,8 @@ ENV NODE_ENV=production
 ENV VITE_API_BASE_URL=http://i13a708.p.ssafy.io:8080
 ENV VITE_APP_TITLE=동네앱
 
-# Rollup을 수동으로 재설치
-RUN npm install rollup@latest --save-dev --force
-
-# 빌드 (에러 발생시 대안 시도)
-RUN npm run build || (npm install vite@latest --save-dev && npm run build)
+# vite가 설치되었는지 확인하고 빌드
+RUN npx vite build
 
 # 빌드 결과 확인
 RUN ls -la dist/
@@ -49,7 +48,7 @@ COPY nginx.conf /etc/nginx/nginx.conf
 # 포트 80 노출
 EXPOSE 80
 
-# curl 설치
+# curl 설치 (헬스체크용)
 RUN apk add --no-cache curl
 
 # Nginx 실행
