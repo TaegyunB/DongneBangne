@@ -5,11 +5,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 @Controller
-@ResponseBody
 public class MyContoller {
 
     @GetMapping("/my")
-    public String myPage(){
-        return "my";
+    @ResponseBody
+    public String myAPI(){
+        return "my route";
     }
 }
