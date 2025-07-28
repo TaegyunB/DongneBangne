@@ -86,14 +86,9 @@ echo "🗄️ MySQL 컨테이너 및 네트워크 확인 중..."
 if docker ps | grep -q "dongnae-mysql"; then
     echo "✅ MySQL 컨테이너 이미 실행 중"
     
-    # 기존 MySQL 컨테이너의 네트워크 확인
+    # 기존 MySQL 컨테이너의 네트워크 확인 (NetworkMode에서 추출)
     echo "🔍 MySQL 컨테이너 네트워크 상태 확인..."
-    MYSQL_NETWORK=$(docker inspect dongnae-mysql --format='{{.NetworkSettings.Networks}}' | grep -o '[^{]*dongnae[^}]*' | head -1 | sed 's/.*\([^[:space:]]*dongnae[^[:space:]]*\).*/\1/')
-    
-    if [ -z "$MYSQL_NETWORK" ]; then
-        # NetworkMode에서 네트워크 이름 추출
-        MYSQL_NETWORK=$(docker inspect dongnae-mysql --format='{{.HostConfig.NetworkMode}}')
-    fi
+    MYSQL_NETWORK=$(docker inspect dongnae-mysql --format='{{.HostConfig.NetworkMode}}')
     
     echo "현재 MySQL 네트워크: $MYSQL_NETWORK"
     
@@ -125,6 +120,14 @@ else
 fi
 
 echo "🌐 사용할 Docker 네트워크: $DOCKER_NETWORK"
+
+# 네트워크 존재 확인
+if ! docker network ls | grep -q "$DOCKER_NETWORK"; then
+    echo "❌ 네트워크 '$DOCKER_NETWORK'를 찾을 수 없습니다."
+    echo "📋 현재 존재하는 네트워크 목록:"
+    docker network ls
+    exit 1
+fi
 
 # MySQL 연결 테스트
 echo "🏥 MySQL 연결 테스트..."
