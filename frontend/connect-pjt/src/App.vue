@@ -1,5 +1,5 @@
 <template>
-  <!-- 툴바 -->
+  <!-- 툴바 완료 -->
   <nav class="toolbar">
     <div class="toolbar-container">
       <img src="@/assets/logo.png" alt="로고" class="logo">
