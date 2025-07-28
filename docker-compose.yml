@@ -1,27 +1,46 @@
 version: '3.8'
 
 services:
-  # 동네 백엔드 서비스
+  # Vue.js 프론트엔드 서비스 (포트 3000)
+  dongnae-frontend:
+    image: taegyunb99/dongnae-frontend:latest
+    container_name: dongnae-frontend
+    ports:
+      - "3000:80"    # 시스템 nginx가 3000 포트로 프록시
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      dongnae-backend:
+        condition: service_healthy
+    networks:
+      - dongnae-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Spring Boot 백엔드 서비스 (포트 8080)
   dongnae-backend:
     image: taegyunb99/dongnae-backend:latest
-    container_name: dongnae
+    container_name: dongnae-backend
     ports:
-      - "8080:8080"
+      - "8080:8080"  # 직접 접근 + 시스템 nginx 프록시
     environment:
-      # Spring Boot 프로필 설정
       - SPRING_PROFILES_ACTIVE=prod
-      # JVM 메모리 최적화
       - JAVA_OPTS=-Xmx512m -Xms256m
-      # 데이터베이스 연결 설정 (deploy.sh와 일치하도록 수정)
       - SPRING_DATASOURCE_URL=jdbc:mysql://dongnae-mysql:3306/dongnae?serverTimezone=UTC&characterEncoding=UTF-8
       - SPRING_DATASOURCE_USERNAME=dongnaeuser
       - SPRING_DATASOURCE_PASSWORD=dongnaepass
       - SPRING_DATASOURCE_DRIVER_CLASS_NAME=com.mysql.cj.jdbc.Driver
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update
       - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.MySQLDialect
-      # Spring Security 기본 설정 (운영환경용)
       - SPRING_SECURITY_USER_NAME=admin
       - SPRING_SECURITY_USER_PASSWORD=dongnae2024!
+      # CORS 설정
+      - SPRING_WEB_CORS_ALLOWED_ORIGINS=https://i13a708.p.ssafy.io,http://localhost:3000
     depends_on:
       mysql:
         condition: service_healthy
@@ -29,7 +48,7 @@ services:
       - dongnae-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || curl -f http://localhost:8080 || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -38,22 +57,17 @@ services:
   # MySQL 데이터베이스
   mysql:
     image: mysql:8.0
-    container_name: dongnae-mysql  # deploy.sh와 일치하도록 컨테이너명 수정
+    container_name: dongnae-mysql
     ports:
-      - "3307:3306"  # 외부 포트는 3307 유지 (충돌 방지)
+      - "3307:3306"  # 외부 접근용 (개발/디버깅용)
     environment:
-      # 통합된 계정 설정
       - MYSQL_ROOT_PASSWORD=bangnae
       - MYSQL_DATABASE=dongnae
       - MYSQL_USER=dongnaeuser
       - MYSQL_PASSWORD=dongnaepass
-      # MySQL 성능 최적화
       - MYSQL_INNODB_BUFFER_POOL_SIZE=256M
     volumes:
-      # 데이터 지속성을 위한 볼륨
       - mysql_data:/var/lib/mysql
-      # MySQL 설정 파일 (선택사항)
-      # - ./mysql/conf.d:/etc/mysql/conf.d
     networks:
       - dongnae-network
     restart: unless-stopped
@@ -63,12 +77,12 @@ services:
       timeout: 5s
       retries: 10
       start_period: 60s
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --innodb-buffer-pool-size=256M
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
 
 networks:
   dongnae-network:
     driver: bridge
-    name: s13p11a708-pipeline_dongnae-network  # deploy.sh에서 찾는 네트워크명과 일치
+    name: dongnae-network
 
 volumes:
   mysql_data:

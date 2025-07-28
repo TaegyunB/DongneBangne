@@ -6,7 +6,8 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.security.web.webauthn.api.ImmutablePublicKeyCredentialUserEntity;
 
 @EnableJpaRepositories
-public interface UserRepository extends JpaRepository<User, Long> {
+public interface
+UserRepository extends JpaRepository<User, Long> {
 
     User findByUserName(String userName);
 }
