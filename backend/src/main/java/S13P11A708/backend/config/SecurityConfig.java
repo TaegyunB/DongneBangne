@@ -28,11 +28,14 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable());
         http
-                .formLogin((login) -> login.disable());
+                .formLogin(form -> form
+                        .loginPage("/login")
+                        .permitAll());
         http
                 .httpBasic((basic) -> basic.disable());
         http
                 .oauth2Login((oauth2) -> oauth2
+                        .loginPage("/login")
                         .userInfoEndpoint((userInfoEndpointConfig ->
                                 userInfoEndpointConfig.userService(customOAuth2UserService))));
         http
