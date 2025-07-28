@@ -201,11 +201,14 @@ for i in {1..15}; do
     sleep 2
 done
 
-# 시스템 nginx 설정 업데이트
-echo "🔧 시스템 nginx 설정 업데이트 중..."
+# 시스템 nginx 설정 업데이트 (수동 실행 필요)
+echo "🔧 시스템 nginx 설정 정보 출력..."
 
-# nginx 설정 파일 생성
-sudo tee /etc/nginx/sites-available/dongnae > /dev/null << 'EOF'
+echo "📝 다음 nginx 설정을 수동으로 적용해주세요:"
+echo "=========================================="
+
+cat << 'NGINX_CONFIG'
+# /etc/nginx/sites-available/dongnae 파일 내용:
 server {
     listen 80;
     server_name i13a708.p.ssafy.io localhost;
@@ -254,27 +257,19 @@ server {
         add_header Content-Type text/plain;
     }
 }
-EOF
+NGINX_CONFIG
 
-# nginx 사이트 활성화
-sudo ln -sf /etc/nginx/sites-available/dongnae /etc/nginx/sites-enabled/dongnae
-
-# 기본 nginx 페이지 비활성화 (선택사항)
-sudo rm -f /etc/nginx/sites-enabled/default
-
-# nginx 설정 테스트
-echo "🧪 nginx 설정 테스트 중..."
-if sudo nginx -t; then
-    echo "✅ nginx 설정 검증 완료"
-    
-    # nginx 재시작
-    echo "🔄 nginx 재시작 중..."
-    sudo systemctl reload nginx
-    echo "✅ nginx 재시작 완료"
-else
-    echo "❌ nginx 설정 오류"
-    exit 1
-fi
+echo "=========================================="
+echo ""
+echo "🔧 수동 실행 명령어:"
+echo "sudo tee /etc/nginx/sites-available/dongnae > /dev/null << 'EOF'"
+echo "(위의 설정 내용 붙여넣기)"
+echo "EOF"
+echo ""
+echo "sudo ln -sf /etc/nginx/sites-available/dongnae /etc/nginx/sites-enabled/dongnae"
+echo "sudo rm -f /etc/nginx/sites-enabled/default"
+echo "sudo nginx -t && sudo systemctl reload nginx"
+echo ""
 
 # 최종 연결 테스트
 echo "🔗 최종 연결 테스트 중..."
