@@ -1,7 +1,10 @@
 package S13P11A708.backend.security;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.Map;
 
+@Slf4j
 public class KakaoResponse implements OAuth2Response {
 
     private final Map<String, Object> attributes;
@@ -14,6 +17,7 @@ public class KakaoResponse implements OAuth2Response {
 
     @Override
     public String getProvider() {
+        log.info((String) attributes.get("key"));
         return "kakao";
     }
 
