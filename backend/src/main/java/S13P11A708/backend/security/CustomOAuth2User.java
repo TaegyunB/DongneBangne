@@ -47,11 +47,11 @@ public class CustomOAuth2User implements OAuth2User {
         return userDTO.getNickname();
     }
     
-    // DB의 user_name과 연결됨
+    // DB의 user_name과 연결됨. kakao 고유 id 가져옴.
     public String getUsername(){
         return userDTO.getUserName();
     }
-
+    // 동네방네 user Id
     public Long getUserId(){
         return userDTO.getUserId();
     }
