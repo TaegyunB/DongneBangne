@@ -40,7 +40,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         String kakaoId = oAuth2Response.getProvider()+" "+oAuth2Response.getProviderId(); // kakao 1234567
         String nickname = oAuth2Response.getName();
         String profileImage = oAuth2Response.getProfileImage();
-        User existData = userRepository.findByUserName(kakaoId); //DB에 동일한 username을 가진 유저가 있는지 확인
+        User existData = userRepository.findByKakaoId(kakaoId); //DB에 동일한 kakaoId을 가진 유저가 있는지 확인
 //        UserRole defaultRole = UserRole.MEMBER;
 
         // 신규/기존 회원 구분
