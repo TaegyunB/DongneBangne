@@ -5,6 +5,7 @@ import S13P11A708.backend.domain.User;
 import S13P11A708.backend.domain.enums.UserRole;
 import S13P11A708.backend.dto.request.user.UpdateProfileRequestDto;
 import S13P11A708.backend.dto.response.user.UserProfileResponseDto;
+import S13P11A708.backend.jwt.JWTUtil;
 import S13P11A708.backend.repository.SeniorCenterRepository;
 import S13P11A708.backend.repository.UserRepository;
 import jakarta.transaction.Transactional;
@@ -17,6 +18,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final SeniorCenterRepository seniorCenterRepository;
+    private final JWTUtil jwtUtil;
 
     // userId 기준으로 유저 조회
     // 해당 유저가 경로당에 소속되어 있는지 확인
@@ -27,8 +29,11 @@ public class UserService {
                 .orElse(false);
     }
 
+    //GUEST 상태의 유저가 경로당을 선택하면
+    //역할을 ADMIN, MEMBER로 바꾸고
+    //새로운 JWT 토큰 발급해서 CLIENT에 반환
     @Transactional
-    public boolean assignCenter(Long userId, Long seniorCenterId){
+    public String assignCenter(Long userId, Long seniorCenterId){
         User user = userRepository.findById(userId) //DB에서 유저 조회
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
         SeniorCenter center = seniorCenterRepository.findById(seniorCenterId) //DB에서 경로당 조회
@@ -43,7 +48,8 @@ public class UserService {
         user.setSeniorCenter(center);
         user.setUserRole(alreadyExists ? UserRole.MEMBER : UserRole.ADMIN);
 
-        return alreadyExists;
+        //jwt 재발급
+        return jwtUtil.createJwt(user.getId(), user.getUserRole().name(), 1000L*60*60*6);
     }
 
     @Transactional

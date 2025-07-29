@@ -38,7 +38,7 @@ public class User extends BaseEntity {
     private String profileImage;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "user_role", nullable = false)
+    @Column(name = "user_role")
     private UserRole userRole;
 
     @ManyToOne(fetch = FetchType.LAZY)

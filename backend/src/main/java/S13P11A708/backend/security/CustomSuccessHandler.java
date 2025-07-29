@@ -35,7 +35,7 @@ public class CustomSuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         GrantedAuthority auth = iterator.next();
         String role = auth.getAuthority();
 
-        String token = jwtUtil.createJwt(userId, role, 60*60*60L);
+        String token = jwtUtil.createJwt(userId, role, 1000L *60 *60 *3);
 
         System.out.println("✅ OAuth 로그인 성공");
         System.out.println("➡ userId: " + userId);
@@ -43,7 +43,7 @@ public class CustomSuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         System.out.println("➡ JWT Token: " + token);
 
         response.addCookie(createCookie("Authorization", token));
-        response.sendRedirect("http://localhost:3000/"); //프론트로 리다이렉트
+        response.sendRedirect("http://localhost:5173/"); //프론트로 리다이렉트
     }
 
     private Cookie createCookie(String key, String value) {
