@@ -1,13 +1,10 @@
 package S13P11A708.backend.security;
 
-import S13P11A708.backend.domain.enums.UserRole;
-import S13P11A708.backend.dto.request.UserRequestDto;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 
 public class CustomOAuth2User implements OAuth2User {
@@ -49,10 +46,13 @@ public class CustomOAuth2User implements OAuth2User {
     
     // DB의 user_name과 연결됨. kakao 고유 id 가져옴.
     public String getUsername(){
-        return userDTO.getUserName();
+        return userDTO.getKakaoId();
     }
+
     // 동네방네 user Id
     public Long getUserId(){
         return userDTO.getUserId();
     }
+
+
 }

@@ -25,9 +25,9 @@ public class User extends BaseEntity {
     @Column(name = "user_id")
     private Long id;
 
-    // 카카오 닉네임에서 제공하는 닉네임 말고 커뮤니티에서 사용하는 유저네임을 저장해야하지 않을까
-    @Column(name = "user_name")
-    private String userName;
+    // 카카오 id
+    @Column(name = "kakao_id")
+    private String kakaoId;
 
     // 카카오 닉네임 (OAuth에서 제공)
     @Column(name = "nickname", nullable = false)

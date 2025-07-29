@@ -9,9 +9,9 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 public class UserDto {
-    private Long userId;
-    private String userName;
-    private String nickname;
+    private Long userId; //동네방네 유저 식별 id
+    private String kakaoId; // 카카오 id
+    private String nickname; // 사용자 이름
     private String profileImage;
     private UserRole userRole;
     private LocalDateTime createdAt;
