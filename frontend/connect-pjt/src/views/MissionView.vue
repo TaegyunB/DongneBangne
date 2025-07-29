@@ -1,165 +1,165 @@
-<template>     
-    <div class="header">         
-        <h1>다양한 도전과제를 수행해보세요</h1>         
-        <p>{{percent}}%</p>     
-    </div>     
-    <div class="progress-area">
-        <div class="progress-container">
-            <span class="progress-label">진행률</span>
-            <div class="progressBar">             
-                <div id="bar" class="innerbar" :style="{width: percent + '%'}"></div>         
-            </div>
-            <span class="progress-percent">{{percent}}%</span>
-        </div>     
+# 박스랑 hover까지 완료 
+<template>
+  <div class="header">
+    <h1>다양한 도전과제를 수행해보세요</h1>
+  </div>
+  
+  <div class="progress-container">
+    <span>진행률</span>
+    <div class="progress-bar">
+      <div class="inner-bar" :style="{width: percent + '%'}"></div>
+    </div>
+    <span>{{percent}}%</span>
+  </div>
+
+  <div class="message-box">
+    <p>{{ currentMessage }}</p>
+  </div>
+
+  <div class="challenge-container">
+    <div class="single-challenge">
+        <h3>{{title}}</h3>
+        <p>{{ description }}</p>
+    </div>
+    <div class="single-challenge">
+        <h3>{{title}}</h3>
+        <p>{{ description }}</p>
+    </div>
+    <div class="single-challenge">
+        <h3>{{title}}</h3>
+        <p>{{ description }}</p>
+    </div>
+    <div class="single-challenge">
+        <h3>{{title}}</h3>
+        <p>{{ description }}</p>
     </div>
 
-    <!-- 미션 코멘트 부분 -->
-    <div class="mission-comment">
-        <p v-if="currentMessage">{{ currentMessage }}</p>
-        <p v-else>메시지를 불러오는 중...</p>
-    </div>
-    
-    <!-- 테스트용 버튼 -->
-    <div class="test-buttons">
-        <button @click="count = 0">0/4</button>
-        <button @click="count = 1">1/4</button>
-        <button @click="count = 2">2/4</button>
-        <button @click="count = 3">3/4</button>
-        <button @click="count = 4">4/4</button>
-    </div>
+  </div>
 </template>
 
-<script setup> 
-import { ref, computed, onMounted, watch } from 'vue' 
+<script setup>
+import { ref, computed, onMounted, watch } from 'vue'
 
-// 미션 수행 정도
-const count = ref(0) 
-const percent = computed(() => {     
-    return Math.round((count.value / 4) * 100)
-})
+const count = ref(0)
+const percent = computed(() => Math.round((count.value / 4) * 100))
+const progressMessages = ref([]) // 해당 퍼센트의 모든 메시지
+const currentMessage = ref('') //해당 퍼센트의 한 메시지
 
-// JSON 데이터를 저장할 변수
-const progressMessages = ref([])
-const currentMessage = ref('')
-
-// JSON 파일에서 데이터 불러오기
-const loadProgressMessages = async () => {
-    try {
-        const response = await fetch('/progress_sentence.json')
-        const data = await response.json()
-        progressMessages.value = data
-        updateMessage() // 초기 메시지 설정
-    } catch (error) {
-        console.error('JSON 파일 로드 실패:', error)
-        currentMessage.value = 'JSON 파일을 불러올 수 없습니다.'
-    }
+//JSON에서 데이터 불러오기 
+const loadMessages = async () => { //비동기 처리 
+  try {
+    const response = await fetch('/progress_sentence.json')
+    progressMessages.value = await response.json()
+    updateMessage()
+  } catch (error) {
+    currentMessage.value = 'JSON 파일을 불러올 수 없습니다.'
+  }
 }
 
-// 현재 퍼센트에 맞는 메시지 업데이트
+//메시지 랜덤으로 업데이트
 const updateMessage = () => {
-    if (progressMessages.value.length === 0) return
-    
-    const currentPercent = `${percent.value}%`
-    
-    const matchingMessages = progressMessages.value.filter(
-        item => item.percent === currentPercent
-    )
-    
-    // 랜덤하게 선택
-    const randomIndex = Math.floor(Math.random() * matchingMessages.length)
-    currentMessage.value = matchingMessages[randomIndex].message
+  const messages = progressMessages.value.filter(item => item.percent === `${percent.value}%`)
+  if (messages.length > 0) {
+    currentMessage.value = messages[Math.floor(Math.random() * messages.length)].message
+  }
 }
 
-// percent가 변경될 때마다 자동으로 메시지 업데이트
-watch(percent, () => {
-    if (progressMessages.value.length > 0) {
-        updateMessage()
-    }
-})
+//percent가 변경되면 자동으로 메시지 업데이트 
+watch(percent, updateMessage)
 
-// 컴포넌트가 마운트될 때 JSON 파일 로드
-onMounted(() => {
-    loadProgressMessages()
-})
+//컴포넌트가 마운트될 때 JSON 파일 자동 로드 
+onMounted(loadMessages)
 </script>
 
-<style scoped> 
-.header{     
+<style scoped>
+.header { 
     text-align: center; 
-} 
+}
 
 .progress-container {
+  display: flex;
+  align-items: center;
+  max-width: 800px;
+  width: 90%;
+  margin: 50px auto 50px;
+  gap: 15px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 15px;
+  border-radius: 10px;
+  background: #E6E6E6;
+}
+
+.inner-bar {
+  height: 100%;
+  border-radius: 10px;
+  background: #107C10;
+}
+
+.message-box {
+  color: #115EA3;
+  font-weight: bold;
+  text-align: center;
+  margin: 30px auto;
+  max-width: 800px;
+  width: 90%;
+  padding: 10px;
+  background: #EBF3FC;
+  border-radius: 30px;
+}
+
+.challenge-container{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 900px;
+    width: 100%;
+    margin: 20px auto;
+    gap: 20px;
+}
+.single-challenge {
+    flex: 1;
+    color: black;
+    font-weight: bold;
+    height: 150px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
-    max-width: 800px;
-    width: 90%;
-    margin: 10px auto;
-    margin-top: 100px;
-    gap: 15px;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.progress-label {
-    font-weight: bold;
-    color: #333;
-    white-space: nowrap;
+.single-challenge:nth-child(1) {
+    background: #FFBF8F;
 }
 
-.progress-percent {
-    font-weight: bold;
-    color: #333;
-    min-width: 40px;
-    text-align: right;
+.single-challenge:nth-child(1):hover {
+    background: #FFD4B3;
 }
 
-.progressBar{   
-    flex: 1;
-    height: 15px;   
-    border-radius: 10px;   
-    background: linear-gradient(#E6E6E6, #E6E6E6); 
+.single-challenge:nth-child(2) {
+    background: #97B9FF;
 }
 
-.innerbar{   
-    height: 100%;   
-    border-radius: 10px;   
-    background: linear-gradient(#107C10, #107C10);
+.single-challenge:nth-child(2):hover {
+    background: #B3D1FF;
 }
 
-.mission-comment {
-    color: #115EA3;
-    font-weight: bold;
-    text-align: center;
-    margin: 30px auto;
-    max-width: 800px;
-    width: 90%;
-    padding: 20px;
-    background-color: #EBF3FC;
-    border-radius: 30px;
+.single-challenge:nth-child(3) {
+    background: #ABBAF9;
 }
 
-.mission-comment p {
-    margin: 0;
-    font-size: 16px;
-    color: inherit; 
-    line-height: 1.5;
+.single-challenge:nth-child(3):hover {
+    background: #C4D0FB;
 }
 
-/* 테스트용 버튼 스타일 (실제 사용시에는 제거) */
-.test-buttons {
-    text-align: center;
-    margin-top: 20px;
+.single-challenge:nth-child(4) {
+    background: #F1C399;
 }
 
-.test-buttons button {
-    margin: 0 5px;
-    padding: 5px 10px;
-    background: #107C10;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.test-buttons button:hover {
-    background: #0d5c0d;
+.single-challenge:nth-child(4):hover {
+    background: #F5D6B8;
 }
 </style>
