@@ -1,262 +1,307 @@
 #!/bin/bash
 
-# 동네 앱 자동 배포 스크립트 (시스템 Nginx 리버스 프록시)
-# Frontend: 시스템 Nginx에서 정적 파일 + API 프록시
-# Backend: 8080 포트에서 API 서버
+# 동네 앱 풀스택 자동 배포 스크립트 (시스템 nginx 활용)
+set -e
 
-set -e  # 에러 발생 시 스크립트 중단
-
-echo "🚀 동네 앱 시스템 Nginx 리버스 프록시 배포 시작"
+echo "🚀 동네 앱 시스템 nginx 리버스 프록시 배포 시작"
 echo "배포 시간: $(date)"
 
-# 환경 변수 설정 (Pipeline에서 전달받거나 기본값 사용)
+# 환경 변수 설정
 BACKEND_IMAGE=${BACKEND_IMAGE:-"taegyunb99/dongnae-backend:latest"}
 FRONTEND_IMAGE=${FRONTEND_IMAGE:-"taegyunb99/dongnae-frontend:latest"}
 
-BACKEND_CONTAINER="dongnae"
-BACKUP_BACKEND_CONTAINER="dongnae-backup"
-MYSQL_CONTAINER="dongnae-mysql"
-
 echo "📦 배포할 이미지:"
-echo "  Backend:  $BACKEND_IMAGE"
-echo "  Frontend: $FRONTEND_IMAGE (시스템 Nginx로 서빙)"
+echo "  Backend:  $BACKEND_IMAGE (포트 8080)"
+echo "  Frontend: $FRONTEND_IMAGE (포트 3000 → 시스템 nginx에서 프록시)"
 
-# Docker 명령어 함수
-docker_cmd() {
-    docker "$@"
-}
-
-# 1. 최신 이미지 다운로드
+# 최신 이미지 다운로드
 echo "📦 최신 Docker 이미지 다운로드 중..."
-docker_cmd pull $BACKEND_IMAGE
-docker_cmd pull $FRONTEND_IMAGE
+docker pull $BACKEND_IMAGE
+docker pull $FRONTEND_IMAGE
 
-# 2. Frontend 파일 업데이트 (시스템 Nginx 사용)
-echo "🌐 Frontend 파일 업데이트 중..."
+# 기존 dongnae 컨테이너들 완전 정리 (시스템 nginx는 그대로 둠)
+echo "🧹 기존 dongnae 컨테이너 완전 정리 중..."
 
-# 기존 Frontend 컨테이너가 있다면 정리 (더 이상 필요 없음)
-if docker_cmd ps -q -f name=dongnae-frontend > /dev/null 2>&1; then
-    echo "🧹 기존 Frontend 컨테이너 제거 중..."
-    docker_cmd stop dongnae-frontend || true
-    docker_cmd rm dongnae-frontend || true
+# 현재 실행 중인 컨테이너 확인
+echo "📋 현재 실행 중인 컨테이너:"
+docker ps --format "table {{.Names}}\t{{.Ports}}"
+
+# Backend 관련 컨테이너들 중지 (MySQL 제외)
+echo "🛑 Backend 관련 컨테이너 중지 중..."
+docker stop dongnae 2>/dev/null || echo "dongnae 컨테이너 없음"
+docker stop dongnae-backend 2>/dev/null || echo "dongnae-backend 컨테이너 없음"
+docker stop dongnae-frontend 2>/dev/null || echo "dongnae-frontend 컨테이너 없음"
+
+# Backend 관련 컨테이너들 삭제 (MySQL 제외)
+echo "🗑️ Backend 관련 컨테이너 삭제 중..."
+docker rm dongnae 2>/dev/null || echo "dongnae 컨테이너 삭제 완료"
+docker rm dongnae-backend 2>/dev/null || echo "dongnae-backend 컨테이너 삭제 완료"
+docker rm dongnae-frontend 2>/dev/null || echo "dongnae-frontend 컨테이너 삭제 완료"
+
+# 포트 8080 사용 컨테이너 정리
+echo "🔍 포트 8080 사용 컨테이너 정리..."
+PORT_8080_CONTAINERS=$(docker ps --filter "publish=8080" -q)
+if [ ! -z "$PORT_8080_CONTAINERS" ]; then
+    echo "⚠️ 포트 8080을 사용하는 다른 컨테이너 발견:"
+    docker ps --filter "publish=8080" --format "table {{.Names}}\t{{.Ports}}"
+    echo "중지 및 삭제 중..."
+    echo $PORT_8080_CONTAINERS | xargs docker stop
+    echo $PORT_8080_CONTAINERS | xargs docker rm
 fi
 
-# Frontend 정적 파일 디렉토리 생성
-sudo mkdir -p /var/www/dongnae-frontend
-sudo chown -R $USER:$USER /var/www/dongnae-frontend
+# 포트 3000 사용 컨테이너 정리
+echo "🔍 포트 3000 사용 컨테이너 정리..."
+PORT_3000_CONTAINERS=$(docker ps --filter "publish=3000" -q)
+if [ ! -z "$PORT_3000_CONTAINERS" ]; then
+    echo "⚠️ 포트 3000을 사용하는 다른 컨테이너 발견:"
+    docker ps --filter "publish=3000" --format "table {{.Names}}\t{{.Ports}}"
+    echo "중지 및 삭제 중..."
+    echo $PORT_3000_CONTAINERS | xargs docker stop
+    echo $PORT_3000_CONTAINERS | xargs docker rm
+fi
 
-# Frontend 파일만 복사, 컨테이너 생성 안 함
-echo "📁 Frontend 정적 파일 업데이트 중..."
-docker_cmd create --name temp-frontend $FRONTEND_IMAGE
-docker_cmd cp temp-frontend:/usr/share/nginx/html/. /var/www/dongnae-frontend/
-docker_cmd rm temp-frontend
+# 포트 해제 대기
+echo "⏳ 포트 해제 완료 대기 중..."
+sleep 5
 
-echo "✅ Frontend 파일 업데이트 완료"
+# 최종 포트 상태 확인
+echo "📊 포트 상태 확인:"
+if netstat -tlnp 2>/dev/null | grep -q ":8080 "; then
+    echo "❌ 포트 8080이 여전히 사용 중:"
+    netstat -tlnp | grep ":8080 "
+    exit 1
+fi
 
-# 3. Backend 배포
-echo "🔧 Backend 배포 시작..."
-if docker_cmd ps -q -f name=^${BACKEND_CONTAINER}$ > /dev/null 2>&1; then
-    echo "💾 현재 Backend 서비스 백업 중..."
-    docker_cmd rm -f $BACKUP_BACKEND_CONTAINER > /dev/null 2>&1 || true
-    docker_cmd stop $BACKEND_CONTAINER || true
-    docker_cmd rename $BACKEND_CONTAINER $BACKUP_BACKEND_CONTAINER || true
-    echo "✅ 기존 Backend 컨테이너 백업 완료 (포트 8080 해제됨)"
+if netstat -tlnp 2>/dev/null | grep -q ":3000 "; then
+    echo "❌ 포트 3000이 여전히 사용 중:"
+    netstat -tlnp | grep ":3000 "
+    exit 1
+fi
+
+echo "✅ 포트 8080, 3000 모두 해제 완료"
+
+# MySQL 컨테이너 및 네트워크 확인/설정
+echo "🗄️ MySQL 컨테이너 및 네트워크 확인 중..."
+
+if docker ps | grep -q "dongnae-mysql"; then
+    echo "✅ MySQL 컨테이너 이미 실행 중"
+    
+    # 기존 MySQL 컨테이너의 네트워크 확인 (NetworkMode에서 추출)
+    echo "🔍 MySQL 컨테이너 네트워크 상태 확인..."
+    MYSQL_NETWORK=$(docker inspect dongnae-mysql --format='{{.HostConfig.NetworkMode}}')
+    
+    echo "현재 MySQL 네트워크: $MYSQL_NETWORK"
+    
+    # 동일한 네트워크 사용을 위해 변수 설정
+    DOCKER_NETWORK="$MYSQL_NETWORK"
+    
 else
-    echo "ℹ️ 실행 중인 Backend 컨테이너가 없음"
-fi
-
-# Backend 포트 정리
-echo "🔍 포트 8080 사용 상태 확인 중..."
-if netstat -tlnp 2>/dev/null | grep -q ":8080 " || lsof -i :8080 2>/dev/null; then
-    echo "⚠️ 포트 8080이 여전히 사용 중 - 추가 정리 진행"
-    docker_cmd ps -q --filter "publish=8080" | xargs -r docker_cmd stop
-    sleep 3
-else
-    echo "✅ 포트 8080 사용 가능"
-fi
-
-# 4. 데이터베이스 연결 확인
-echo "🗄️ 데이터베이스 연결 확인 중..."
-if ! docker_cmd ps | grep -q $MYSQL_CONTAINER; then
-    echo "⚠️ MySQL 컨테이너가 실행되지 않음. docker-compose로 시작 중..."
-    docker-compose up -d mysql
+    echo "🚀 MySQL 컨테이너 시작 중..."
+    
+    # 기본 네트워크 이름 설정
+    DOCKER_NETWORK="s13p11a708-pipeline_dongnae-network"
+    
+    # 네트워크 생성
+    docker network create $DOCKER_NETWORK 2>/dev/null || true
+    
+    docker run -d \
+        --name dongnae-mysql \
+        --network $DOCKER_NETWORK \
+        -e MYSQL_ROOT_PASSWORD=bangnae \
+        -e MYSQL_DATABASE=dongnae \
+        -e MYSQL_USER=dongnaeuser \
+        -e MYSQL_PASSWORD=dongnaepass \
+        -p 3307:3306 \
+        mysql:8.0 \
+        --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    
     echo "⏳ MySQL 완전 시작 대기 중..."
-    sleep 45
-else
-    echo "✅ MySQL 컨테이너 실행 중"
+    sleep 30
 fi
 
-# MySQL 준비 상태 확인
-echo "⏳ MySQL 준비 상태 확인 중..."
-MYSQL_READY=0
-MYSQL_RETRY=0
-MAX_MYSQL_RETRIES=12
+echo "🌐 사용할 Docker 네트워크: $DOCKER_NETWORK"
 
-while [ $MYSQL_RETRY -lt $MAX_MYSQL_RETRIES ] && [ $MYSQL_READY -eq 0 ]; do
-    if docker_cmd exec $MYSQL_CONTAINER mysqladmin ping -h localhost -u dongnaeuser -pdongnaepass --silent > /dev/null 2>&1; then
-        echo "✅ MySQL 준비 완료"
-        MYSQL_READY=1
-    else
-        echo "⏳ MySQL 준비 대기 중... ($((MYSQL_RETRY+1))/$MAX_MYSQL_RETRIES)"
-        sleep 5
-        MYSQL_RETRY=$((MYSQL_RETRY+1))
-    fi
-done
-
-if [ $MYSQL_READY -eq 0 ]; then
-    echo "❌ MySQL 준비 시간 초과"
+# 네트워크 존재 확인
+if ! docker network ls | grep -q "$DOCKER_NETWORK"; then
+    echo "❌ 네트워크 '$DOCKER_NETWORK'를 찾을 수 없습니다."
+    echo "📋 현재 존재하는 네트워크 목록:"
+    docker network ls
     exit 1
 fi
 
-# 5. 새 Backend 컨테이너 시작
-echo "🔄 새로운 Backend 서비스 시작 중..."
-
-# MySQL 네트워크 확인
-MYSQL_NETWORK=$(docker_cmd inspect $MYSQL_CONTAINER --format='{{range $net, $config := .NetworkSettings.Networks}}{{$net}}{{end}}' | head -1)
-echo "📋 MySQL 네트워크: $MYSQL_NETWORK"
-
-# Backend 컨테이너 시작
-echo "🚀 새 Backend 컨테이너 시작 중..."
-docker_cmd run -d \
-  --name $BACKEND_CONTAINER \
-  --network $MYSQL_NETWORK \
-  -p 8080:8080 \
-  -e SPRING_PROFILES_ACTIVE=prod \
-  -e SPRING_DATASOURCE_URL="jdbc:mysql://dongnae-mysql:3306/dongnae?serverTimezone=UTC&characterEncoding=UTF-8" \
-  -e SPRING_DATASOURCE_USERNAME="dongnaeuser" \
-  -e SPRING_DATASOURCE_PASSWORD="dongnaepass" \
-  -e SPRING_DATASOURCE_DRIVER_CLASS_NAME="com.mysql.cj.jdbc.Driver" \
-  -e SPRING_JPA_HIBERNATE_DDL_AUTO="update" \
-  -e SPRING_JPA_DATABASE_PLATFORM="org.hibernate.dialect.MySQLDialect" \
-  -e SPRING_SECURITY_USER_NAME="admin" \
-  -e SPRING_SECURITY_USER_PASSWORD="dongnae2024!" \
-  --restart unless-stopped \
-  $BACKEND_IMAGE
-
-# 6. Backend 헬스체크
-echo "🏥 Backend 서비스 헬스체크 중..."
-BACKEND_RETRY=0
-MAX_BACKEND_RETRIES=15
-
-while [ $BACKEND_RETRY -lt $MAX_BACKEND_RETRIES ]; do
-    if ! docker_cmd ps -q -f name=^${BACKEND_CONTAINER}$ > /dev/null 2>&1; then
-        echo "❌ Backend 컨테이너가 중지됨!"
+# MySQL 연결 테스트
+echo "🏥 MySQL 연결 테스트..."
+for i in {1..10}; do
+    if docker exec dongnae-mysql mysqladmin ping -h localhost -u dongnaeuser -pdongnaepass --silent >/dev/null 2>&1; then
+        echo "✅ MySQL 연결 가능"
         break
     fi
-
-    if docker_cmd exec $BACKEND_CONTAINER curl -f -s http://localhost:8080/actuator/health > /dev/null 2>&1; then
-        echo "✅ Backend 서비스 정상 동작 확인!"
-        break
-    elif docker_cmd exec $BACKEND_CONTAINER curl -f -s http://localhost:8080 > /dev/null 2>&1; then
-        echo "✅ Backend 서비스 정상 동작 확인!"
-        break
-    else
-        echo "⏳ Backend 서비스 시작 대기 중... ($((BACKEND_RETRY+1))/$MAX_BACKEND_RETRIES)"
-        sleep 10
-        BACKEND_RETRY=$((BACKEND_RETRY+1))
+    if [ $i -eq 10 ]; then
+        echo "❌ MySQL 연결 실패"
+        exit 1
     fi
+    echo "⏳ MySQL 연결 대기 중... ($i/10)"
+    sleep 3
 done
 
-# 7. 시스템 Nginx 재시작 (Frontend 파일 반영)
-echo "🔄 시스템 Nginx 재시작 중..."
-sudo systemctl reload nginx || echo "⚠️ Nginx 재시작 실패 - 수동 확인 필요"
+# Backend 컨테이너 시작 (MySQL과 같은 네트워크 사용)
+echo "🔧 Backend 컨테이너 시작 중..."
+docker run -d \
+    --name dongnae-backend \
+    --network $DOCKER_NETWORK \
+    -p 8080:8080 \
+    -e SPRING_PROFILES_ACTIVE=prod \
+    -e SPRING_DATASOURCE_URL="jdbc:mysql://dongnae-mysql:3306/dongnae?serverTimezone=UTC&characterEncoding=UTF-8" \
+    -e SPRING_DATASOURCE_USERNAME="dongnaeuser" \
+    -e SPRING_DATASOURCE_PASSWORD="dongnaepass" \
+    -e SPRING_DATASOURCE_DRIVER_CLASS_NAME="com.mysql.cj.jdbc.Driver" \
+    -e SPRING_JPA_HIBERNATE_DDL_AUTO="update" \
+    -e SPRING_JPA_DATABASE_PLATFORM="org.hibernate.dialect.MySQLDialect" \
+    --restart unless-stopped \
+    $BACKEND_IMAGE
 
-# 8. Frontend 헬스체크 (시스템 Nginx)
-echo "🌐 시스템 Nginx Frontend 확인 중..."
-FRONTEND_READY=0
-FRONTEND_RETRY=0
-MAX_FRONTEND_RETRIES=5
+# Frontend 컨테이너 시작 (같은 네트워크)
+echo "🎨 Frontend 컨테이너 시작 중... (포트 3000)"
+docker run -d \
+    --name dongnae-frontend \
+    --network $DOCKER_NETWORK \
+    -p 3000:80 \
+    -e NODE_ENV=production \
+    --restart unless-stopped \
+    $FRONTEND_IMAGE
 
-while [ $FRONTEND_RETRY -lt $MAX_FRONTEND_RETRIES ] && [ $FRONTEND_READY -eq 0 ]; do
-    if curl -f -s http://localhost/ > /dev/null 2>&1; then
-        echo "✅ Frontend 서비스 정상 확인!"
-        FRONTEND_READY=1
-    else
-        echo "⏳ Frontend 서비스 확인 중... ($((FRONTEND_RETRY+1))/$MAX_FRONTEND_RETRIES)"
-        sleep 5
-        FRONTEND_RETRY=$((FRONTEND_RETRY+1))
-    fi
-done
-
-# 9. 리버스 프록시 연결 테스트
-echo "🔗 리버스 프록시 연결 테스트 중..."
-PROXY_RETRY=0
-MAX_PROXY_RETRIES=5
-
-while [ $PROXY_RETRY -lt $MAX_PROXY_RETRIES ]; do
-    # 시스템에서 Backend API 직접 호출 테스트
-    if curl -f -s http://localhost:8080/actuator/health > /dev/null 2>&1; then
-        echo "✅ 로컬 Backend API 접근 확인!"
+# 헬스체크
+echo "🏥 Backend 헬스체크 중..."
+for i in {1..30}; do
+    if curl -f -s http://localhost:8080/actuator/health >/dev/null 2>&1; then
+        echo "✅ Backend 정상 동작 확인"
         break
-    else
-        echo "⏳ Backend API 연결 대기 중... ($((PROXY_RETRY+1))/$MAX_PROXY_RETRIES)"
-        sleep 5
-        PROXY_RETRY=$((PROXY_RETRY+1))
     fi
+    if [ $i -eq 30 ]; then
+        echo "❌ Backend 헬스체크 실패"
+        docker logs dongnae-backend --tail 20
+        exit 1
+    fi
+    echo "⏳ Backend 시작 대기 중... ($i/30)"
+    sleep 3
 done
 
-# 10. 배포 결과 처리
-if [ $BACKEND_RETRY -eq $MAX_BACKEND_RETRIES ]; then
-    echo "❌ Backend 서비스 시작 실패! 롤백 진행..."
-    
-    # 실패한 Backend 컨테이너 삭제
-    docker_cmd rm -f $BACKEND_CONTAINER 2>/dev/null || true
-    
-    # 백업 Backend 컨테이너로 복원
-    if docker_cmd ps -a -q -f name=^${BACKUP_BACKEND_CONTAINER}$ > /dev/null 2>&1; then
-        echo "🔄 Backend 이전 버전으로 복원..."
-        docker_cmd rename $BACKUP_BACKEND_CONTAINER $BACKEND_CONTAINER
-        docker_cmd start $BACKEND_CONTAINER
-        echo "✅ Backend 롤백 완료"
+echo "🏥 Frontend 헬스체크 중..."
+for i in {1..15}; do
+    if curl -f -s http://localhost:3000 >/dev/null 2>&1; then
+        echo "✅ Frontend 정상 동작 확인"
+        break
     fi
-    
-    echo "❌ 배포 실패 - Backend 롤백됨"
-    exit 1
+    if [ $i -eq 15 ]; then
+        echo "❌ Frontend 헬스체크 실패"
+        docker logs dongnae-frontend --tail 20
+        exit 1
+    fi
+    echo "⏳ Frontend 시작 대기 중... ($i/15)"
+    sleep 2
+done
+
+# 시스템 nginx 설정 업데이트 (수동 실행 필요)
+echo "🔧 시스템 nginx 설정 정보 출력..."
+
+echo "📝 다음 nginx 설정을 수동으로 적용해주세요:"
+echo "=========================================="
+
+cat << 'NGINX_CONFIG'
+# /etc/nginx/sites-available/dongnae 파일 내용:
+server {
+    listen 80;
+    server_name i13a708.p.ssafy.io localhost;
+
+    # Frontend (Vue.js) - 포트 3000으로 프록시
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # WebSocket 지원 (필요시)
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+
+    # Backend API - 포트 8080으로 프록시
+    location /api/ {
+        proxy_pass http://localhost:8080/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # CORS 헤더
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'Accept,Authorization,Cache-Control,Content-Type' always;
+    }
+
+    # Backend 직접 접근 (선택사항)
+    location /backend/ {
+        proxy_pass http://localhost:8080/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # 헬스체크
+    location /health {
+        access_log off;
+        return 200 "healthy\n";
+        add_header Content-Type text/plain;
+    }
+}
+NGINX_CONFIG
+
+echo "=========================================="
+echo ""
+echo "🔧 수동 실행 명령어:"
+echo "sudo tee /etc/nginx/sites-available/dongnae > /dev/null << 'EOF'"
+echo "(위의 설정 내용 붙여넣기)"
+echo "EOF"
+echo ""
+echo "sudo ln -sf /etc/nginx/sites-available/dongnae /etc/nginx/sites-enabled/dongnae"
+echo "sudo rm -f /etc/nginx/sites-enabled/default"
+echo "sudo nginx -t && sudo systemctl reload nginx"
+echo ""
+
+# 최종 연결 테스트
+echo "🔗 최종 연결 테스트 중..."
+sleep 5
+
+# Frontend 테스트
+if curl -f -s http://localhost/ >/dev/null 2>&1; then
+    echo "✅ Frontend 프록시 연결 확인"
 else
-    echo "🎉 풀스택 배포 성공!"
-    
-    # 백업 컨테이너 정리
-    docker_cmd rm -f $BACKUP_BACKEND_CONTAINER 2>/dev/null || true
-    
-    # 11. 외부 접근 테스트
-    echo "🌐 외부 접근성 테스트 중..."
-    
-    # Frontend (메인 페이지) 테스트
-    if curl -f -s http://i13a708.p.ssafy.io > /dev/null 2>&1; then
-        echo "✅ Frontend 외부 접근 가능 (http://i13a708.p.ssafy.io)"
-    else
-        echo "⚠️ Frontend 외부 접근 실패"
-    fi
-    
-    # Backend API 직접 접근 테스트
-    if curl -f -s http://i13a708.p.ssafy.io:8080 > /dev/null 2>&1; then
-        echo "✅ Backend API 직접 접근 가능 (http://i13a708.p.ssafy.io:8080)"
-    else
-        echo "⚠️ Backend API 직접 접근 실패"
-    fi
-    
-    # Nginx를 통한 API 프록시 테스트
-    if curl -f -s http://i13a708.p.ssafy.io/api/health > /dev/null 2>&1; then
-        echo "✅ Nginx 프록시를 통한 API 접근 가능 (http://i13a708.p.ssafy.io/api/*)"
-    else
-        echo "ℹ️ Nginx API 프록시 경로 확인 필요 (/api/* → Backend)"
-    fi
-    
-    echo "✅ 동네 앱 시스템 Nginx 리버스 프록시 배포 완료!"
-    echo ""
-    echo "🌐 서비스 접속 정보:"
-    echo "  Frontend: http://i13a708.p.ssafy.io (시스템 Nginx + Vue.js)"
-    echo "  Backend:  http://i13a708.p.ssafy.io:8080 (Spring Boot API)"
-    echo "  API via Proxy: http://i13a708.p.ssafy.io/api/* (Nginx → Backend)"
-    echo ""
-    
-    # 최종 상태 확인
-    echo "📋 최종 Backend 컨테이너 상태:"
-    docker_cmd ps | grep dongnae || echo "Backend 컨테이너 확인 필요"
-    
-    echo "📁 Frontend 파일 위치: /var/www/dongnae-frontend/"
-    ls -la /var/www/dongnae-frontend/ | head -5 || echo "Frontend 파일 확인 필요"
+    echo "⚠️ Frontend 프록시 연결 실패"
 fi
 
+# Backend API 테스트
+if curl -f -s http://localhost/api/actuator/health >/dev/null 2>&1; then
+    echo "✅ Backend API 프록시 연결 확인"
+elif curl -f -s http://localhost:8080/actuator/health >/dev/null 2>&1; then
+    echo "✅ Backend 직접 연결 확인 (프록시 경로 확인 필요)"
+else
+    echo "⚠️ Backend 연결 확인 필요"
+fi
+
+echo "🎉 시스템 nginx 리버스 프록시 배포 완료!"
+echo ""
+echo "🌐 서비스 접속 정보:"
+echo "  메인 사이트: https://i13a708.p.ssafy.io (시스템 nginx → Frontend)"
+echo "  API 엔드포인트: https://i13a708.p.ssafy.io/api/* (시스템 nginx → Backend)"
+echo "  Backend 직접: http://i13a708.p.ssafy.io:8080 (개발/디버깅용)"
+echo ""
+
+# 컨테이너 상태 확인
+echo "📋 컨테이너 상태:"
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" --filter "name=dongnae"
+
+echo "✅ 배포 완료!"
 echo "배포 완료 시간: $(date)"
-##
