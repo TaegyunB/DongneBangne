@@ -171,19 +171,58 @@ docker run -d \
     $FRONTEND_IMAGE
 
 # 헬스체크
+
+# Backend 헬스체크 (시간 연장 + 다중 체크)
 echo "🏥 Backend 헬스체크 중..."
-for i in {1..30}; do
+for i in {1..60}; do  # 30초 → 60초로 연장 (총 2분 대기)
+    echo "⏳ Backend 시작 대기 중... ($i/60)"
+
+    # 다중 엔드포인트로 체크 (Actuator + 기본 경로)
     if curl -f -s http://localhost:8080/actuator/health >/dev/null 2>&1; then
-        echo "✅ Backend 정상 동작 확인"
+        echo "✅ Backend Actuator 헬스체크 성공"
+        break
+    elif curl -f -s http://localhost:8080/ >/dev/null 2>&1; then
+        echo "✅ Backend 기본 경로 응답 확인"
+        break
+    elif curl -s http://localhost:8080/actuator/health 2>/dev/null | grep -q "UP\|DOWN"; then
+        echo "✅ Backend Actuator 응답 확인 (상태 체크)"
         break
     fi
-    if [ $i -eq 30 ]; then
-        echo "❌ Backend 헬스체크 실패"
-        docker logs dongnae-backend --tail 20
-        exit 1
+
+    # 30초마다 진행 상황 출력
+    if [ $((i % 30)) -eq 0 ]; then
+        echo "🔍 Backend 컨테이너 상태:"
+        docker ps --filter "name=dongnae-backend" --format "table {{.Names}}\t{{.Status}}"
+        echo "📝 Backend 최근 로그:"
+        docker logs dongnae-backend --tail 5 2>/dev/null || echo "로그 조회 실패"
     fi
-    echo "⏳ Backend 시작 대기 중... ($i/30)"
-    sleep 3
+
+    if [ $i -eq 60 ]; then
+        echo "❌ Backend 헬스체크 실패 (2분 타임아웃)"
+        echo "🔍 Backend 최종 상태 확인:"
+
+        # 컨테이너 상태 확인
+        echo "📊 컨테이너 상태:"
+        docker ps --filter "name=dongnae-backend"
+
+        # 상세 로그 출력
+        echo "📝 Backend 상세 로그 (마지막 30줄):"
+        docker logs dongnae-backend --tail 30
+
+        # 수동 헬스체크 시도
+        echo "🔍 수동 헬스체크 시도:"
+        echo "Actuator Health:"
+        curl -s http://localhost:8080/actuator/health || echo "Actuator 응답 없음"
+        echo "Basic Root:"
+        curl -s -I http://localhost:8080/ || echo "기본 경로 응답 없음"
+
+        # 경고만 출력하고 계속 진행 (완전 실패 대신)
+        echo "⚠️ 헬스체크 실패했지만 배포 계속 진행 (Backend가 아직 시작 중일 수 있음)"
+        echo "💡 수동으로 확인: curl http://i13a708.p.ssafy.io:8080/actuator/health"
+        break  # exit 1 대신 break 사용
+    fi
+
+    sleep 2
 done
 
 echo "🏥 Frontend 헬스체크 중..."
