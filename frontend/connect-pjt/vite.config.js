@@ -15,4 +15,7 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
+  define: {
+    __VUE_PROD_DEVTOOLS__: false  // 👈 Devtools UI 비노출 (하단 Vue 아이콘 제거)
+  }
 })

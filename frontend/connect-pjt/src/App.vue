@@ -4,7 +4,7 @@
     <div class="toolbar-container">
       <img src="@/assets/logo.png" alt="로고" class="logo">
       
-      <div class="nav-menu">
+      <div v-if="ui.showMenu" class="nav-menu">
         <a href="#" class="nav-item">게임</a>
         <router-link to="/challenges" class="nav-item">도전과제</router-link>
         <a href="#" class="nav-item">게시판</a>
@@ -12,7 +12,8 @@
         <a href="#" class="nav-item">AI 신문</a>
       </div>
       
-      <img src="@/assets/profile.png" alt="프로필" class="profile">
+      <div v-if="!ui.showProfile" class="welcome-message" v-html="ui.welcomeText"></div>
+      <img v-else src="@/assets/profile.png" alt="프로필" class="profile">
     </div>
   </nav>
   
@@ -68,13 +69,15 @@ const router = useRouter();
   text-decoration: none;
   color: #333;
   font-weight: 700; /* 볼드 */
+  font-size: 20px;
   padding: 8px 16px;
   border-radius: 6px;
 }
+/* font-size 수정(nav-bar) */
 
 /* 마우스 위에 가져다 댈 때 */
 .nav-item:hover {
-  background: #f0f0f0;
+  background: white;
   color: #007bff;
 }
 
@@ -84,5 +87,4 @@ const router = useRouter();
   /* 클릭 시 프로필 페이지로 */
   cursor: pointer;
 }
-
 </style>
