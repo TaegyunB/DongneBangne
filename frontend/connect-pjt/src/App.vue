@@ -25,6 +25,9 @@
 
 <script setup>
 import { RouterView, useRouter  } from 'vue-router';
+import { useUiStore } from '@/stores/useUiStore' 
+
+const ui = useUiStore() 
 const router = useRouter();
 
 // 로고 클릭 시 홈으로 이동
@@ -35,6 +38,14 @@ const router = useRouter();
 </script>
 
 <style scoped>
+/* 이걸 해야, 툴바가 상단에 딱 붙고, 좌우 여백 안생김 */
+html, body, #app {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+}
+
 .toolbar {
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   position: sticky;
