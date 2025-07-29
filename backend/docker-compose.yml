@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # Spring Boot 애플리케이션
+  dongnae-backend:
+    image: taegyunb99/dongnae-backend:latest
+    container_name: dongnae-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - JAVA_OPTS=-Xmx512m -Xms256m
+      - SPRING_DATASOURCE_URL=jdbc:mysql://dongnae-mysql:3306/dongnae
+      - SPRING_DATASOURCE_USERNAME=dongnaeuser
+      - SPRING_DATASOURCE_PASSWORD=dongnaepass
+      - SPRING_DATASOURCE_DRIVER_CLASS_NAME=com.mysql.cj.jdbc.Driver
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.MySQLDialect
+      # - SPRING_SECURITY_USER_NAME=admin
+      # - SPRING_SECURITY_USER_PASSWORD=dongnae2024!
+      # CORS 설정
+      # - SPRING_WEB_CORS_ALLOWED_ORIGINS=https://i13a708.p.ssafy.io,http://localhost:3000
+    depends_on:
+      - mysql
+    networks:
+      - dongnae-network
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # MySQL 데이터베이스
+  mysql:
+    image: mysql:8.0
+    container_name: dongnae-mysql
+    ports:
+      - "3307:3306"  # 외부 접근용 (개발/디버깅용)
+    environment:
+      - MYSQL_ROOT_PASSWORD=bangnae
+      - MYSQL_DATABASE=dongnae
+      - MYSQL_USER=dongnaeuser
+      - MYSQL_PASSWORD=dongnaepass
+      # - MYSQL_INNODB_BUFFER_POOL_SIZE=256M
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - dongnae-network
+    restart: always
+
+networks:
+  dongnae-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    driver: local
+  redus-data:
+    driver: local
+
+  # Vue.js 프론트엔드 서비스 (포트 3000)
+  # dongnae-frontend:
+  #   image: taegyunb99/dongnae-frontend:latest
+  #   container_name: dongnae-frontend
+  #   ports:
+  #     - "3000:80"    # 시스템 nginx가 3000 포트로 프록시
+  #   environment:
+  #     - NODE_ENV=production
+  #   depends_on:
+  #     dongnae-backend:
+  #       condition: service_healthy
+  #   networks:
+  #     - dongnae-network
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 30s
+  #
+
+
+
+
