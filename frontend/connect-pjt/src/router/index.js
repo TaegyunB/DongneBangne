@@ -10,6 +10,8 @@ const router = createRouter({
       component: MissionView,
     },
   ],
+
+  
 })
 
 export default router
