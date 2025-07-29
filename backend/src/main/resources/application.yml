@@ -50,6 +50,20 @@ spring:
     charset: UTF-8
     check-template-location: true
 
+  management:
+    endpoints:
+      web:
+        exposure:
+          include: health, info  # health와 info 엔드포인트 활성화
+        base-path: /actuator  # DB, 디스크 등 컴포넌트별 상태 표시
+    health:
+      db:
+        enabled: true  # 데이터베이스 헬스체크 활성화
+      diskspace:
+        enabled: true  # 디스크 공간 헬스체크 활성화
+
+
+
 logging:
   level:
     org.hibernate.SQL: debug  # Hibernate가 실행하는 SQL 쿼리문을 로그에 출력
