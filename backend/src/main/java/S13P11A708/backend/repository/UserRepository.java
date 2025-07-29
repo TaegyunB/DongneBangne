@@ -9,7 +9,6 @@ import org.springframework.security.web.webauthn.api.ImmutablePublicKeyCredentia
 @EnableJpaRepositories
 public interface
 UserRepository extends JpaRepository<User, Long> {
-
-    User findByUserName(String userName);
+    User findByKakaoId(String kakoId);
     boolean existsBySeniorCenterId(Long seniorCenterId);
 }

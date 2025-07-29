@@ -3,6 +3,8 @@ package S13P11A708.backend.service;
 import S13P11A708.backend.domain.SeniorCenter;
 import S13P11A708.backend.domain.User;
 import S13P11A708.backend.domain.enums.UserRole;
+import S13P11A708.backend.dto.request.user.UpdateProfileRequestDto;
+import S13P11A708.backend.dto.response.user.UserProfileResponseDto;
 import S13P11A708.backend.repository.SeniorCenterRepository;
 import S13P11A708.backend.repository.UserRepository;
 import jakarta.transaction.Transactional;
@@ -18,6 +20,7 @@ public class UserService {
 
     // userId 기준으로 유저 조회
     // 해당 유저가 경로당에 소속되어 있는지 확인
+    @Transactional
     public boolean hasCenter(Long userId){
         return userRepository.findById(userId)
                 .map(user -> user.getSeniorCenter() != null)
@@ -43,5 +46,26 @@ public class UserService {
         return alreadyExists;
     }
 
+    @Transactional
+    public UserProfileResponseDto getUserProfile(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("유저 정보를 찾을 수 없습니다."));
 
+        return UserProfileResponseDto.builder()
+                .nickname(user.getNickname())
+                .profileImage(user.getProfileImage())
+                .build();
+    }
+
+    @Transactional
+    public void updateUserProfile(Long userId, UpdateProfileRequestDto request){
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("유저 정보를 찾을 수 없습니다."));
+
+        user.setNickname(request.getNickname());
+        user.setProfileImage(request.getProfileImage());
+
+        userRepository.save(user);
+    }
 }
