@@ -21,7 +21,9 @@ spring:
             token-uri: https://kauth.kakao.com/oauth/token
             user-info-uri: https://kapi.kakao.com/v2/user/me
             user-name-attribute: id
-
+  # jwt
+  jwt:
+    secret: vmfhaltmskdlstkfkdgodyroqkfwkdbalroqkfwkdbalaaaaaaaaaaaaaaaabbbbb
 
   # 애플리케이션 이름
   application:
@@ -47,6 +49,20 @@ spring:
     suffix: .mustache
     charset: UTF-8
     check-template-location: true
+
+  management:
+    endpoints:
+      web:
+        exposure:
+          include: health, info  # health와 info 엔드포인트 활성화
+        base-path: /actuator  # DB, 디스크 등 컴포넌트별 상태 표시
+    health:
+      db:
+        enabled: true  # 데이터베이스 헬스체크 활성화
+      diskspace:
+        enabled: true  # 디스크 공간 헬스체크 활성화
+
+
 
 logging:
   level:

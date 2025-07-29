@@ -6,7 +6,7 @@
       
       <div v-if="ui.showMenu" class="nav-menu">
         <a href="#" class="nav-item">게임</a>
-        <a href="#" class="nav-item">도전과제</a>
+        <router-link to="/challenges" class="nav-item">도전과제</router-link>
         <a href="#" class="nav-item">게시판</a>
         <a href="#" class="nav-item">순위</a>
         <a href="#" class="nav-item">AI 신문</a>
@@ -24,9 +24,14 @@
 </template>
 
 <script setup>
-import { useUiStore } from '@/stores/useUiStore'
+import { RouterView, useRouter  } from 'vue-router';
+const router = useRouter();
 
-const ui = useUiStore()
+// 로고 클릭 시 홈으로 이동
+// const goToHome = () => {
+//   router.push('/');
+// };
+
 </script>
 
 <style scoped>
