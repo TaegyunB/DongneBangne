@@ -41,7 +41,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         String nickname = oAuth2Response.getName();
         String profileImage = oAuth2Response.getProfileImage();
         User existData = userRepository.findByKakaoId(kakaoId); //DB에 동일한 kakaoId을 가진 유저가 있는지 확인
-//        UserRole defaultRole = UserRole.MEMBER;
+        UserRole defaultRole = UserRole.GUEST;
 
         // 신규/기존 회원 구분
         if(existData == null){ // DB에 해당 유저가 없을 경우 -> 신규 사용자 -> 회원가입
@@ -50,15 +50,17 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             user.setKakaoId(kakaoId); // 소셜 아이디 ex. kakao 1234567
             user.setNickname(oAuth2Response.getName()); //user_name에 OAuth의 properties 중 nickname을 저장 ex.주연우
             user.setProfileImage(oAuth2Response.getProfileImage());
-//            user.setUserRole(defaultRole); //일단 MEMBER로 디폴트
+            user.setUserRole(defaultRole); //GUEST로 디폴트
 
-            userRepository.save(user);
+            User savedUser = userRepository.save(user);
+//            userRepository.save(user);
 
             UserDto userDTO = new UserDto();
+            userDTO.setUserId(savedUser.getId());
             userDTO.setKakaoId(kakaoId);
             userDTO.setNickname(oAuth2Response.getName());
             userDTO.setProfileImage(oAuth2Response.getProfileImage());
-//            userDTO.setUserRole(defaultRole);
+            userDTO.setUserRole(defaultRole);
 
             return new CustomOAuth2User(userDTO);
         } else {
@@ -70,6 +72,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             userRepository.save(existData);
 
             UserDto userDTO = new UserDto();
+            userDTO.setUserId(existData.getId());
             userDTO.setKakaoId(existData.getKakaoId());
             userDTO.setNickname(oAuth2Response.getName());
             userDTO.setProfileImage(oAuth2Response.getProfileImage());

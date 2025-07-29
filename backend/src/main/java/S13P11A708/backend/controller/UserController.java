@@ -10,6 +10,7 @@ import S13P11A708.backend.repository.UserRepository;
 import S13P11A708.backend.security.CustomOAuth2User;
 import S13P11A708.backend.service.UserService;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -38,23 +39,28 @@ public class UserController {
         if (hasCenter) {
             return new ResponseEntity<>(new CenterStatusResponseDto(true, user.getNickname() + "님은" + user.getSeniorCenter() + "에 소속되어 있습니다."), HttpStatus.OK);
         } else {
-            return new ResponseEntity<>(new CenterStatusResponseDto(false, "소소된 경로당이 없습니다."), HttpStatus.OK);
+            return new ResponseEntity<>(new CenterStatusResponseDto(false, "소속된 경로당이 없습니다."), HttpStatus.OK);
         }
     }
 
     //경로당 선택 API
+    //어짜피 신규회원만 경로당 선택함
     @PostMapping("/senior-center")
     public ResponseEntity<SelectCenterResponseDto> selectCenter(@AuthenticationPrincipal CustomOAuth2User oAuth2User,
-                                                                @RequestBody SelectCenterRequestDto request) {
+                                                                @RequestBody SelectCenterRequestDto request,
+                                                                HttpServletResponse response) {
 
         Long userId = oAuth2User.getUserId(); //로그인 된 유저
-        boolean isMember = userService.assignCenter(userId, request.getSeniorCenterId()); //프론트에서 받은 seniorCenterId
+        //재발급된 토큰
+        String token = userService.assignCenter(userId, request.getSeniorCenterId()); //프론트에서 받은 seniorCenterId
 
-        if (isMember) {
-            return new ResponseEntity<>(new SelectCenterResponseDto(true, "경로당 등록 완료"), HttpStatus.CREATED);
-        } else {
-            return new ResponseEntity<>(new SelectCenterResponseDto(true, "경로당 등록 및 ADMIN 지정 완료"), HttpStatus.CREATED);
-        }
+        Cookie cookie = new Cookie("Authorization", token);
+        cookie.setHttpOnly(true);
+        cookie.setMaxAge(60 * 60 * 6);
+        cookie.setPath("/");
+        response.addCookie(cookie);
+
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 
     //회원 정보 작성 페이지에 카카오 디폴트 유저 정보 조회
@@ -71,5 +77,7 @@ public class UserController {
         userService.updateUserProfile(oAuth2User.getUserId(), request);
         return ResponseEntity.ok("회원 정보 수정 완료");
     }
+
+
 
 }
