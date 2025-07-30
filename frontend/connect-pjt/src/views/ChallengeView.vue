@@ -99,10 +99,61 @@
     </div>
   </div>
 
+  <!-- 수정 모달 -->
+  <div v-if="showEditModal" class="modal-overlay" @click.self="closeEditModal">
+    <div class="modal-content edit-modal">
+      <button class="modal-close-btn" @click="closeEditModal">×</button>
+      <h2>도전과제 수정</h2>
+      
+      <div class="edit-form">
+        <div class="form-group">
+          <label>제목</label>
+          <input 
+            v-model="editForm.title" 
+            type="text" 
+            class="form-input"
+            placeholder="도전과제 제목을 입력하세요"
+          />
+        </div>
+        
+        <div class="form-group">
+          <label>설명</label>
+          <textarea 
+            v-model="editForm.description" 
+            class="form-textarea"
+            placeholder="도전과제 설명을 입력하세요"
+            rows="4"
+          ></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label>장소</label>
+          <input 
+            v-model="editForm.place" 
+            type="text" 
+            class="form-input"
+            placeholder="장소를 입력하세요 (선택사항)"
+          />
+        </div>
+      </div>
+      
+      <div class="edit-modal-buttons">
+        <button class="btn-cancel" @click="closeEditModal">취소</button>
+        <button 
+          class="btn-save" 
+          @click="saveEditChallenge"
+          :disabled="!editForm.title.trim() || !editForm.description.trim()"
+        >
+          저장
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- 삭제 확인 모달 (1단계) -->
   <div v-if="showDeleteModal" class="modal-overlay" @click.self="closeDeleteModal">
     <div class="modal-content delete-modal">
-      <h2>{{ selectedDeleteChallenge?.title }}의 도전을 삭제하시겠어요?</h2>
+      <h2>"{{ selectedDeleteChallenge?.title }}"를 삭제하시겠어요?</h2>
       <div class="delete-modal-buttons">
         <button class="delete-confirm-btn" @click="showFinalDeleteConfirm">도전 삭제</button>
       </div>
@@ -154,6 +205,15 @@ const showDeleteModal = ref(false)
 const showFinalDeleteModal = ref(false)
 const selectedDeleteChallenge = ref(null)
 const selectedDeleteIndex = ref(null)
+
+// 수정 관련 상태
+const showEditModal = ref(false)
+const editForm = ref({
+  title: '',
+  description: '',
+  place: ''
+})
+const editingChallengeIndex = ref(null)
 
 // 일단 프런트 테스트용으로 localstorage와 연결---------------------------------------------------
 // 도전과제 생성 버튼 표시 여부(2개 이하로 생성되면 버튼 표시)
@@ -297,22 +357,51 @@ const closeModal = () => {
 }
 
 const moveToFinish = () => {
-  router.push({
-    name: 'challengeFinish',
-    params: {
-      challengeId: selectedChallengeId.value
-    }
-  })
+  router.push(`/admin/challenges/${selectedChallengeId.value}/complete`)
 }
 
 // 수정 기능
 const editChallenge = (index) => {
-  // 수정 페이지로 이동 (도전과제 ID 전달)
-  const challengeId = index + 1 // 1, 2, 3, 4로 변환
-  router.push({
-    name: 'challengeEdit',
-    params: { challengeId: challengeId }
-  })
+  const challenge = challenges.value[index]
+  editForm.value = {
+    title: challenge.title,
+    description: challenge.description,
+    place: challenge.place || ''
+  }
+  editingChallengeIndex.value = index
+  showEditModal.value = true
+}
+
+// 수정 모달 닫기
+const closeEditModal = () => {
+  showEditModal.value = false
+  editForm.value = { title: '', description: '', place: '' }
+  editingChallengeIndex.value = null
+}
+
+// 수정 저장
+const saveEditChallenge = () => {
+  if (!editForm.value.title.trim() || !editForm.value.description.trim()) {
+    alert('제목과 설명을 모두 입력해주세요.')
+    return
+  }
+
+  const customIndex = editingChallengeIndex.value - 2 // 0 또는 1
+  const customChallenges = JSON.parse(localStorage.getItem('customChallenges') || '[]')
+  
+  // 수정된 데이터로 업데이트
+  customChallenges[customIndex] = {
+    ...customChallenges[customIndex],
+    title: editForm.value.title.trim(),
+    description: editForm.value.description.trim(),
+    place: editForm.value.place.trim()
+  }
+  
+  localStorage.setItem('customChallenges', JSON.stringify(customChallenges))
+  
+  // 챌린지 목록 업데이트
+  updateChallenges()
+  closeEditModal()
 }
 
 // 삭제 확인 모달 표시
@@ -625,6 +714,11 @@ watch(() => router.currentRoute.value, () => {
   max-width: 400px;
 }
 
+.edit-modal {
+  max-width: 500px;
+  text-align: left;
+}
+
 .modal-close-btn {
   position: absolute;
   top: 15px;
@@ -689,6 +783,91 @@ watch(() => router.currentRoute.value, () => {
   font-weight: 600;
 }
 
+.edit-form {
+  margin-bottom: 25px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: bold;
+  color: #333;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.3s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #8C5EFF;
+}
+
+.form-textarea {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+  transition: border-color 0.3s;
+}
+
+.form-textarea:focus {
+  outline: none;
+  border-color: #8C5EFF;
+}
+
+.edit-modal-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+.btn-cancel, .btn-save {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.btn-cancel {
+  background-color: #f5f5f5;
+  color: #666;
+}
+
+.btn-cancel:hover {
+  background-color: #e0e0e0;
+}
+
+.btn-save {
+  background-color: #8C5EFF;
+  color: white;
+}
+
+.btn-save:hover:not(:disabled) {
+  background-color: #6e49d8;
+}
+
+.btn-save:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
 .delete-modal-buttons {
   margin-top: 25px;
 }
@@ -744,6 +923,15 @@ watch(() => router.currentRoute.value, () => {
   .action-buttons {
     margin-left: 0;
     margin-top: 5px;
+  }
+  
+  .edit-modal-buttons {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .btn-cancel, .btn-save {
+    width: 100%;
   }
 }
 </style>

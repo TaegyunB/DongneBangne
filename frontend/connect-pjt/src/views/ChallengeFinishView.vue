@@ -46,7 +46,7 @@
         <div v-if="showModal" class="modal" @click="closeModal">
             <div class="modal-content" @click.stop>
                 <h2>도전 인증이 완료되었습니다.</h2>
-                <p>포인트 00점이 부여되었습니다.</p>
+                <p>포인트 {{ awardedPoints }}점이 부여되었습니다.</p>
                 <div class="modal-buttons">
                     <button @click="goToChallenge" class="btn-modal">도전 페이지로</button>
                     <button @click="goToRanking" class="btn-modal">순위 페이지로</button>
@@ -57,17 +57,43 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 
 const router = useRouter()
+const route = useRoute()
 const form = ref({ description: '', image: null })
 const previewUrl = ref('')
 const fileInput = ref(null)
 const showModal = ref(false)
+const awardedPoints = ref(0)
 
 const isValid = computed(() => form.value.description.trim())
+
+// URL 파라미터에서 challengeId 가져오기
+const challengeId = ref(null)
+
+onMounted(() => {
+  challengeId.value = route.params.challengeId
+})
+
+// 미션 타입별 포인트 계산 함수
+const calculatePoints = (challengeId) => {
+  const id = parseInt(challengeId)
+  
+  // 왼쪽 2개 미션 (challengeId 1, 2): 500점
+  // 오른쪽 2개 미션 (challengeId 3, 4): 300점
+  // 필요에 따라 조건을 수정하세요
+  if (id === 1 || id === 2) {
+    return 500
+  } else if (id === 3 || id === 4) {
+    return 300
+  } else {
+    // 기본값 또는 다른 미션들
+    return 100
+  }
+}
 
 const triggerFileInput = () => fileInput.value?.click()
 
@@ -95,26 +121,28 @@ const submit = async () => {
     return
   }
 
-  const challengeId = router.currentRoute.value.params.challengeId
+  const points = calculatePoints(challengeId.value)
+  awardedPoints.value = points
 
   // FormData 구성
   const formData = new FormData()
-  formData.append('challengeId', challengeId)
+  formData.append('challengeId', challengeId.value)
   formData.append('imageDescription', form.value.description)
   if (form.value.image) {
     formData.append('challengeImage', form.value.image)
   }
 
   console.log('axios로 보낼 FormData:', {
-    challengeId,
+    challengeId: challengeId.value,
     description: form.value.description,
-    image: form.value.image
+    image: form.value.image,
+    points: points
   })
 
   try {
-    // 실제 API 전송 (백 연결 후 사용)
+    // 실제 API 전송 (백엔드 연결 후 사용)
     /*
-    const response = await axios.post('http://localhost:8080/api/challenges/complete', formData, {
+    const response = await axios.post(`http://localhost:8080/admin/challenges/${challengeId.value}/complete`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
@@ -124,14 +152,15 @@ const submit = async () => {
 
     // 임시 로컬 저장
     const completedChallenge = {
-      challengeId: parseInt(challengeId),
+      challengeId: parseInt(challengeId.value),
       description: form.value.description,
       image: form.value.image ? previewUrl.value : null,
       completedAt: new Date().toISOString(),
-      is_success: true
+      is_success: true,
+      points: points
     }
 
-    localStorage.setItem(`challenge_${challengeId}`, JSON.stringify(completedChallenge))
+    localStorage.setItem(`challenge_${challengeId.value}`, JSON.stringify(completedChallenge))
     showModal.value = true
   } catch (error) {
     console.error('axios 오류:', error)
@@ -149,7 +178,6 @@ const goToRanking = () => {
   console.log('순위 페이지로 이동 (미구현)')
 }
 </script>
-
 
 <style scoped>
 .container { 
