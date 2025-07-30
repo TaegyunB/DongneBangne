@@ -74,8 +74,8 @@ public class UserController {
     @PutMapping("/profile")
     public ResponseEntity<?> updateProfile(@AuthenticationPrincipal CustomOAuth2User oAuth2User,
                                            @RequestBody UpdateProfileRequestDto request){
-        userService.updateUserProfile(oAuth2User.getUserId(), request);
-        return ResponseEntity.ok("회원 정보 수정 완료");
+        UserProfileResponseDto userProfile = userService.updateUserProfile(oAuth2User.getUserId(), request);
+        return ResponseEntity.ok(userProfile);
     }
 
 

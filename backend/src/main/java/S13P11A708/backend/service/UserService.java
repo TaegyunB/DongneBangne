@@ -49,7 +49,7 @@ public class UserService {
         user.setUserRole(alreadyExists ? UserRole.MEMBER : UserRole.ADMIN);
 
         //jwt 재발급
-        return jwtUtil.createJwt(user.getId(), user.getUserRole().name(), 1000L*60*60*6);
+        return jwtUtil.createJwt(user.getId(), user.getUserRole().name(), 1000L * 60 * 60 * 24);
     }
 
     @Transactional
@@ -64,7 +64,7 @@ public class UserService {
     }
 
     @Transactional
-    public void updateUserProfile(Long userId, UpdateProfileRequestDto request){
+    public UserProfileResponseDto updateUserProfile(Long userId, UpdateProfileRequestDto request){
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("유저 정보를 찾을 수 없습니다."));
@@ -73,5 +73,10 @@ public class UserService {
         user.setProfileImage(request.getProfileImage());
 
         userRepository.save(user);
+
+        return UserProfileResponseDto.builder()
+                .nickname(user.getNickname())
+                .profileImage(user.getProfileImage())
+                .build();
     }
 }

@@ -35,7 +35,7 @@ public class CustomSuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         GrantedAuthority auth = iterator.next();
         String role = auth.getAuthority();
 
-        String token = jwtUtil.createJwt(userId, role, 1000L *60 *60 *3);
+        String token = jwtUtil.createJwt(userId, role, 1000L * 60 * 60 * 24);
 
         System.out.println("✅ OAuth 로그인 성공");
         System.out.println("➡ userId: " + userId);
