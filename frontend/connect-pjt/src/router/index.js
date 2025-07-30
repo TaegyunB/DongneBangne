@@ -3,6 +3,7 @@ import ChallengeView from '../views/ChallengeView.vue'
 import Onboarding from '@/views/onboarding.vue'
 import ChallengeCreateView from '@/views/ChallengeCreateView.vue'
 import ChallengeFinishView from '@/views/ChallengeFinishView.vue'
+import ChallengeEditView from '@/views/ChallengeEditView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -27,6 +28,11 @@ const router = createRouter({
       name: 'challengeFinish',
       component: ChallengeFinishView,
       props: true
+    },
+    {
+      path: '/admin/challenges/detail/:challengeId',
+      name: 'challengeEdit',
+      component: ChallengeEditView,
     }
   ],
 

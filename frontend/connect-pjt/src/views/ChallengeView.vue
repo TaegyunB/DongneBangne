@@ -36,7 +36,26 @@
       <!-- 텍스트 영역 -->
       <div class="challenge-content">
         <div class="text-content">
-          <h2>{{ challenge.title }}</h2>
+          <div class="title-with-buttons">
+            <h2>{{ challenge.title }}</h2>
+            <!-- 커스텀 도전과제(인덱스 2, 3)에만 수정/삭제 버튼 표시 -->
+            <div v-if="index >= 2 && !challenge.isEmpty" class="action-buttons">
+              <button 
+                class="edit-btn" 
+                @click.stop="editChallenge(index)"
+                title="수정"
+              >
+                수정
+              </button>
+              <button 
+                class="delete-btn" 
+                @click.stop="showDeleteConfirm(index)"
+                title="삭제"
+              >
+                삭제
+              </button>
+            </div>
+          </div>
           <p>{{ challenge.description }}</p>
         </div>
         <button 
@@ -75,8 +94,28 @@
           v-if="!selectedChallenge.isEmpty && isCompleted(selectedChallengeId - 1)"
           class="completed-message"
         >
-          ✅ 이미 완료된 도전입니다
+          완료된 도전입니다
         </div>
+    </div>
+  </div>
+
+  <!-- 삭제 확인 모달 (1단계) -->
+  <div v-if="showDeleteModal" class="modal-overlay" @click.self="closeDeleteModal">
+    <div class="modal-content delete-modal">
+      <h2>{{ selectedDeleteChallenge?.title }}의 도전을 삭제하시겠어요?</h2>
+      <div class="delete-modal-buttons">
+        <button class="delete-confirm-btn" @click="showFinalDeleteConfirm">도전 삭제</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 최종 삭제 확인 모달 (2단계) -->
+  <div v-if="showFinalDeleteModal" class="modal-overlay" @click.self="closeFinalDeleteModal">
+    <div class="modal-content delete-modal">
+      <h2>미션이 성공적으로 삭제되었습니다</h2>
+      <div class="delete-modal-buttons">
+        <button class="delete-success-btn" @click="confirmDelete">도전 확인하러 가기</button>
+      </div>
     </div>
   </div>
 
@@ -109,6 +148,12 @@ const progressMessages = ref([])
 const currentMessage = ref('')
 const monthlyChallenges = ref({})
 const challenges = ref([])
+
+// 삭제 관련 상태
+const showDeleteModal = ref(false)
+const showFinalDeleteModal = ref(false)
+const selectedDeleteChallenge = ref(null)
+const selectedDeleteIndex = ref(null)
 
 // 일단 프런트 테스트용으로 localstorage와 연결---------------------------------------------------
 // 도전과제 생성 버튼 표시 여부(2개 이하로 생성되면 버튼 표시)
@@ -202,7 +247,6 @@ const loadMonthlyChallenges = async () => {
   }
 }
 
-
 // 제공 도전과제를 2개 선택하고 커스텀 도전과제 추가
 const updateChallenges = () => {
   const monthChallenges = monthlyChallenges.value[props.month.toString()]
@@ -259,6 +303,65 @@ const moveToFinish = () => {
       challengeId: selectedChallengeId.value
     }
   })
+}
+
+// 수정 기능
+const editChallenge = (index) => {
+  // 수정 페이지로 이동 (도전과제 ID 전달)
+  const challengeId = index + 1 // 1, 2, 3, 4로 변환
+  router.push({
+    name: 'challengeEdit',
+    params: { challengeId: challengeId }
+  })
+}
+
+// 삭제 확인 모달 표시
+const showDeleteConfirm = (index) => {
+  selectedDeleteChallenge.value = challenges.value[index]
+  selectedDeleteIndex.value = index
+  showDeleteModal.value = true
+}
+
+// 삭제 확인 모달 닫기
+const closeDeleteModal = () => {
+  showDeleteModal.value = false
+  selectedDeleteChallenge.value = null
+  selectedDeleteIndex.value = null
+}
+
+// 최종 삭제 확인 모달 표시
+const showFinalDeleteConfirm = () => {
+  showDeleteModal.value = false
+  showFinalDeleteModal.value = true
+}
+
+// 최종 삭제 확인 모달 닫기
+const closeFinalDeleteModal = () => {
+  showFinalDeleteModal.value = false
+}
+
+// 실제 삭제 실행
+const confirmDelete = () => {
+  if (selectedDeleteIndex.value !== null) {
+    const customIndex = selectedDeleteIndex.value - 2 // 0 또는 1
+    
+    // localStorage에서 커스텀 도전과제 삭제
+    const customChallenges = JSON.parse(localStorage.getItem('customChallenges') || '[]')
+    customChallenges.splice(customIndex, 1)
+    localStorage.setItem('customChallenges', JSON.stringify(customChallenges))
+    
+    // 해당 도전과제의 완료 데이터도 삭제
+    localStorage.removeItem(`challenge_${selectedDeleteIndex.value + 1}`)
+    
+    // 챌린지 목록 업데이트
+    updateChallenges()
+    updateCompletedCount()
+  }
+  
+  // 모달 닫기
+  showFinalDeleteModal.value = false
+  selectedDeleteChallenge.value = null
+  selectedDeleteIndex.value = null
 }
 
 // 필드 이름 매핑용 유틸 함수
@@ -382,9 +485,49 @@ watch(() => router.currentRoute.value, () => {
   flex: 1;
 }
 
+.title-with-buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
 .challenge-content h2 { 
-  margin: 5px 0 10px 0; 
+  margin: 0; 
   font-size: 20px; 
+  flex: 1;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 5px;
+  margin-left: 10px;
+}
+
+.edit-btn, .delete-btn {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  color: white;
+}
+
+.edit-btn {
+  background-color: #28a745;
+}
+
+.edit-btn:hover {
+  background-color: #218838;
+}
+
+.delete-btn {
+  background-color: #dc3545;
+}
+
+.delete-btn:hover {
+  background-color: #c82333;
 }
 
 .challenge-content p { 
@@ -478,6 +621,10 @@ watch(() => router.currentRoute.value, () => {
   position: relative;
 }
 
+.delete-modal {
+  max-width: 400px;
+}
+
 .modal-close-btn {
   position: absolute;
   top: 15px;
@@ -542,6 +689,42 @@ watch(() => router.currentRoute.value, () => {
   font-weight: 600;
 }
 
+.delete-modal-buttons {
+  margin-top: 25px;
+}
+
+.delete-confirm-btn {
+  background-color: #8C5EFF;
+  color: white;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  width: 150px;
+}
+
+.delete-confirm-btn:hover {
+  background-color: #6e49d8;
+}
+
+.delete-success-btn {
+  background-color: #8C5EFF;
+  color: white;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  width: 200px;
+}
+
+.delete-success-btn:hover {
+  background-color: #6e49d8;
+}
+
 @media (max-width: 768px) {
   .challenge-container {
     flex-direction: column;
@@ -551,6 +734,16 @@ watch(() => router.currentRoute.value, () => {
   .single-challenge {
     width: 100%;
     max-width: 400px;
+  }
+  
+  .title-with-buttons {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .action-buttons {
+    margin-left: 0;
+    margin-top: 5px;
   }
 }
 </style>
