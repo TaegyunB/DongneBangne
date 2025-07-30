@@ -156,7 +156,7 @@ const goToList = () => {
   width: 100%;
   height: 100%;
   background-color: rgba(0, 0, 0, 0.4);
-  z-index: 999;
+  z-index: 1000;/* 툴바보다 높은 z-index */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -169,6 +169,7 @@ const goToList = () => {
   text-align: center;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
   max-width: 400px;
+  z-index: 1001;/* 오버레이보다도 높게 */
 }
 
 .modal-title {

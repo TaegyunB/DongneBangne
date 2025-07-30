@@ -31,6 +31,16 @@
       </div>
     </div>
   </div>
+  <h1>h</h1>
+  <h1>h</h1>
+  <h1>h</h1>
+  <h1>h</h1>
+  <h1>h</h1>
+  <h1>h</h1>
+  <h1>h</h1>
+  <h1>h</h1>
+  <h1>h</h1>
+
 
   <!-- 상세정보 모달  -->
    <!-- 모달 -->
@@ -214,18 +224,16 @@ onMounted(() => {
   flex: 1;
   color: black;
   font-weight: bold;
-  height: 240px; /*  박스 높이 줄임 */
+  height: 240px;
   border-radius: 10px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   cursor: pointer;
-  position: relative;
-  padding-bottom: 50px; /* 버튼을 위한 여유 공간 확보 */
+  position: relative; /* 버튼 절대 위치의 기준 */
 }
 
 .challenge-content { 
   position: relative; /* 버튼 절대 위치 기준 설정 */
   padding: 20px;
-  padding-bottom: 60px; /* 버튼 공간 확보 */
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -281,10 +289,9 @@ onMounted(() => {
   background-color: #a2b7e3; 
 }
 
-
 .mission-complete-btn {
   position: absolute;
-  bottom: 50px; /*  버튼을 위로 올림 */
+  bottom: 20px; /* 상자 하단에서 20px 위 */
   left: 50%;
   transform: translateX(-50%);
   background-color: #FF8120;
@@ -299,6 +306,7 @@ onMounted(() => {
   border-radius: 15px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
+
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -306,7 +314,7 @@ onMounted(() => {
   width: 100vw;
   height: 100vh;
   background: rgba(0, 0, 0, 0.4);
-  z-index: 999;
+  z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -320,6 +328,7 @@ onMounted(() => {
   max-width: 480px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.2);
   text-align: center;
+  z-index: 1001;
 }
 
 .modal-content h2 {
@@ -354,5 +363,4 @@ onMounted(() => {
 .modal-button:hover {
   background-color: #6e49d8;
 }
-
 </style>
