@@ -1,11 +1,17 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import MissionView from '../views/MissionView.vue'
+import Start from '@/views/start.vue'
 import Onboarding from '../views/onboarding.vue'
+import MissionView from '../views/MissionView.vue'
 import MissionCreateView from '@/views/MissionCreateView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    {
+      path: '/',
+      name: 'start',
+      component: Start
+    },
     {
       path: '/login',
       name: 'onboarding',
