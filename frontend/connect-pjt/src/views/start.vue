@@ -1,23 +1,47 @@
 <template>
-  <div class="welcome-container">
-    <h1 class="welcome-text" :class="{ show: showText }">환영합니다!</h1>
+  <div class="start-container">
+    <!-- motion-div + img 패턴 -->
+    <motion-div
+      :initial="{ opacity: 0, scale: 0.7 }"
+      :enter="{ opacity: 1, scale: 1 }"
+      transition="ease"
+      :delay="0.2"
+      class="logo-img"
+    >
+      <img :src="logo" alt="동네방네 로고" style="width: 100%;" />
+    </motion-div>
+
+    <!-- motion-h2 텍스트 애니메이션 -->
+    <motion-h2
+      :initial="{ opacity: 0, y: 24 }"
+      :enter="{ opacity: 1, y: 0 }"
+      transition="ease"
+      :delay="0.8"
+      class="welcome-msg"
+    >
+      동네방네에 오신 것을 환영합니다!
+    </motion-h2>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { useMotion } from '@vueuse/motion'
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import logo from '@/assets/logo.png'
+import { useUiStore } from '@/stores/useUiStore'
+
+useMotion()
 
 const router = useRouter()
-const showText = ref(false)
+const ui = useUiStore()
 
 onMounted(() => {
-  // 애니메이션 효과를 위해 약간의 지연 후 show
-  setTimeout(() => {
-    showText.value = true
-  }, 300)
+  // 툴바 항목 강제 비활성화
+  ui.showMenu = false
+  ui.showProfile = false
+  ui.welcomeText = ''
 
-  // 일정 시간 후 자동으로 /login 페이지로 이동
   setTimeout(() => {
     router.push('/login')
   }, 2500)
@@ -25,25 +49,24 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.welcome-container {
+.start-container {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background-color: #fffaf0;
+  background: #fffaf0;
 }
 
-.welcome-text {
-  font-size: 48px;
-  font-weight: bold;
-  opacity: 0;
-  transform: scale(0.8);
-  transition: all 1s ease;
-  color: #333;
+.logo-img {
+  width: 180px;
+  margin-bottom: 32px;
 }
 
-.welcome-text.show {
-  opacity: 1;
-  transform: scale(1);
+.welcome-msg {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #31414b;
+  letter-spacing: 0.01em;
 }
 </style>

@@ -87,12 +87,32 @@ import onboarding5 from '@/assets/onboarding/onboarding5.png'
 import onboarding6 from '@/assets/onboarding/onboarding6.png'
 
 const ui = useUiStore()
-onMounted(() => {
+onMounted(async () => {
   ui.showLogo = false
   ui.showMenu = false
   ui.showProfile = false
   ui.welcomeText = '지금 동네방네를 <span class="start-word">시작</span>해보세요!'
+
+  // code가 있으면 로그인 이후 리디렉션 상태 → 소속 경로당 확인
+  const code = new URLSearchParams(window.location.search).get('code')
+  if (code) {
+    try {
+      const res = await axios.get('/api/v1/users/senior-center', {
+        withCredentials: true
+      })
+
+      if (res.data?.hasCenter) {
+        window.location.href = '/mainpage'
+      } else {
+        window.location.href = '/select-center'
+      }
+    } catch (err) {
+      console.error('로그인 후 사용자 정보 확인 실패:', err)
+      alert('로그인 후 정보를 불러오는 데 실패했습니다.')
+    }
+  }
 })
+
 onUnmounted(() => {
   ui.showLogo = true
   ui.showMenu = true
@@ -102,7 +122,6 @@ onUnmounted(() => {
 
 const sectionRefs = ref([])
 let currentIndex = 0
-
 const isLastSection = computed(() => currentIndex === sectionRefs.value.length - 1)
 
 const handleScroll = () => {
@@ -114,28 +133,10 @@ const handleScroll = () => {
   }
 }
 
-const KAKAO_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY
-const REDIRECT_URI = import.meta.env.VITE_KAKAO_REDIRECT_URI
-const loginUrl = `https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=${KAKAO_REST_API_KEY}&redirect_uri=${REDIRECT_URI}`
-
-const handleKakaoLogin = async () => {
-  try {
-    const code = new URLSearchParams(window.location.search).get('code')
-    if (!code) {
-      window.location.href = loginUrl
-    } else {
-      const res = await axios.get('/api/v1/users/senior-center')
-      if (res.data?.hasCenter) {
-        window.location.href = '/mainpage'
-      } else {
-        window.location.href = '/select-center'
-      }
-    }
-  } catch (err) {
-    console.error('카카오 로그인 처리 실패:', err)
-    alert('로그인에 실패했습니다. 다시 시도해주세요.')
-  }
+const handleKakaoLogin = () => {
+  window.location.href = 'http://localhost:8080/login/oauth2/authorization/kakao'
 }
+
 
 const onboardingSections = [
   {
