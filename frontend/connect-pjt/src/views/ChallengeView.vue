@@ -38,7 +38,9 @@
           <div class="text-content">
             <div class="title-with-buttons">
               <h2>{{ challenge.title }}</h2>
-              <!-- 커스텀 도전과제에만 수정/삭제 버튼 -->
+              <!-- 백 연결시 주석 해제: admin 역할일 때만 수정/삭제 버튼 표시 -->
+              <!-- <div v-if="challenge.role === 'admin' && !challenge.isEmpty" class="action-buttons"> -->
+              <!-- 커스텀 도전과제에만 수정/삭제 버튼 (기존 코드) -->
               <div v-if="index >= 2 && !challenge.isEmpty" class="action-buttons">
                 <button class="edit-btn" @click.stop="editChallenge(index)">수정</button>
                 <button class="delete-btn" @click.stop="showDeleteConfirm(index)">삭제</button>
@@ -95,16 +97,17 @@
             <label>제목</label>
             <input v-model="editForm.title" type="text" class="form-input" placeholder="도전과제 제목을 입력하세요" />
           </div>
+
+          <div class="form-group">
+            <label>장소</label>
+            <input v-model="editForm.place" type="text" class="form-input" placeholder="장소를 입력하세요 (선택사항)" />
+          </div>
           
           <div class="form-group">
             <label>설명</label>
             <textarea v-model="editForm.description" class="form-textarea" placeholder="도전과제 설명을 입력하세요" rows="4"></textarea>
           </div>
-          
-          <div class="form-group">
-            <label>장소</label>
-            <input v-model="editForm.place" type="text" class="form-input" placeholder="장소를 입력하세요 (선택사항)" />
-          </div>
+        
         </div>
         
         <div class="modal-buttons">
@@ -114,10 +117,20 @@
       </div>
     </div>
 
+    <!-- 수정 확인 모달 -->
+    <div v-if="showEditSuccessModal" class="modal-overlay" @click.self="closeEditSuccessModal">
+      <div class="modal-content delete-modal">
+        <h2>도전이 성공적으로 <br> 수정되었습니다</h2>
+        <div class="modal-buttons">
+          <button class="delete-success-btn" @click="confirmEdit">도전 페이지로</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 삭제 확인 모달 -->
     <div v-if="showDeleteModal" class="modal-overlay" @click.self="closeDeleteModal">
       <div class="modal-content delete-modal">
-        <h2>"{{ selectedDeleteChallenge?.title }}"를 <br> 삭제하시겠어요?</h2>
+        <h2>도전을 <br> 삭제하시겠어요?</h2>
         <div class="modal-buttons">
           <button class="delete-confirm-btn" @click="showFinalDeleteConfirm">도전 삭제</button>
         </div>
@@ -127,7 +140,7 @@
     <!-- 최종 삭제 확인 모달 -->
     <div v-if="showFinalDeleteModal" class="modal-overlay" @click.self="closeFinalDeleteModal">
       <div class="modal-content delete-modal">
-        <h2>미션이 성공적으로 <br> 삭제되었습니다</h2>
+        <h2>도전이 성공적으로 <br> 삭제되었습니다</h2>
         <div class="modal-buttons">
           <button class="delete-success-btn" @click="confirmDelete">도전 페이지로</button>
         </div>
@@ -135,6 +148,8 @@
     </div>
 
     <!-- 생성 버튼 -->
+    <!-- 백 연결시 주석 해제: admin 역할일 때만 생성 버튼 표시 -->
+    <!-- <div class="create-challenge" v-if="userRole === 'admin' && shouldShowCreateButton"> -->
     <div class="create-challenge" v-if="shouldShowCreateButton">
       <button class="challenge-btn" @click="moveToCreate()">도전과제 생성하기</button>
     </div>
@@ -160,10 +175,13 @@ const currentMessage = ref('')
 const monthlyChallenges = ref({})
 const challenges = ref([])
 
+// 백 연결시 주석 해제: 사용자 역할 관리
+// const userRole = ref('member') // 기본값은 member
+
 // 모달 상태
 const modals = ref({
   detail: { show: false, selectedChallenge: { title: '', description: '', place: '' }, selectedChallengeId: null },
-  edit: { show: false, form: { title: '', description: '', place: '' }, editingIndex: null },
+  edit: { show: false, form: { title: '', description: '', place: '' }, editingIndex: null, showSuccess: false },
   delete: { show: false, showFinal: false, selectedChallenge: null, selectedIndex: null }
 })
 
@@ -177,6 +195,7 @@ const showModal = computed(() => modals.value.detail.show)
 const selectedChallenge = computed(() => modals.value.detail.selectedChallenge)
 const selectedChallengeId = computed(() => modals.value.detail.selectedChallengeId)
 const showEditModal = computed(() => modals.value.edit.show)
+const showEditSuccessModal = computed(() => modals.value.edit.showSuccess)
 const editForm = computed(() => modals.value.edit.form)
 const showDeleteModal = computed(() => modals.value.delete.show)
 const showFinalDeleteModal = computed(() => modals.value.delete.showFinal)
@@ -203,6 +222,36 @@ const updateMessage = () => {
     currentMessage.value = messages[Math.floor(Math.random() * messages.length)].message
   }
 }
+
+// 백 연결시 주석 해제: 백엔드에서 도전과제 데이터 가져오기
+/*
+const fetchChallengesFromBackend = async () => {
+  try {
+    const response = await axios.get('/api/challenges')
+    const backendChallenages = response.data
+    
+    // 백엔드 데이터를 기존 구조에 맞게 변환
+    challenges.value = backendChallenages.map(challenge => ({
+      challengeId: challenge.challengeId,
+      title: challenge.challeneTitle, // 백엔드 오타 그대로 맞춰서
+      description: challenge.description,
+      place: challenge.challengePlace,
+      role: challenge.role,
+      isEmpty: false
+    }))
+    
+    // 사용자 역할 설정 (첫 번째 도전과제의 role을 기준으로, 또는 별도 API 호출)
+    if (backendChallenages.length > 0) {
+      userRole.value = backendChallenages[0].role
+    }
+    
+  } catch (error) {
+    console.error('백엔드에서 도전과제를 불러오는 데 실패했습니다:', error)
+    // 에러 시 기존 로직으로 폴백
+    loadMonthlyChallenges()
+  }
+}
+*/
 
 const updateChallenges = () => {
   const monthChallenges = monthlyChallenges.value[props.month.toString()]
@@ -244,21 +293,52 @@ const editChallenge = (index) => {
   modals.value.edit = {
     show: true,
     form: { title: challenge.title, description: challenge.description, place: challenge.place || '' },
-    editingIndex: index
+    editingIndex: index,
+    showSuccess: false
   }
 }
 
 const closeEditModal = () => {
-  modals.value.edit = { show: false, form: { title: '', description: '', place: '' }, editingIndex: null }
+  modals.value.edit = { show: false, form: { title: '', description: '', place: '' }, editingIndex: null, showSuccess: false }
 }
 
-const saveEditChallenge = () => {
+const closeEditSuccessModal = () => {
+  modals.value.edit.showSuccess = false
+}
+
+// 백 연결시 주석 해제: 백엔드로 수정 요청 보내기
+const saveEditChallenge = async () => {
   const { form, editingIndex } = modals.value.edit
   if (!form.title.trim() || !form.description.trim()) {
     alert('제목과 설명을 모두 입력해주세요.')
     return
   }
 
+  /* 백 연결시 주석 해제
+  try {
+    const challenge = challenges.value[editingIndex]
+    const response = await axios.put(`/api/challenges/${challenge.challengeId}`, {
+      title: form.title.trim(),
+      description: form.description.trim(),
+      place: form.place.trim()
+    })
+    
+    // 성공 시 로컬 데이터 업데이트
+    challenges.value[editingIndex] = {
+      ...challenges.value[editingIndex],
+      title: form.title.trim(),
+      description: form.description.trim(),
+      place: form.place.trim()
+    }
+    
+  } catch (error) {
+    console.error('도전과제 수정 실패:', error)
+    alert('도전과제 수정에 실패했습니다.')
+    return
+  }
+  */
+
+  // 기존 로컬스토리지 로직 (백 연결 전까지 유지)
   const customIndex = editingIndex - 2
   const customChallenges = JSON.parse(localStorage.getItem('customChallenges') || '[]')
   
@@ -271,6 +351,14 @@ const saveEditChallenge = () => {
   
   localStorage.setItem('customChallenges', JSON.stringify(customChallenges))
   updateChallenges()
+  
+  // 수정 모달 닫고 성공 모달 열기
+  modals.value.edit.show = false
+  modals.value.edit.showSuccess = true
+}
+
+const confirmEdit = () => {
+  closeEditSuccessModal()
   closeEditModal()
 }
 
@@ -291,9 +379,26 @@ const closeFinalDeleteModal = () => {
   modals.value.delete.showFinal = false
 }
 
-const confirmDelete = () => {
+// 백 연결시 주석 해제: 백엔드로 삭제 요청 보내기
+const confirmDelete = async () => {
   const selectedIndex = modals.value.delete.selectedIndex
   if (selectedIndex !== null) {
+    /* 백 연결시 주석 해제
+    try {
+      const challenge = challenges.value[selectedIndex]
+      await axios.delete(`/api/challenges/${challenge.challengeId}`)
+      
+      // 성공 시 로컬에서도 제거
+      challenges.value.splice(selectedIndex, 1)
+      
+    } catch (error) {
+      console.error('도전과제 삭제 실패:', error)
+      alert('도전과제 삭제에 실패했습니다.')
+      return
+    }
+    */
+
+    // 기존 로컬스토리지 로직 (백 연결 전까지 유지)
     const customIndex = selectedIndex - 2
     const customChallenges = JSON.parse(localStorage.getItem('customChallenges') || '[]')
     customChallenges.splice(customIndex, 1)
@@ -334,16 +439,24 @@ const moveToFinish = () => router.push(`/admin/challenges/${selectedChallengeId.
 // 라이프사이클 훅
 onMounted(() => {
   loadMessages()
-  loadMonthlyChallenges()
+  // 백 연결시 주석 해제: 백엔드에서 데이터 가져오기
+  // fetchChallengesFromBackend()
+  loadMonthlyChallenges() // 백 연결시 이 줄은 제거하거나 폴백용으로만 사용
   updateCompletedCount()
 })
 
 // 감시자
 watch(percent, updateMessage)
-watch(() => props.month, updateChallenges)
+watch(() => props.month, () => {
+  // 백 연결시 주석 해제
+  // fetchChallengesFromBackend()
+  updateChallenges() // 백 연결시 이 줄은 제거
+})
 watch(() => router.currentRoute.value, () => {
   updateCompletedCount()
-  updateChallenges()
+  // 백 연결시 주석 해제
+  // fetchChallengesFromBackend()
+  updateChallenges() // 백 연결시 이 줄은 제거
 }, { immediate: true })
 </script>
 
@@ -402,7 +515,7 @@ watch(() => router.currentRoute.value, () => {
 .action-buttons { display: flex; gap: 5px; margin-left: 10px; }
 
 .edit-btn, .delete-btn {
-  padding: 4px 8px; border: none; border-radius: 4px; font-size: 12px; 
+  padding: 4px 8px; border: none; border-radius: 4px; font-size: 16px; 
   font-weight: bold; cursor: pointer; color: white;
 }
 
@@ -466,7 +579,7 @@ watch(() => router.currentRoute.value, () => {
 
 .modal-close-btn:hover { background-color: #f0f0f0; color: #333; }
 
-.modal-content h2 { font-size: 32px; font-weight: bold; margin-bottom: 15px; }
+.modal-content h2 { font-size: 28px; font-weight: bold; margin-bottom: 15px; }
 
 .modal-description { font-size: 20px; line-height: 1.6; margin-bottom: 20px; }
 
