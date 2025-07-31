@@ -64,7 +64,9 @@ public class SeniorCenter extends BaseEntity {
     private List<Challenge> challenges = new ArrayList<>();
 
     //==Setter 메서드==//
-
+    public void setAdminUserId(Long adminUserId) {
+        this.adminUserId = adminUserId;
+    }
 
 
 }
