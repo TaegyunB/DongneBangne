@@ -2,7 +2,7 @@
   <div class="container">
     <div class="header">
       <h1>경로당 맞춤형 도전을 생성하시겠어요?</h1>
-      <h3>몇가지만 작성해주세요</h3>
+      <h2>몇 가지만 작성해주세요</h2>
     </div>
     
     <div class="form-group">
@@ -25,10 +25,10 @@
       <label>상세 정보</label>
       <textarea
         v-model="description"
-        placeholder="간단하게 작성해주세요."
+        placeholder="도전에 대해 상세하게 설명해주세요."
         class="styled-textarea"
       />
-      
+      <!-- isValid를 통과해야 버튼이 활성화되게 -->
       <button class="submit-button" @click="handleSubmit" :disabled="!isValid">
         ✔ 저장
       </button>
@@ -37,8 +37,8 @@
     <!-- 생성 완료 모달 -->
     <div v-if="showModal" class="modal-overlay">
       <div class="modal-content">
-        <h2 class="modal-title">00경로당의 도전</h2>
-        <p class="modal-subtext">도전이 성공적으로 지정되었습니다.</p>
+        <h2 class="modal-title">경로당 도전</h2>
+        <p class="modal-subtext">도전이 <br> 성공적으로 저장되었습니다.</p>
         <button class="modal-button" @click="goToList">도전 목록으로</button>
       </div>
     </div>
@@ -48,7 +48,6 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-// axios import
 import axios from 'axios'
 
 const title = ref('')
@@ -109,7 +108,7 @@ const goToList = () => {
 
 <style scoped>
 .container {
-  max-width: 500px;
+  max-width: 800px;
   margin: 0 auto;
   padding: 40px 20px;
 }
@@ -119,7 +118,7 @@ const goToList = () => {
 }
 
 .header h1 {
-  font-size: 24px;
+  font-size: 32px;
   font-weight: 700;
   margin-bottom: 10px;
 }
@@ -138,22 +137,29 @@ const goToList = () => {
 }
 
 .form-group label {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   text-align: left;
+}
+.form-group input::placeholder {
+  font-size: 18px;
+}
+
+.form-group textarea::placeholder {
+  font-size: 18px;
 }
 
 .styled-input, .styled-textarea {
   width: 100%;
   padding: 12px 15px;
-  font-size: 14px;
+  font-size: 18px;
   border: 1.5px solid #ccc;
   border-radius: 10px;
   outline: none;
 }
 
 .styled-input:focus, .styled-textarea:focus {
-  border-color: #a88beb;
+  border-color: #3074FF;
 }
 
 .styled-input::placeholder, .styled-textarea::placeholder {
@@ -168,18 +174,18 @@ const goToList = () => {
 
 .submit-button {
   margin-top: 20px;
-  background-color: #a88beb;
+  background-color: #3074FF;
   color: white;
   padding: 12px 0;
   border: none;
   border-radius: 10px;
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .submit-button:hover:not(:disabled) {
-  background-color: #946fe5;
+  background-color: #6c9dff;
 }
 
 /* 다 입력하지 않은 경우 접근하지 못하게 */
@@ -213,29 +219,29 @@ const goToList = () => {
 }
 
 .modal-title {
-  font-size: 20px;
+  font-size: 30px;
   font-weight: bold;
   margin-bottom: 12px;
 }
 
 .modal-subtext {
-  font-size: 16px;
+  font-size: 24px;
   color: #333;
   margin-bottom: 24px;
 }
 
 .modal-button {
-  background-color: #a88beb;
+  background-color: #3074FF;
   color: white;
   padding: 12px 24px;
   border: none;
   border-radius: 10px;
   font-weight: 600;
-  font-size: 15px;
+  font-size: 20px;
   cursor: pointer;
 }
 
 .modal-button:hover {
-  background-color: #946fe5;
+  background-color: #6c9dff;
 }
 </style>
