@@ -1,19 +1,17 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Start from '@/views/start.vue'
-import Onboarding from '../views/onboarding.vue'
-import SeniorCenter from '../views/seniorCenter.vue'
-import SeniorCenterProfile from '../views/seniorCenterProfile.vue'
-import MainPage from '../views/mainPage.vue'
-import MissionView from '../views/MissionView.vue'
-import MissionCreateView from '@/views/MissionCreateView.vue'
+import ChallengeView from '../views/ChallengeView.vue'
+import Onboarding from '@/views/onboarding.vue'
+import ChallengeCreateView from '@/views/ChallengeCreateView.vue'
+import ChallengeFinishView from '@/views/ChallengeFinishView.vue'
+
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
-      path: '/',
-      name: 'start',
-      component: Start
+      path: '/challenges',
+      name: 'challenge',
+      component: ChallengeView,
     },
     {
       path: '/login',
@@ -42,13 +40,16 @@ const router = createRouter({
     },
     {
       path: '/admin/challenges',
-      name: 'missionCreate',
-      component: MissionCreateView,
+      name: 'challengeCreate',
+      component: ChallengeCreateView,
     },
-  ],
-
-  
+    {
+      path: '/admin/challenges/:challengeId/complete',
+      name: 'challengeFinish',
+      component: ChallengeFinishView,
+      props: true
+    }
+  ]
 })
 
 export default router
-//
