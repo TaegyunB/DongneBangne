@@ -4,8 +4,6 @@ import S13P11A708.backend.domain.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CollectionId;
-import org.hibernate.annotations.ConcreteProxy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 
@@ -23,6 +21,9 @@ public class SeniorCenter extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "senior_center_id")
     private Long id;
+
+    @Column(name = "admin_user_id")
+    private Long adminUserId;
 
     @Column(name = "center_name", nullable = false)
     private String centerName;
@@ -67,6 +68,4 @@ public class SeniorCenter extends BaseEntity {
     public void setAdminUserId(Long adminUserId) {
         this.adminUserId = adminUserId;
     }
-
-
 }

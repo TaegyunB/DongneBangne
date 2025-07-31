@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ChallengeCreateRequestDto {
+public class CreateChallengeCreateRequestDto {
 
     @NotBlank(message = "도전 제목은 필수입니다.")
     private String challengeTitle;

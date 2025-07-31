@@ -3,15 +3,18 @@ package S13P11A708.backend.service;
 import S13P11A708.backend.domain.Challenge;
 import S13P11A708.backend.domain.SeniorCenter;
 import S13P11A708.backend.domain.User;
-import S13P11A708.backend.dto.request.challenge.ChallengeCreateRequestDto;
+import S13P11A708.backend.dto.request.challenge.CreateChallengeCreateRequestDto;
 import S13P11A708.backend.dto.response.challenge.ChallengeResponseDto;
+import S13P11A708.backend.dto.response.challenge.CreateChallengeResponseDto;
 import S13P11A708.backend.repository.ChallengeRepository;
-import S13P11A708.backend.repository.SeniorCenterRepository;
 import S13P11A708.backend.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -27,7 +30,7 @@ public class ChallengeService {
     /**
      * 도전 생성 (Admin 전용)
      */
-    public ChallengeResponseDto createChallenge(ChallengeCreateRequestDto requestDto, Long adminId) {
+    public CreateChallengeResponseDto createChallenge(CreateChallengeCreateRequestDto requestDto, Long adminId) {
 
         User admin = userRepository.findById(adminId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 관리자입니다."));
@@ -53,7 +56,27 @@ public class ChallengeService {
         Challenge savedChallenge = challengeRepository.save(challenge);
 
         // Entity -> DTO 변환 후 반환
-        return ChallengeResponseDto.from(savedChallenge);
+        return CreateChallengeResponseDto.from(savedChallenge);
+    }
+
+    /**
+     * 사용자 경로당의 특정 년월 미션 조회
+     */
+    public List<ChallengeResponseDto> getMonthlyChallenges(Long userId, Integer year, Integer month) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
+
+        SeniorCenter seniorCenter = user.getSeniorCenter();
+        if(seniorCenter == null) {
+            throw new IllegalArgumentException("경로당에 소속되지 않은 사용자입니다.");
+        }
+
+        List<Challenge> challenges = challengeRepository.findChallengesByYearAndMonth(seniorCenter.getId(), year, month);
+
+        return challenges.stream()
+                .map(ChallengeResponseDto::from)
+                .collect(Collectors.toList());
+
     }
 
     /**
@@ -75,6 +98,4 @@ public class ChallengeService {
             throw new IllegalArgumentException("해당 경로당의 관리자만 도전을 관리할 수 있습니다.");
         }
     }
-
-
 }

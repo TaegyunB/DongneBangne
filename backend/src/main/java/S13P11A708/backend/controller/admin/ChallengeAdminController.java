@@ -1,7 +1,7 @@
 package S13P11A708.backend.controller.admin;
 
-import S13P11A708.backend.dto.request.challenge.ChallengeCreateRequestDto;
-import S13P11A708.backend.dto.response.challenge.ChallengeResponseDto;
+import S13P11A708.backend.dto.request.challenge.CreateChallengeCreateRequestDto;
+import S13P11A708.backend.dto.response.challenge.CreateChallengeResponseDto;
 import S13P11A708.backend.security.CustomOAuth2User;
 import S13P11A708.backend.service.ChallengeService;
 import jakarta.validation.Valid;
@@ -27,13 +27,13 @@ public class ChallengeAdminController {
      * @param adminId JWT 토큰에서 추출한 관리자 ID
      */
     @PostMapping
-    public ResponseEntity<ChallengeResponseDto> createChallenge(
-            @Valid @RequestBody ChallengeCreateRequestDto requestDto,
+    public ResponseEntity<CreateChallengeResponseDto> createChallenge(
+            @Valid @RequestBody CreateChallengeCreateRequestDto requestDto,
             @AuthenticationPrincipal CustomOAuth2User customUser) {
 
         Long adminId = customUser.getUserId();
 
-        ChallengeResponseDto response = challengeService.createChallenge(requestDto, adminId);
+        CreateChallengeResponseDto response = challengeService.createChallenge(requestDto, adminId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

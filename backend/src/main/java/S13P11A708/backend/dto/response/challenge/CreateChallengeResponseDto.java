@@ -7,36 +7,38 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ChallengeResponseDto {
+@Builder
+public class CreateChallengeResponseDto {
 
     private Long id;
     private String challengeTitle;
-    private String challegePlace;
+    private String challengePlace;
     private String description;
-    private Integer year;
-    private Integer month;
+    private int year;
+    private int month;
     private Integer point;
-    private String challengeImage;
-    private String imageDescription;
     private Boolean isSuccess;
+    private Long seniorCenterId;
     private String seniorCenterName;
 
-    public static ChallengeResponseDto from(Challenge challenge) {
-        return ChallengeResponseDto.builder()
+    /**
+     * Entitiy를 DTO로 변환하는 정적 메서드
+     */
+    public static CreateChallengeResponseDto from(Challenge challenge) {
+        return CreateChallengeResponseDto.builder()
                 .id(challenge.getId())
                 .challengeTitle(challenge.getChallengeTitle())
-                .challegePlace(challenge.getChallengePlace())
+                .challengePlace(challenge.getChallengePlace())
                 .description(challenge.getDescription())
                 .year(challenge.getYear())
                 .month(challenge.getMonth())
                 .point(challenge.getPoint())
-                .challengeImage(challenge.getChallengeImage())
-                .imageDescription(challenge.getImageDescription())
                 .isSuccess(challenge.getIsSuccess())
-                .seniorCenterName(challenge.getSeniorCenter().getCenterName())
+                .seniorCenterId(challenge.getSeniorCenter() != null ? challenge.getSeniorCenter().getId() : null)
+                .seniorCenterName(challenge.getSeniorCenter() != null ? challenge.getSeniorCenter().getCenterName() : null)
                 .build();
     }
+
 }
