@@ -46,7 +46,15 @@ public class UserService {
         //ADMIN 권한 부여
         //경로당의 첫번째 멤버이면 ADMIN이 됨
         user.setSeniorCenter(center);
-        user.setUserRole(alreadyExists ? UserRole.MEMBER : UserRole.ADMIN);
+        if(alreadyExists) {
+            user.setUserRole(UserRole.MEMBER);
+        } else{
+            user.setUserRole(UserRole.ADMIN);
+            center.setAdminUserId(user.getId());
+            seniorCenterRepository.save(center);
+        }
+
+        userRepository.save(user);
 
         //jwt 재발급
         return jwtUtil.createJwt(user.getId(), user.getUserRole().name(), 1000L*60*60*6);
