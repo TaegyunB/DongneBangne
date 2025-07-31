@@ -36,11 +36,6 @@ const router = createRouter({
       component: MainPage,
     },
     {
-      path: '/challenges',
-      name: 'mission',
-      component: MissionView,
-    },
-    {
       path: '/admin/challenges',
       name: 'missionCreate',
       component: MissionCreateView,
