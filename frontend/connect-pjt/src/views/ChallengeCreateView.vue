@@ -4,7 +4,7 @@
       <h1>경로당 맞춤형 도전을 생성하시겠어요?</h1>
       <h3>몇가지만 작성해주세요</h3>
     </div>
-
+    
     <div class="form-group">
       <label>도전 제목</label>
       <input
@@ -13,27 +13,27 @@
         placeholder="간단하게 작성해주세요."
         class="styled-input"
       />
-
+      
       <label>장소</label>
       <input
         v-model="place"
         type="text"
-        placeholder="미션은 어디서 수행하나요?"
+        placeholder="도전은 어디서 수행하나요?"
         class="styled-input"
       />
-
+      
       <label>상세 정보</label>
       <textarea
         v-model="description"
         placeholder="간단하게 작성해주세요."
         class="styled-textarea"
       />
-
-      <button class="submit-button" @click="handleSubmit">
+      
+      <button class="submit-button" @click="handleSubmit" :disabled="!isValid">
         ✔ 저장
       </button>
     </div>
-
+    
     <!-- 생성 완료 모달 -->
     <div v-if="showModal" class="modal-overlay">
       <div class="modal-content">
@@ -46,8 +46,10 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+// axios import
+import axios from 'axios'
 
 const title = ref('')
 const place = ref('')
@@ -55,18 +57,53 @@ const description = ref('')
 const showModal = ref(false)
 const router = useRouter()
 
-const handleSubmit = () => {
-  console.log('제목:', title.value)
-  console.log('장소:', place.value)
-  console.log('설명:', description.value)
+const isValid = computed(() => {
+  return title.value.trim() && place.value.trim() && description.value.trim()
+})
 
-  // 저장 완료 후 모달 표시
-  showModal.value = true
+const handleSubmit = async () => {
+  if (!isValid.value) {
+    alert('모든 항목을 입력해주세요.')
+    return
+  }
+
+  const challengeData = {
+    challengeTitle: title.value.trim(),
+    challengePlace: place.value.trim(),
+    description: description.value.trim()
+  }
+
+  console.log('axios로 보낼 데이터:', challengeData)
+
+  try {
+    // 실제 API 전송 (백 연결 후 사용)
+    /*
+    const response = await axios.post('http://localhost:8080/api/challenges', challengeData)
+    console.log('서버 응답:', response.data)
+    */
+
+    // 임시 로컬 저장 (프론트 확인용)
+    const customChallenges = JSON.parse(localStorage.getItem('customChallenges') || '[]')
+    const newChallenge = {
+      title: challengeData.challengeTitle,
+      description: challengeData.description,
+      place: challengeData.challengePlace,
+      isCustom: true,
+      createdAt: new Date().toISOString()
+    }
+
+    customChallenges.push(newChallenge)
+    localStorage.setItem('customChallenges', JSON.stringify(customChallenges))
+    showModal.value = true
+  } catch (error) {
+    console.error('axios 오류:', error)
+    alert('도전 생성 중 오류가 발생했습니다.')
+  }
 }
 
 const goToList = () => {
   showModal.value = false
-  router.push('/challenges')  
+  router.push('/challenges')
 }
 </script>
 
@@ -106,8 +143,7 @@ const goToList = () => {
   text-align: left;
 }
 
-.styled-input,
-.styled-textarea {
+.styled-input, .styled-textarea {
   width: 100%;
   padding: 12px 15px;
   font-size: 14px;
@@ -116,13 +152,11 @@ const goToList = () => {
   outline: none;
 }
 
-.styled-input:focus,
-.styled-textarea:focus {
+.styled-input:focus, .styled-textarea:focus {
   border-color: #a88beb;
 }
 
-.styled-input::placeholder,
-.styled-textarea::placeholder {
+.styled-input::placeholder, .styled-textarea::placeholder {
   color: #aaa;
   font-size: 14px;
 }
@@ -144,8 +178,14 @@ const goToList = () => {
   cursor: pointer;
 }
 
-.submit-button:hover {
+.submit-button:hover:not(:disabled) {
   background-color: #946fe5;
+}
+
+/* 다 입력하지 않은 경우 접근하지 못하게 */
+.submit-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
 }
 
 /* 모달 스타일 */
@@ -156,7 +196,7 @@ const goToList = () => {
   width: 100%;
   height: 100%;
   background-color: rgba(0, 0, 0, 0.4);
-  z-index: 999;
+  z-index: 1000;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -169,6 +209,7 @@ const goToList = () => {
   text-align: center;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
   max-width: 400px;
+  z-index: 1001;
 }
 
 .modal-title {
