@@ -19,6 +19,26 @@ const router = createRouter({
       component: Onboarding
     },
     {
+      path: '/senior-center',
+      name: 'seniorCenter',
+      component: SeniorCenter
+    },
+    {
+      path: '/senior-center/profile',
+      name: 'seniorCenterProfile',
+      component: SeniorCenterProfile
+    },
+    { 
+      path: '/mainpage',
+      name: 'mainPage',
+      component: MainPage,
+    },
+    {
+      path: '/challenges',
+      name: 'mission',
+      component: MissionView,
+    },
+    {
       path: '/admin/challenges',
       name: 'challengeCreate',
       component: ChallengeCreateView,
