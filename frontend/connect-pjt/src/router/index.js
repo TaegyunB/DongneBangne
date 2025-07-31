@@ -3,7 +3,9 @@ import ChallengeView from '../views/ChallengeView.vue'
 import Onboarding from '@/views/onboarding.vue'
 import ChallengeCreateView from '@/views/ChallengeCreateView.vue'
 import ChallengeFinishView from '@/views/ChallengeFinishView.vue'
-
+import SeniorCenter from '@/views/seniorCenter.vue'
+import SeniorCenterProfile from '@/views/seniorCenterProfile.vue'
+import MainPage from '@/views/mainPage.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
