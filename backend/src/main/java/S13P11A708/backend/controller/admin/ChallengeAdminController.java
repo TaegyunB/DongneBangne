@@ -4,15 +4,20 @@ import S13P11A708.backend.dto.request.challenge.CreateChallengeCreateRequestDto;
 import S13P11A708.backend.dto.response.challenge.CreateChallengeResponseDto;
 import S13P11A708.backend.security.CustomOAuth2User;
 import S13P11A708.backend.service.ChallengeService;
+import S13P11A708.backend.service.S3Service;
+import com.amazonaws.services.s3.AmazonS3Client;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -20,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ChallengeAdminController {
 
     private final ChallengeService challengeService;
-
+    private final S3Service s3Service;
     /**
      * 도전 생성
      * @param requestDto 도전 생성 요청 DTO
@@ -37,5 +42,65 @@ public class ChallengeAdminController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    /**
+     * 챌린지 이미지 업로드
+     */
+    @PostMapping("/{challengeId}/image")
+    public ResponseEntity<Map<String, String>> uploadChallengeImage(
+            @PathVariable("challengeId") Long challengeId,
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal CustomOAuth2User customUser) throws IOException {
+
+        Long adminId = customUser.getUserId();
+
+        // 파일 유효성 검사
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("업로드할 파일이 없습니다.");
+        }
+
+        // 이미지 파일 타입 검사
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new IllegalArgumentException("이미지 파일만 업로드 가능합니다.");
+        }
+
+        // 파일 크기 검사 (10MB 제한)
+        if (file.getSize() > 10 * 1024 * 1024) {
+            throw new IllegalArgumentException("파일 크기는 10MB를 초과할 수 없습니다.");
+        }
+
+        // S3에 업로드
+        String fileUrl = s3Service.uploadFile(file, "images");
+
+        // DB에 이미지URL 업데이트
+        challengeService.updateChallengeImageUrl(challengeId, fileUrl, adminId);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("fileUrl", fileUrl);
+        response.put("message", "챌린지 이미지 업로드가 완료되었습니다.");
+        response.put("fileName", file.getOriginalFilename());
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * 챌린지 이미지 삭제
+     */
+    @DeleteMapping("/{challengeId}/image")
+    public ResponseEntity<Map<String, String>> deleteChallengeImage(
+            @RequestParam("fileName") String fileName,
+            @AuthenticationPrincipal CustomOAuth2User customUser) {
+
+        Long adminId = customUser.getUserId();
+
+        // 파일 삭제
+        s3Service.deleteFile("images/" + fileName);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "이미지가 성공적으로 삭제되었습니다.");
+        response.put("deletedFileName", fileName);
+
+        return ResponseEntity.ok(response);
+    }
 
 }

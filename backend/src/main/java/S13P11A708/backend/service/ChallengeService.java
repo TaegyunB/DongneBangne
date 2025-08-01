@@ -80,6 +80,18 @@ public class ChallengeService {
     }
 
     /**
+     * 도전 미션 이미지 업로드
+     */
+    public void updateChallengeImageUrl(Long challengeId, String imageUrl, Long adminId) {
+        Challenge challenge = challengeRepository.findById(challengeId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 챌린지입니다."));
+
+        challenge.updateChallengeImage(imageUrl);
+        challengeRepository.save(challenge);
+
+    }
+
+    /**
      * 경로당 관리자 권환 확인
      */
     private void validateAdminPermission(SeniorCenter seniorCenter, Long adminId) {
