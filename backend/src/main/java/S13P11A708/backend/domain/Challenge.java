@@ -63,4 +63,26 @@ public class Challenge extends BaseEntity {
         this.year = now.getYear();
         this.month = now.getMonthValue();
     }
+
+    //==Setter 메서드==//
+    /**
+     * 이미지 업로드 setter
+     */
+    public void updateChallengeImage(String challengeImage) {
+        this.challengeImage = challengeImage;
+    }
+
+    /**
+     * 이미지 설명 등록
+     */
+    public void updateImageDescription(String imageDescription) {
+        this.imageDescription = imageDescription;
+    }
+
+    public void updateSuccessStatus(Boolean isSuccess) {
+        this.isSuccess = isSuccess;
+    }
+
+
+
  }
