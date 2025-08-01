@@ -12,11 +12,6 @@ import java.util.List;
 public interface ChallengeRepository extends JpaRepository<Challenge, Long> {
 
     /**
-     * 특정 경로당의 도전 목록 조회
-     */
-    List<Challenge> findChallengesBySeniorCenterId(Long seniorCenterId);
-
-    /**
      * 특정 경로당의 특정 년월 도전 목록 조회
      */
     @Query("SELECT c FROM Challenge c WHERE c.seniorCenter.id = :seniorCenterId AND c.year = :year AND c.month = :month")
@@ -34,5 +29,13 @@ public interface ChallengeRepository extends JpaRepository<Challenge, Long> {
             @Param("seniorCenterId") Long seniorCenterId,
             @Param("year") Integer year,
             @Param("month") Integer month);
+
+    /**
+     * 특정 도전 상세 조회
+     */
+    @Query("SELECT c FROM Challenge c WHERE c.id = :challengeId AND c.seniorCenter.id = :seniorCenterId")
+    Challenge findChallengeByIdAndSeniorCenterId(@Param("challengeId") Long challengeId,
+                                                 @Param("seniorCenterId") Long seniorCenterId);
+
 
 }
