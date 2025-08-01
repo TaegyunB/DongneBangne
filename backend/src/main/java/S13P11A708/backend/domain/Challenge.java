@@ -66,6 +66,15 @@ public class Challenge extends BaseEntity {
 
     //==Setter 메서드==//
     /**
+     * 도전 수정 setter
+     */
+    public void updateChallengeInfo(String challengeTitle, String challengePlace, String description) {
+        this.challengeTitle = challengeTitle;
+        this.challengePlace = challengePlace;
+        this.description = description;
+    }
+
+    /**
      * 이미지 업로드 setter
      */
     public void updateChallengeImage(String challengeImage) {
@@ -73,12 +82,15 @@ public class Challenge extends BaseEntity {
     }
 
     /**
-     * 이미지 설명 등록
+     * 이미지 설명 등록 setter
      */
     public void updateImageDescription(String imageDescription) {
         this.imageDescription = imageDescription;
     }
 
+    /**
+     * 성공 여부 setter
+     */
     public void updateSuccessStatus(Boolean isSuccess) {
         this.isSuccess = isSuccess;
     }
