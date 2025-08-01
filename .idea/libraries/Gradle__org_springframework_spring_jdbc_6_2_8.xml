@@ -3,7 +3,9 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.springframework/spring-jdbc/6.2.8/2927be130aa08d6513804a048eb6065ab5c51a1d/spring-jdbc-6.2.8.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.springframework/spring-jdbc/6.2.8/73bf939626f84fc82fa50e8e210696e8dfff2f37/spring-jdbc-6.2.8-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.springframework/spring-jdbc/6.2.8/d0d29646575f961cdc0cfa40a328845a1a6df480/spring-jdbc-6.2.8-sources.jar!/" />
     </SOURCES>

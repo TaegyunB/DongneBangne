@@ -41,6 +41,9 @@ public class User extends BaseEntity {
     @Column(name = "user_role")
     private UserRole userRole;
 
+    @Column(name = "personal_point")
+    private Long personalPoint = 0L;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "senior_center_id")
     private SeniorCenter seniorCenter;

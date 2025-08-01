@@ -3,7 +3,9 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.module/jackson-module-parameter-names/2.19.1/133a9dc4ff2413035dc7ca8a9aa6a1da3667ddfb/jackson-module-parameter-names-2.19.1.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.module/jackson-module-parameter-names/2.19.1/2b4101d3ad8249dd3af03064eed77a59459adbc9/jackson-module-parameter-names-2.19.1-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.module/jackson-module-parameter-names/2.19.1/4fd3376fff576aeeaaaec296dddcdc881d457a71/jackson-module-parameter-names-2.19.1-sources.jar!/" />
     </SOURCES>

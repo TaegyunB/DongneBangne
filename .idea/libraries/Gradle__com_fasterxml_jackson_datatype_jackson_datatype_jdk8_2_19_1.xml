@@ -3,7 +3,9 @@
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.datatype/jackson-datatype-jdk8/2.19.1/eabbc99d0e146b1a7085fddd02568faf1d3b4ab1/jackson-datatype-jdk8-2.19.1.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.datatype/jackson-datatype-jdk8/2.19.1/e92d7751ca13d27ecfdb3209a1cd7dedd715ef05/jackson-datatype-jdk8-2.19.1-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.datatype/jackson-datatype-jdk8/2.19.1/a22b7f0771b32ce9c15c713942db9bd389dfe055/jackson-datatype-jdk8-2.19.1-sources.jar!/" />
     </SOURCES>
