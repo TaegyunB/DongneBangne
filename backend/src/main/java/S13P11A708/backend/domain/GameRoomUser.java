@@ -30,4 +30,11 @@ public class GameRoomUser extends BaseEntity {
 
     @Column(name = "ready")
     private boolean ready = false;
+
+    /**
+     * 유저 준비 상태 수정 Setter
+     */
+    public void userGetReady(){
+        this.ready = !this.ready;
+    }
 }

@@ -1,22 +1,34 @@
 package S13P11A708.backend.dto.response.gameRoom;
 
+import S13P11A708.backend.domain.GameRoom;
 import S13P11A708.backend.domain.enums.GameStatus;
 import jakarta.persistence.criteria.CriteriaBuilder;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
+
+import java.time.LocalDateTime;
 
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@Data
 public class GameRoomResponseDto {
+    Long id;
     String roomTitle;
     Integer gameRound;
     String musicEra;
     String category;
     Enum<GameStatus> gameStatus;
-    Boolean isCreated;
-    String message;
+    LocalDateTime createdAt;
+
+    public static GameRoomResponseDto from(GameRoom room){
+        return GameRoomResponseDto.builder()
+                .id(room.getId())
+                .roomTitle(room.getRoomTitle())
+                .gameRound(room.getGameRound())
+                .musicEra(room.getMusicEra())
+                .category(room.getCategory())
+                .gameStatus(room.getGameStatus())
+                .build();
+    }
 }
