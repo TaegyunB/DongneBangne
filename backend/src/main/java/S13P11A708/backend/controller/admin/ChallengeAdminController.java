@@ -1,14 +1,14 @@
 package S13P11A708.backend.controller.admin;
 
-import S13P11A708.backend.dto.request.challenge.CreateChallengeCreateRequestDto;
+import S13P11A708.backend.dto.request.challenge.CreateChallengeRequestDto;
+import S13P11A708.backend.dto.request.challenge.UpdateChallengeRequestDto;
 import S13P11A708.backend.dto.response.challenge.CreateChallengeResponseDto;
+import S13P11A708.backend.dto.response.challenge.UpdateChallengeResponseDto;
 import S13P11A708.backend.security.CustomOAuth2User;
 import S13P11A708.backend.service.ChallengeService;
 import S13P11A708.backend.service.S3Service;
-import com.amazonaws.services.s3.AmazonS3Client;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -26,6 +26,7 @@ public class ChallengeAdminController {
 
     private final ChallengeService challengeService;
     private final S3Service s3Service;
+
     /**
      * 도전 생성
      * @param requestDto 도전 생성 요청 DTO
@@ -33,13 +34,47 @@ public class ChallengeAdminController {
      */
     @PostMapping
     public ResponseEntity<CreateChallengeResponseDto> createChallenge(
-            @Valid @RequestBody CreateChallengeCreateRequestDto requestDto,
+            @Valid @RequestBody CreateChallengeRequestDto requestDto,
             @AuthenticationPrincipal CustomOAuth2User customUser) {
 
         Long adminId = customUser.getUserId();
 
         CreateChallengeResponseDto response = challengeService.createChallenge(requestDto, adminId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * 도전 수정
+     */
+    @PutMapping("/{challengeId}")
+    public ResponseEntity<UpdateChallengeResponseDto> updateChallenge(
+            @PathVariable("challengeId") Long challengeId,
+            @Valid @RequestBody UpdateChallengeRequestDto requestDto,
+            @AuthenticationPrincipal CustomOAuth2User customUser) {
+
+        Long adminId = customUser.getUserId();
+
+        UpdateChallengeResponseDto response = challengeService.updateChallenge(challengeId, requestDto, adminId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 도전 삭제
+     */
+    @DeleteMapping("/{challengeId}")
+    public ResponseEntity<Map<String, String>> deleteChallenge(
+            @PathVariable("challengeId") Long challengeId,
+            @AuthenticationPrincipal CustomOAuth2User customUser) {
+
+        Long adminId = customUser.getUserId();
+
+        challengeService.deleteChallenge(challengeId, adminId);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "도전이 성공적으로 삭제되었습니다.");
+        response.put("deletedChallengeId", challengeId.toString());
+
+        return ResponseEntity.ok(response);
     }
 
     /**
