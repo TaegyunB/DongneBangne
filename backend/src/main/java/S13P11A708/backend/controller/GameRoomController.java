@@ -35,4 +35,18 @@ public class GameRoomController {
         return ResponseEntity.ok(gameRoomService.getWaitingRooms());
     }
 
+    @PostMapping("/{roomId}/join")
+    public ResponseEntity<?> joinRoom(@PathVariable Long roomId,
+                                      @AuthenticationPrincipal CustomOAuth2User oAuth2User){
+        gameRoomService.joinRoom(roomId, oAuth2User.getUserId());
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{roomId}/leave")
+    public ResponseEntity<?> leaveRoom(@PathVariable Long roomId,
+                                       @AuthenticationPrincipal CustomOAuth2User oAuth2User){
+        gameRoomService.leaveRoom(roomId, oAuth2User.getUserId());
+        return ResponseEntity.ok().build();
+    }
+
 }

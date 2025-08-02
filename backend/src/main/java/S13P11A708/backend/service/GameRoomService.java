@@ -54,4 +54,57 @@ public class GameRoomService {
                 .map(GameRoomResponseDto::from)
                 .toList();
     }
+
+    /**
+     * 유저가 특정 게임방에 입장
+     * 참가자 수가 2명이 넘지 않도록 제한
+     * 같은 경로당 회원끼리는 게임하지 않도록 제한
+     */
+    @Transactional
+    public void joinRoom(Long roomId, Long userId){
+        GameRoom room = gameRoomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("방이 존재하지 않습니다."));
+
+        if(room.getGameStatus() != GameStatus.WAITING){
+            throw new RuntimeException("대기 중인 방만 입장할 수 있습니다. 다른 방을 찾아주세요.");
+        }
+
+        //room.getParticipants().size()
+        if(gameRoomUserRepository.countByGameRoomId_Id(roomId) >= 2){
+            throw new RuntimeException("방 정원이 찼습니다.");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(()-> new RuntimeException("유저 정보가 없습니다."));
+
+        List<GameRoomUser> exisitingParticipants = gameRoomUserRepository.findAllByGameRoomId_Id(roomId);
+
+        for(GameRoomUser participant : exisitingParticipants){
+            User existingUser = participant.getUserId();
+
+            if(existingUser.getSeniorCenter().getId()
+                    .equals(user.getSeniorCenter().getId())){
+                throw new RuntimeException("같은 경로당 소속 회원끼리는 함께 게임에 참여할 수 없습니다.");
+            }
+        }
+
+        //참가자 등록
+        GameRoomUser participant = GameRoomUser.builder()
+                .gameRoomId(room)
+                .userId(user)
+                .ready(false)
+                .build();
+
+        gameRoomUserRepository.save(participant);
+    }
+
+    /**
+     * 유저 게임방 나가기
+     * 유저와 게임방 정보 확인 후 -> 삭제
+     */
+    @Transactional
+    public void leaveRoom(Long roomId, Long userId){
+        gameRoomUserRepository.deleteByGameRoomId_IdAndUserId_Id(roomId, userId);
+    }
+
 }
