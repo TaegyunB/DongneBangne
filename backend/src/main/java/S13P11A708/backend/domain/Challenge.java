@@ -89,12 +89,15 @@ public class Challenge extends BaseEntity {
     }
 
     /**
-     * 성공 여부 setter
+     * 도전 완료 setter
      */
-    public void updateSuccessStatus(Boolean isSuccess) {
-        this.isSuccess = isSuccess;
+    public void completeChallenge() {
+        this.isSuccess = true;
     }
 
+    /**
+     * 도전 완료 취소 setter
+     */
+    public void cancelCompletion() { this.isSuccess = false; }
 
-
- }
+}
