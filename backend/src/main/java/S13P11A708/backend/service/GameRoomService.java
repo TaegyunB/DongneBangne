@@ -45,4 +45,13 @@ public class GameRoomService {
         return GameRoomResponseDto.from(room);
     }
 
+    /**
+     * WAITING 상태인 게임방 조회
+     */
+    public List<GameRoomResponseDto> getWaitingRooms(){
+        return gameRoomRepository.findByGameStatus(GameStatus.WAITING)
+                .stream()
+                .map(GameRoomResponseDto::from)
+                .toList();
+    }
 }

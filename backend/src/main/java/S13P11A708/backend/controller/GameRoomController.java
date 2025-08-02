@@ -27,5 +27,12 @@ public class GameRoomController {
         return ResponseEntity.ok(gameRoomService.createRoom(request, user.getUserId()));
     }
 
+    /**
+     * 들어갈 수 있는 방(WAITING 상태) 조회
+     */
+    @GetMapping
+    public ResponseEntity<List<GameRoomResponseDto>> getRooms(){
+        return ResponseEntity.ok(gameRoomService.getWaitingRooms());
+    }
 
 }
