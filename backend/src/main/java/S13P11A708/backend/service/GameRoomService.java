@@ -107,4 +107,13 @@ public class GameRoomService {
         gameRoomUserRepository.deleteByGameRoomId_IdAndUserId_Id(roomId, userId);
     }
 
+    /**
+     * 유저의 게임 준비 버튼 true/false
+     */
+    @Transactional
+    public void toggleReady(Long roomId, Long userId){
+        GameRoomUser gameRoomUser = gameRoomUserRepository.findByGameRoomId_IdAndUserId_Id(roomId, userId)
+                .orElseThrow(() -> new RuntimeException("해당 방 참가자가 아닙니다."));
+        gameRoomUser.userGetReady();
+    }
 }

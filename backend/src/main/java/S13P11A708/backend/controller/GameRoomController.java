@@ -49,4 +49,10 @@ public class GameRoomController {
         return ResponseEntity.ok().build();
     }
 
+    @PutMapping("/{roomId}/ready")
+    public ResponseEntity<?> toggleReady(@PathVariable Long roomId,
+                                         @AuthenticationPrincipal CustomOAuth2User oAuth2User){
+        gameRoomService.toggleReady(roomId, oAuth2User.getUserId());
+        return ResponseEntity.ok().build();
+    }
 }
