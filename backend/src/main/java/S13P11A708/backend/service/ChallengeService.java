@@ -26,6 +26,7 @@ public class ChallengeService {
 
     private final UserRepository userRepository;
     private final ChallengeRepository challengeRepository;
+    private final S3Service s3Service;
 
     private static final int MAX_MONTHLY_CHALLENGES = 4;  // 월별 최대 도전 개수
 
@@ -132,6 +133,44 @@ public class ChallengeService {
 
         Challenge updateChallenge = challengeRepository.save(challenge);
         return UpdateChallengeResponseDto.from(updateChallenge);
+    }
+
+    /**
+     * 도전 삭제
+     */
+    public void deleteChallenge(Long challengeId, Long adminId) {
+        User admin = userRepository.findById(adminId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 관리자입니다."));
+
+        SeniorCenter seniorCenter = admin.getSeniorCenter();
+        if(seniorCenter == null) {
+            throw new IllegalArgumentException("경로당에 소속되지 않은 사용자입니다.");
+        }
+
+        // 관리자 권한 검증
+        validateAdminPermission(seniorCenter, adminId);
+
+        // 해당 경로당의 도전인지 확인
+        Challenge challenge = challengeRepository.findChallengeByIdAndSeniorCenterId(challengeId, seniorCenter.getId());
+        if (challenge == null) {
+            throw new IllegalArgumentException("해당 도전을 찾을 수 없거나 접근 권한이 없습니다.");
+        }
+
+        // S3에서 이미지 삭제 (이미지가 있는 경우)
+        if (challenge.getChallengeImage() != null && !challenge.getChallengeImage().isEmpty()) {
+            try {
+                // URL에서 파일명 추출
+                String imageUrl = challenge.getChallengeImage();
+                String fileName = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
+                s3Service.deleteFile("images/" + fileName);
+                log.info("S3에서 이미지 삭제 완료: {}", fileName);
+            } catch (Exception e) {
+                log.warn("S3 이미지 삭제 중 오류 발생: {}", e.getMessage());
+            }
+        }
+
+        challengeRepository.delete(challenge);
+        log.info("도전 삭제 완료: challengeId={}, adminId={}", challengeId, adminId);
     }
 
     /**

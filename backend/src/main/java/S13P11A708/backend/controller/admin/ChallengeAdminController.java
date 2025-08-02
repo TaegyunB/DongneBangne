@@ -59,6 +59,25 @@ public class ChallengeAdminController {
     }
 
     /**
+     * 도전 삭제
+     */
+    @DeleteMapping("/{challengeId}")
+    public ResponseEntity<Map<String, String>> deleteChallenge(
+            @PathVariable("challengeId") Long challengeId,
+            @AuthenticationPrincipal CustomOAuth2User customUser) {
+
+        Long adminId = customUser.getUserId();
+
+        challengeService.deleteChallenge(challengeId, adminId);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "도전이 성공적으로 삭제되었습니다.");
+        response.put("deletedChallengeId", challengeId.toString());
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * 챌린지 이미지 업로드
      */
     @PostMapping("/{challengeId}/image")
