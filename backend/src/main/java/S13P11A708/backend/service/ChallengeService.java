@@ -5,10 +5,9 @@ import S13P11A708.backend.domain.SeniorCenter;
 import S13P11A708.backend.domain.User;
 import S13P11A708.backend.dto.request.challenge.CreateChallengeRequestDto;
 import S13P11A708.backend.dto.request.challenge.UpdateChallengeRequestDto;
-import S13P11A708.backend.dto.response.challenge.ChallengeResponseDto;
-import S13P11A708.backend.dto.response.challenge.CreateChallengeResponseDto;
-import S13P11A708.backend.dto.response.challenge.UpdateChallengeResponseDto;
+import S13P11A708.backend.dto.response.challenge.*;
 import S13P11A708.backend.repository.ChallengeRepository;
+import S13P11A708.backend.repository.SeniorCenterRepository;
 import S13P11A708.backend.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +24,7 @@ import java.util.stream.Collectors;
 public class ChallengeService {
 
     private final UserRepository userRepository;
+    private final SeniorCenterRepository seniorCenterRepository;
     private final ChallengeRepository challengeRepository;
     private final S3Service s3Service;
 
@@ -136,7 +136,7 @@ public class ChallengeService {
     }
 
     /**
-     * 도전 삭제
+     * 도전 삭제 (Admin 전용)
      */
     public void deleteChallenge(Long challengeId, Long adminId) {
         User admin = userRepository.findById(adminId)
@@ -177,6 +177,17 @@ public class ChallengeService {
      * 도전 미션 이미지 업로드 (Admin 전용)
      */
     public void updateChallengeImageUrl(Long challengeId, String imageUrl, Long adminId) {
+        User admin = userRepository.findById(adminId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 관리자입니다."));
+
+        SeniorCenter seniorCenter = admin.getSeniorCenter();
+        if(seniorCenter == null) {
+            throw new IllegalArgumentException("경로당에 소속되지 않은 사용자입니다.");
+        }
+
+        // 관리자 권한 검증
+        validateAdminPermission(seniorCenter, adminId);
+
         Challenge challenge = challengeRepository.findById(challengeId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 챌린지입니다."));
 
@@ -185,6 +196,84 @@ public class ChallengeService {
 
     }
 
+    /**
+     * 도전 이미지 삭제 (Admin 전용)
+     */
+
+
+    /**
+     * 도전 완료 처리 (Admin 전용)
+     */
+    public CompleteChallengeResponseDto completeChallenge(Long challengeId, Long adminId) {
+
+        User admin = userRepository.findById(adminId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 관리자입니다."));
+
+        SeniorCenter seniorCenter = admin.getSeniorCenter();
+        if(seniorCenter == null) {
+            throw new IllegalArgumentException("경로당에 소속되지 않은 사용자입니다.");
+        }
+
+        validateAdminPermission(seniorCenter, adminId);
+
+        // 해당 경로당의 도전인지 확인
+        Challenge challenge = challengeRepository.findChallengeByIdAndSeniorCenterId(challengeId, seniorCenter.getId());
+        if (challenge == null) {
+            throw new IllegalArgumentException("해당 도전을 찾을 수 없거나 접근 권한이 없습니다.");
+        }
+
+        // 이미 완료되었는지 확인
+        if (challenge.getIsSuccess()) {
+            throw new IllegalArgumentException("해당 도전을 찾을 수 없거나 접근 권한이 없습니다.");
+        }
+
+        challenge.completeChallenge();
+        Challenge completedChallenge = challengeRepository.save(challenge);
+
+        // 경로당 포인트 추가
+        seniorCenter.addChallengePoint(challenge.getPoint());
+        SeniorCenter updatedSeniorCenter = seniorCenterRepository.save(seniorCenter);
+
+        return CompleteChallengeResponseDto.from(challenge, updatedSeniorCenter);
+    }
+
+    /**
+     * 도전 완료 취소 (Admin 전용)
+     */
+    public CancelCompletedChallengeResponseDto cancelChallengeCompletion(Long challegeId, Long adminId) {
+        User admin = userRepository.findById(adminId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 관리자입니다."));
+
+        SeniorCenter seniorCenter = admin.getSeniorCenter();
+        if(seniorCenter == null) {
+            throw new IllegalArgumentException("경로당에 소속되지 않은 사용자입니다.");
+        }
+
+        validateAdminPermission(seniorCenter, adminId);
+
+        // 도전 존재 및 권환 확인
+        Challenge challenge = challengeRepository.findChallengeByIdAndSeniorCenterId(challegeId, seniorCenter.getId());
+        if (challenge == null) {
+            throw new IllegalArgumentException("해당 도전을 찾을 수 없거나 접근 권한이 없습니다.");
+        }
+
+        // 완료되지 않은 도전인지 확인
+        if (!challenge.getIsSuccess()) {
+            throw new IllegalArgumentException("완료되지 않은 도전입니다.");
+        }
+
+        // 도전 완료 취소
+        challenge.cancelCompletion();
+        Challenge canceledChallenge = challengeRepository.save(challenge);
+
+        // 경로당 포인트 차감
+        seniorCenter.subtractChallengePoint(challenge.getPoint());
+        SeniorCenter updatedSeniorCenter = seniorCenterRepository.save(seniorCenter);
+
+        return CancelCompletedChallengeResponseDto.from(canceledChallenge, updatedSeniorCenter);
+    }
+
+    //== 비즈니스 로직 ==//
     /**
      * 경로당 관리자 권환 확인
      */

@@ -65,7 +65,38 @@ public class SeniorCenter extends BaseEntity {
     private List<Challenge> challenges = new ArrayList<>();
 
     //==Setter 메서드==//
+
+    /**
+     * 경로당 관리자 등록
+     */
     public void setAdminUserId(Long adminUserId) {
         this.adminUserId = adminUserId;
+    }
+
+    /**
+     * 챌린지 포인트 추가 및 총 포인트 업데이트
+     */
+    public void addChallengePoint(Integer point) {
+        if (point != null && point > 0) {
+            this.challengePoint += point;
+            updateTotalPoint();
+        }
+    }
+
+    /**
+     * 챌린지 포인트 차감 및 총 포인트 업데이트
+     */
+    public void subtractChallengePoint(Integer point) {
+        if (point != null & point > 0) {
+            this.challengePoint -= point;
+            updateTotalPoint();
+        }
+    }
+
+    /**
+     * 총 포인트 재계산
+     */
+    private void updateTotalPoint() {
+        this.totalPoint = this.trotPoint + this.challengePoint;
     }
 }
