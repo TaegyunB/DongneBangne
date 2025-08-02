@@ -2,6 +2,8 @@ package S13P11A708.backend.controller.admin;
 
 import S13P11A708.backend.dto.request.challenge.CreateChallengeRequestDto;
 import S13P11A708.backend.dto.request.challenge.UpdateChallengeRequestDto;
+import S13P11A708.backend.dto.response.challenge.CancelCompletedChallengeResponseDto;
+import S13P11A708.backend.dto.response.challenge.CompleteChallengeResponseDto;
 import S13P11A708.backend.dto.response.challenge.CreateChallengeResponseDto;
 import S13P11A708.backend.dto.response.challenge.UpdateChallengeResponseDto;
 import S13P11A708.backend.security.CustomOAuth2User;
@@ -30,7 +32,7 @@ public class ChallengeAdminController {
     /**
      * 도전 생성
      * @param requestDto 도전 생성 요청 DTO
-     * @param adminId JWT 토큰에서 추출한 관리자 ID
+     * @param customUser JWT 토큰에서 추출한 관리자 ID
      */
     @PostMapping
     public ResponseEntity<CreateChallengeResponseDto> createChallenge(
@@ -138,4 +140,31 @@ public class ChallengeAdminController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * 도전 완료 처리
+     */
+    @PutMapping("/{challengeId}/complete")
+    public ResponseEntity<CompleteChallengeResponseDto> completeChallenge(
+            @PathVariable("challengeId") Long challengeId,
+            @AuthenticationPrincipal CustomOAuth2User customUser) {
+
+        Long adminId = customUser.getUserId();
+
+        CompleteChallengeResponseDto response = challengeService.completeChallenge(challengeId, adminId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 도전 완료 취소 (Admin 전용)
+     */
+    @PutMapping("/{challengeId}/cancel")
+    public ResponseEntity<CancelCompletedChallengeResponseDto> cancelCompletedChallengne(
+            @PathVariable("challengeId") Long challengeId,
+            @AuthenticationPrincipal CustomOAuth2User customUser) {
+
+        Long adminId = customUser.getUserId();
+
+        CancelCompletedChallengeResponseDto response = challengeService.cancelChallengeCompletion(challengeId, adminId);
+        return ResponseEntity.ok(response);
+    }
 }
