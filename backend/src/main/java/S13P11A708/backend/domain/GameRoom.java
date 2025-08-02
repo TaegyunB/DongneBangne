@@ -44,4 +44,10 @@ public class GameRoom extends BaseEntity {
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
+    /**
+     * 게임방 status 수정 setter
+     */
+    public void changeGameStatus(GameStatus status){
+        this.gameStatus = status;
+    }
 }

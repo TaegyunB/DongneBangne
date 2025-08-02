@@ -114,6 +114,18 @@ public class GameRoomService {
     public void toggleReady(Long roomId, Long userId){
         GameRoomUser gameRoomUser = gameRoomUserRepository.findByGameRoomId_IdAndUserId_Id(roomId, userId)
                 .orElseThrow(() -> new RuntimeException("해당 방 참가자가 아닙니다."));
+        //준비 상태 변경 false->true
         gameRoomUser.userGetReady();
+
+        List<GameRoomUser> participants = gameRoomUserRepository.findAllByGameRoomId_Id(roomId);
+
+        //참가자가 2명이고 모두 ready 상태인 경우
+        boolean allReady = participants.size() == 2 && participants.stream()
+                .allMatch(GameRoomUser::isReady);
+
+        if(allReady){
+            GameRoom room = gameRoomUser.getGameRoomId();
+            room.changeGameStatus(GameStatus.PROGRESS); //방 상태를 게임 진행 상태로 변경
+        }
     }
 }
