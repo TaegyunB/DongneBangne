@@ -110,7 +110,7 @@ public class ChallengeAdminController {
         String fileUrl = s3Service.uploadFile(file, "images");
 
         // DB에 이미지URL 업데이트
-        challengeService.updateChallengeImageUrl(challengeId, fileUrl, adminId);
+        challengeService.updateChallengeImage(challengeId, fileUrl, adminId);
 
         Map<String, String> response = new HashMap<>();
         response.put("fileUrl", fileUrl);
@@ -125,17 +125,17 @@ public class ChallengeAdminController {
      */
     @DeleteMapping("/{challengeId}/image")
     public ResponseEntity<Map<String, String>> deleteChallengeImage(
-            @RequestParam("fileName") String fileName,
+            @PathVariable("challengeId") Long challengeId,
             @AuthenticationPrincipal CustomOAuth2User customUser) {
 
         Long adminId = customUser.getUserId();
 
         // 파일 삭제
-        s3Service.deleteFile("images/" + fileName);
+        challengeService.deleteChallengeImage(challengeId, adminId);
 
         Map<String, String> response = new HashMap<>();
         response.put("message", "이미지가 성공적으로 삭제되었습니다.");
-        response.put("deletedFileName", fileName);
+        response.put("challengeId", challengeId.toString());
 
         return ResponseEntity.ok(response);
     }

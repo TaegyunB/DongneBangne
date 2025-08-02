@@ -176,7 +176,7 @@ public class ChallengeService {
     /**
      * 도전 미션 이미지 업로드 (Admin 전용)
      */
-    public void updateChallengeImageUrl(Long challengeId, String imageUrl, Long adminId) {
+    public void updateChallengeImage(Long challengeId, String imageUrl, Long adminId) {
         User admin = userRepository.findById(adminId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 관리자입니다."));
 
@@ -199,6 +199,42 @@ public class ChallengeService {
     /**
      * 도전 이미지 삭제 (Admin 전용)
      */
+    public void deleteChallengeImage(Long challengeId, Long adminId) {
+        User admin = userRepository.findById(adminId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 관리자입니다."));
+
+        SeniorCenter seniorCenter = admin.getSeniorCenter();
+        if (seniorCenter == null) {
+            throw new IllegalArgumentException("경로당에 소속되지 않은 사용자입니다.");
+        }
+
+        validateAdminPermission(seniorCenter, adminId);
+
+        // 도전 존재 및 권환 확인
+        Challenge challenge = challengeRepository.findChallengeByIdAndSeniorCenterId(challengeId, seniorCenter.getId());
+        if (challenge == null) {
+            throw new IllegalArgumentException("해당 도전을 찾을 수 없거나 접근 권한이 없습니다.");
+        }
+
+        // 이미지가 없는 경우
+        if (challenge.getChallengeImage() == null || challenge.getChallengeImage().isEmpty()) {
+            throw new IllegalArgumentException("삭제할 이미지가 없습니다.");
+        }
+
+        try {
+            String imageUrl = challenge.getChallengeImage();
+            String fileName = extractFileNameFromUrl(imageUrl);
+            s3Service.deleteFile("images/" + fileName);
+            log.info("S3에서 이미지 삭제 완료: {}", fileName);
+        } catch (Exception e) {
+            log.error("S3 이미지 삭제 중 오류 발생; {}", e.getMessage());
+            throw new RuntimeException("이미지 삭제 중 오류가 발생했습니다.");
+        }
+
+        // DB에서 이미지 URL 제거
+        challenge.updateChallengeImage(null);
+        challengeRepository.save(challenge);
+    }
 
 
     /**
@@ -234,13 +270,13 @@ public class ChallengeService {
         seniorCenter.addChallengePoint(challenge.getPoint());
         SeniorCenter updatedSeniorCenter = seniorCenterRepository.save(seniorCenter);
 
-        return CompleteChallengeResponseDto.from(challenge, updatedSeniorCenter);
+        return CompleteChallengeResponseDto.from(completedChallenge, updatedSeniorCenter);
     }
 
     /**
      * 도전 완료 취소 (Admin 전용)
      */
-    public CancelCompletedChallengeResponseDto cancelChallengeCompletion(Long challegeId, Long adminId) {
+    public CancelCompletedChallengeResponseDto cancelChallengeCompletion(Long challengeId, Long adminId) {
         User admin = userRepository.findById(adminId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 관리자입니다."));
 
@@ -252,7 +288,7 @@ public class ChallengeService {
         validateAdminPermission(seniorCenter, adminId);
 
         // 도전 존재 및 권환 확인
-        Challenge challenge = challengeRepository.findChallengeByIdAndSeniorCenterId(challegeId, seniorCenter.getId());
+        Challenge challenge = challengeRepository.findChallengeByIdAndSeniorCenterId(challengeId, seniorCenter.getId());
         if (challenge == null) {
             throw new IllegalArgumentException("해당 도전을 찾을 수 없거나 접근 권한이 없습니다.");
         }
@@ -292,5 +328,22 @@ public class ChallengeService {
         if(!seniorCenter.getAdminUserId().equals(adminId)) {
             throw new IllegalArgumentException("해당 경로당의 관리자만 도전을 관리할 수 있습니다.");
         }
+    }
+
+    /**
+     * URL에서 파일명 추출 헬퍼 메서드
+     */
+    private String extractFileNameFromUrl(String imageUrl) {
+        if (imageUrl == null || imageUrl.isEmpty()) {
+            throw new IllegalArgumentException("유효하지 않은 이미지 URL입니다.");
+        }
+
+        // URL에서 마지막 '/' 뒤의 파일명 추출
+        int lastSlashIndex = imageUrl.lastIndexOf("/");
+        if (lastSlashIndex == -1 || lastSlashIndex == imageUrl.length() - 1) {
+            throw new IllegalArgumentException("파일명을 추출할 수 없는 URL입니다.");
+        }
+
+        return imageUrl.substring(lastSlashIndex + 1);
     }
 }
