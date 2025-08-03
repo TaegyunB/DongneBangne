@@ -34,6 +34,7 @@ spring:
     url: jdbc:mysql://localhost:3306/dongnae
     username: root
     password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
 
   # JPA 설정
   jpa:
@@ -62,7 +63,18 @@ spring:
       diskspace:
         enabled: true  # 디스크 공간 헬스체크 활성화
 
-
+# AWS S3 - IAM 역할 사용
+cloud:
+  aws:
+    credentials:
+      access-key: AKIA4CBSYPKQXKN4UMET
+      secret-key: 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
+    s3:
+      bucket: s13p11a708
+    region:
+      static: us-east-2
+    stack:
+      auto: false
 
 logging:
   level:

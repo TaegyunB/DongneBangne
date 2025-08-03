@@ -4,8 +4,6 @@ import S13P11A708.backend.domain.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CollectionId;
-import org.hibernate.annotations.ConcreteProxy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 
@@ -23,6 +21,9 @@ public class SeniorCenter extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "senior_center_id")
     private Long id;
+
+    @Column(name = "admin_user_id")
+    private Long adminUserId;
 
     @Column(name = "center_name", nullable = false)
     private String centerName;
@@ -45,6 +46,12 @@ public class SeniorCenter extends BaseEntity {
     @Column(name = "total_point")
     private Long totalPoint = 0L;
 
+    @Column(name = "ranking_year")
+    private Integer rankingYear;
+
+    @Column(name = "rankingMonth")
+    private Integer rankingMonth;
+
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;
@@ -56,15 +63,51 @@ public class SeniorCenter extends BaseEntity {
     @OneToMany(mappedBy = "seniorCenter", fetch = FetchType.LAZY)
     private List<User> members = new ArrayList<>();
 
-    // 경로당들의 랭킹 기록
-    @OneToMany(mappedBy = "seniorCenter", fetch = FetchType.LAZY)
-    private List<Ranking> rankings = new ArrayList<>();
-
     @OneToMany(mappedBy = "seniorCenter", fetch = FetchType.LAZY)
     private List<Challenge> challenges = new ArrayList<>();
 
+    // JPA 라이프사이클 콜백으로 자동 설정
+    @Override
+    protected void onPrePersist() {
+        LocalDateTime now = LocalDateTime.now();
+        this.rankingYear = now.getYear();
+        this.rankingMonth = now.getMonthValue();
+    }
+
+
     //==Setter 메서드==//
 
+    /**
+     * 경로당 관리자 등록
+     */
+    public void setAdminUserId(Long adminUserId) {
+        this.adminUserId = adminUserId;
+    }
 
+    /**
+     * 챌린지 포인트 추가 및 총 포인트 업데이트
+     */
+    public void addChallengePoint(Integer point) {
+        if (point != null && point > 0) {
+            this.challengePoint += point;
+            updateTotalPoint();
+        }
+    }
 
+    /**
+     * 챌린지 포인트 차감 및 총 포인트 업데이트
+     */
+    public void subtractChallengePoint(Integer point) {
+        if (point != null && point > 0) {
+            this.challengePoint -= point;
+            updateTotalPoint();
+        }
+    }
+
+    /**
+     * 총 포인트 재계산
+     */
+    private void updateTotalPoint() {
+        this.totalPoint = this.trotPoint + this.challengePoint;
+    }
 }
