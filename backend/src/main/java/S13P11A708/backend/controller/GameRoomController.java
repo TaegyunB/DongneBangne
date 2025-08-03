@@ -19,7 +19,7 @@ public class GameRoomController {
     private final GameRoomService gameRoomService;
 
     /**
-     * 게임방 생성
+     * 게임방 생성 
      */
     @PostMapping
     public ResponseEntity<GameRoomResponseDto> createRoom(@RequestBody CreateGameRoomRequestDto request,
