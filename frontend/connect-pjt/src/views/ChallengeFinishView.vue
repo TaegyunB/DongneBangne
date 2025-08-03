@@ -3,25 +3,25 @@
         <!-- 헤더 -->
         <div class="header">
             <h1>도전을 성공적으로 수행하셨나요?</h1>
-            <h3>도전을 인증해주세요</h3>
-            <h3>인증을 완료해야 순위에 반영이 됩니다.</h3>
+            <h2>도전을 인증해주세요</h2>
+            <h2>인증을 완료해야 순위에 반영이 됩니다.</h2>
         </div>
         
         <!-- 메인 콘텐츠 -->
         <div class="content">
             <!-- 텍스트 입력 -->
             <div class="section">
-                <h4>도전 상세</h4>
+                <h3>도전 상세</h3>
                 <textarea 
                     v-model="form.description"
-                    placeholder="도전을 어떻게 수행하셨나요? &#10;도전을 수행하면서 느꼈던 감정 등 자유롭게 작성해주세요"
+                    placeholder="도전을 어떻게 수행하셨나요? &#10;도전을 수행하면서 느꼈던 감정 등을 자유롭게 작성해주세요"
                     class="textarea"
                 />
             </div>
             
             <!-- 이미지 업로드 (선택사항) -->
             <div class="section">
-                <h4>이미지 업로드 (선택사항)</h4>
+                <h3>이미지 업로드 (선택사항)</h3>
                 <div class="upload-area" @click="triggerFileInput">
                     <div v-if="!form.image" class="upload-placeholder">
                         <div class="upload-icon">📁</div>
@@ -45,7 +45,7 @@
         <!-- 모달 -->
         <div v-if="showModal" class="modal" @click="closeModal">
             <div class="modal-content" @click.stop>
-                <h2>도전 인증이 완료되었습니다.</h2>
+                <h2>도전 인증이 <br> 완료되었습니다.</h2>
                 <p>포인트 {{ awardedPoints }}점이 부여되었습니다.</p>
                 <div class="modal-buttons">
                     <button @click="goToChallenge" class="btn-modal">도전 페이지로</button>
@@ -78,21 +78,16 @@ onMounted(() => {
   challengeId.value = route.params.challengeId
 })
 
-// 미션 타입별 포인트 계산 함수
+// 도전 타입별 포인트 계산 함수
 const calculatePoints = (challengeId) => {
   const id = parseInt(challengeId)
   
-  // 왼쪽 2개 미션 (challengeId 1, 2): 500점
-  // 오른쪽 2개 미션 (challengeId 3, 4): 300점
-  // 필요에 따라 조건을 수정하세요
+  // 제공하는 도전은 500점, 자체 생성 도전은 300점 
   if (id === 1 || id === 2) {
     return 500
   } else if (id === 3 || id === 4) {
     return 300
-  } else {
-    // 기본값 또는 다른 미션들
-    return 100
-  }
+}
 }
 
 const triggerFileInput = () => fileInput.value?.click()
@@ -189,33 +184,33 @@ const goToRanking = () => {
     text-align: center; 
     margin-bottom: 40px; 
 }
-.header h1 { margin: 30px 10px 10px; font-size: 28px; font-weight: bold; }
-.header h3 { margin: 5px 0; font-weight: normal; color: #666; }
+.header h1 { margin: 30px 10px 10px; font-size: 32px; font-weight: bold; }
+.header h2 { margin: 5px 0; font-weight: normal; color: #666; }
 
 .content { display: flex; gap: 40px; margin-bottom: 40px; }
 .section { flex: 1; }
-.section h4 { font-size: 18px; font-weight: bold; margin-bottom: 15px; }
+.section h3 { font-size: 20px; font-weight: bold; margin-bottom: 15px; }
 
 .textarea {
     width: 100%; height: 200px; padding: 15px; border: 2px solid #e0e0e0;
-    border-radius: 8px; resize: vertical; font-family: inherit;
+    border-radius: 8px; resize: vertical; font-family: inherit;font-size: 18px;
 }
-.textarea:focus { outline: none; border-color: #4CAF50; }
+.textarea:focus { outline: none; border-color: #3074FF; }
 
 .upload-area {
     width: 100%; height: 200px; border: 2px dashed #e0e0e0; border-radius: 8px;
     display: flex; align-items: center; justify-content: center; cursor: pointer;
     position: relative; transition: border-color 0.3s;
 }
-.upload-area:hover { border-color: #4CAF50; }
+.upload-area:hover { border-color: #6c9dff; }
 
 .upload-placeholder { text-align: center; }
 .upload-icon { font-size: 48px; margin-bottom: 10px; }
 .upload-btn {
-    background: #4CAF50; color: white; border: none; padding: 8px 16px;
-    border-radius: 4px; cursor: pointer; margin-bottom: 8px;
+    background: #3074FF; color: white; border: none; padding: 8px 16px;
+    border-radius: 4px; cursor: pointer; margin-bottom: 8px;font-size: 18px;font-weight: bold;
 }
-.upload-placeholder p { color: #999; font-size: 14px; margin: 0; line-height: 1.4; }
+.upload-placeholder p { color: #999; font-size: 18px; margin: 0; line-height: 1.4; }
 
 .preview { width: 100%; height: 100%; position: relative; }
 .preview img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
@@ -227,13 +222,13 @@ const goToRanking = () => {
 
 .buttons { display: flex; justify-content: center; gap: 20px; }
 .btn-cancel, .btn-submit {
-    padding: 12px 30px; border: none; border-radius: 6px; font-size: 16px;
-    cursor: pointer; transition: background-color 0.3s;
+    padding: 12px 30px; border: none; border-radius: 6px; font-size: 20px;
+    cursor: pointer; transition: background-color 0.3s;font-weight: bold;
 }
 .btn-cancel { background: #f5f5f5; color: #666; }
 .btn-cancel:hover { background: #e0e0e0; }
-.btn-submit { background: #6c5ce7; color: white; }
-.btn-submit:hover:not(:disabled) { background: #5a4bd4; }
+.btn-submit { background: #3074FF; color: white; }
+.btn-submit:hover:not(:disabled) { background: #6c9dff; }
 .btn-submit:disabled { background: #ccc; cursor: not-allowed; }
 
 .modal {
@@ -243,16 +238,16 @@ const goToRanking = () => {
 }
 .modal-content {
     background: white; padding: 40px; border-radius: 12px; text-align: center;
-    max-width: 400px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    max-width: 500px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
 }
-.modal-content h2 { font-size: 20px; margin-bottom: 10px; }
-.modal-content p { color: #666; margin-bottom: 30px; }
+.modal-content h2 { font-size: 32px; margin-bottom: 10px; }
+.modal-content p { color: #666; margin-bottom: 30px; font-size: 20px; }
 .modal-buttons { display: flex; gap: 15px; justify-content: center; }
 .btn-modal {
-    padding: 12px 24px; border: none; border-radius: 6px; background: #6c5ce7;
-    color: white; cursor: pointer; transition: background-color 0.3s;
+    padding: 12px 24px; border: none; border-radius: 6px; background: #3074FF;
+    color: white; cursor: pointer; transition: background-color 0.3s;font-size: 20px;font-weight: bold;
 }
-.btn-modal:hover { background: #5a4bd4; }
+.btn-modal:hover { background: #6c9dff; }
 
 @media (max-width: 768px) {
     .content { flex-direction: column; gap: 20px; }
