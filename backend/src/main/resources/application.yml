@@ -36,6 +36,11 @@ spring:
     password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
 
+  # # sql 자동 실행
+  # sql:
+  #   init:
+  #     mode: always
+
   # JPA 설정
   jpa:
     hibernate:
