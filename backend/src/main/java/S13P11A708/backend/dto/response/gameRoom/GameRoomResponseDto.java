@@ -13,6 +13,9 @@ import java.time.LocalDateTime;
 @Builder
 @Data
 public class GameRoomResponseDto {
+    /**
+     * WAITING 상태인 게임방 조회할 때 사용되는 response body
+     */
     Long id;
     String roomTitle;
     Integer gameRound;
