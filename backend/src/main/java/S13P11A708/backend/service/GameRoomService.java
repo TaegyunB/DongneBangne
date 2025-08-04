@@ -5,7 +5,9 @@ import S13P11A708.backend.domain.GameRoomUser;
 import S13P11A708.backend.domain.User;
 import S13P11A708.backend.domain.enums.GameStatus;
 import S13P11A708.backend.dto.request.gameRoom.CreateGameRoomRequestDto;
+import S13P11A708.backend.dto.request.gameRoom.JoinGameRoomRequestDto;
 import S13P11A708.backend.dto.response.gameRoom.GameRoomResponseDto;
+import S13P11A708.backend.dto.response.gameRoomUser.GameRoomUserResponseDto;
 import S13P11A708.backend.repository.GameRoomRepository;
 import S13P11A708.backend.repository.GameRoomUserRepository;
 import S13P11A708.backend.repository.UserRepository;
@@ -61,7 +63,7 @@ public class GameRoomService {
      * 같은 경로당 회원끼리는 게임하지 않도록 제한
      */
     @Transactional
-    public void joinRoom(Long roomId, Long userId){
+    public GameRoomUserResponseDto joinRoom(Long roomId, Long userId){
         GameRoom room = gameRoomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("방이 존재하지 않습니다."));
 
@@ -74,16 +76,18 @@ public class GameRoomService {
             throw new RuntimeException("방 정원이 찼습니다.");
         }
 
-        User user = userRepository.findById(userId)
+        //참여 요청하는 유저
+        User joinUser = userRepository.findById(userId)
                 .orElseThrow(()-> new RuntimeException("유저 정보가 없습니다."));
 
+        //기존에 방에 참여하고 있던 유저
         List<GameRoomUser> exisitingParticipants = gameRoomUserRepository.findAllByGameRoomId_Id(roomId);
 
         for(GameRoomUser participant : exisitingParticipants){
             User existingUser = participant.getUserId();
 
             if(existingUser.getSeniorCenter().getId()
-                    .equals(user.getSeniorCenter().getId())){
+                    .equals(joinUser.getSeniorCenter().getId())){
                 throw new RuntimeException("같은 경로당 소속 회원끼리는 함께 게임에 참여할 수 없습니다.");
             }
         }
@@ -91,11 +95,18 @@ public class GameRoomService {
         //참가자 등록
         GameRoomUser participant = GameRoomUser.builder()
                 .gameRoomId(room)
-                .userId(user)
+                .userId(joinUser)
                 .ready(false)
                 .build();
 
         gameRoomUserRepository.save(participant);
+
+        return GameRoomUserResponseDto.builder()
+                .gameRoomId(room.getId())
+                .userId(joinUser.getId())
+                .ready(false)
+                .message(joinUser.getNickname()+"님이 "+room.getRoomTitle()+" 방에 참여합니다.")
+                .build();
     }
 
     /**

@@ -6,8 +6,8 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public class CreateGameRoomRequestDto {
-    String roomTitle;
-    Integer gameRound;
-    String musicEra;
-    String category;
+    private String roomTitle;
+    private Integer gameRound;
+    private String musicEra;
+    private String category;
 }
