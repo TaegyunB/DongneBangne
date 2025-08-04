@@ -6,6 +6,7 @@ import S13P11A708.backend.domain.User;
 import S13P11A708.backend.dto.request.challenge.CreateChallengeRequestDto;
 import S13P11A708.backend.dto.request.challenge.UpdateChallengeRequestDto;
 import S13P11A708.backend.dto.response.challenge.*;
+import S13P11A708.backend.dto.response.seniorCenter.SeniorCenterChallengeListResponseDto;
 import S13P11A708.backend.repository.ChallengeRepository;
 import S13P11A708.backend.repository.SeniorCenterRepository;
 import S13P11A708.backend.repository.UserRepository;
@@ -68,6 +69,43 @@ public class ChallengeService {
         Challenge challenge = challengeRepository.findChallengeByIdAndSeniorCenterId(challengeId, seniorCenter.getId());
         if (challenge == null) {
             throw new IllegalArgumentException("해당 도전을 찾을 수 없거나 접근 권한이 없습니다.");
+        }
+
+        return ChallengeResponseDto.from(challenge);
+    }
+
+    /**
+     * 특정 경로당의 특정 년월 미션 목록 조회
+     */
+    public SeniorCenterChallengeListResponseDto getSeniorCenterChallengesByYearMonth(Long seniorCenterId, Integer year, Integer month) {
+        // 경로당 존재 여부 확인
+        SeniorCenter seniorCenter = seniorCenterRepository.findById(seniorCenterId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 경로당입니다."));
+
+        // 해당 년월의 미션 목록 조회
+        List<Challenge> challenges = challengeRepository.findChallengesByYearAndMonth(seniorCenterId, year, month);
+
+        // DTO 변환
+        List<ChallengeResponseDto> challengeResponseDtos = challenges.stream()
+                .map(ChallengeResponseDto::from)
+                .collect(Collectors.toList());
+
+        return SeniorCenterChallengeListResponseDto.builder()
+                .seniorCenterId(seniorCenter.getId())
+                .seniorCenterName(seniorCenter.getCenterName())
+                .address(seniorCenter.getAddress())
+                .challenges(challengeResponseDtos)
+                .build();
+    }
+
+    /**
+     * 특정 미션 상세 조회
+     */
+    public ChallengeResponseDto getSeniorCenterChallengeDetail(Long challengeId, Long seniorCenterId) {
+        Challenge challenge = challengeRepository.findChallengeByIdAndSeniorCenterId(challengeId, seniorCenterId);
+
+        if (challenge == null) {
+            throw new IllegalArgumentException("해당 미션을 찾을 수 없습니다.");
         }
 
         return ChallengeResponseDto.from(challenge);
