@@ -14,7 +14,7 @@ public class ChallengeResponseDto {
 
     private Long id;
     private String challengeTitle;
-    private String challegePlace;
+    private String challengePlace;
     private String description;
     private Integer year;
     private Integer month;
@@ -28,7 +28,7 @@ public class ChallengeResponseDto {
         return ChallengeResponseDto.builder()
                 .id(challenge.getId())
                 .challengeTitle(challenge.getChallengeTitle())
-                .challegePlace(challenge.getChallengePlace())
+                .challengePlace(challenge.getChallengePlace())
                 .description(challenge.getDescription())
                 .year(challenge.getYear())
                 .month(challenge.getMonth())
