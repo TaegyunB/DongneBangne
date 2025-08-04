@@ -23,7 +23,7 @@
     <br>
     
     <!-- Admin UI -->
-    <!-- <div v-if="userRole === 'admin'">
+    <div v-if="userRole === 'ADMIN' || userRole === 1">
       <div class="main-card-grid-one">
         <div class="main-card one" @click="goTo('/challenges')">
           <div class="card-title">도전 과제</div>
@@ -53,7 +53,7 @@
           <img src="@/assets/mainpage/newspaper.png" alt="신문 아이콘" class="card-icon" />
         </div>
       </div>
-    </div> -->
+    </div>
 
     <!-- Member UI  -->
     <!-- <div v-else-if="userRole === 'member'"> -->
@@ -92,6 +92,8 @@ import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const userRole = ref('')
+
+// console.log('userRole:', userRole, typeof userRole) // ADMIN 타입 보기
 
 // 사용자 역할 정보를 백엔드에서 가져오는 함수
 const fetchUserRole = async () => {
