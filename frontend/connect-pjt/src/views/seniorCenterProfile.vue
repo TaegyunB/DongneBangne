@@ -63,18 +63,30 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import api from '@/api/axios'
 
 const nickname = ref('')
 const nicknameAvailable = ref(false)
 const nicknameMessage = ref('')
 const router = useRouter()
 
-const previewUrl = ref(null)
-const selectedFile = ref(null)
+const previewUrl = ref(null) // 프로필 이미지 URL(카카오에서 받은 기본값 or 업로드한 새 이미지)
+const selectedFile = ref(null) // 사용자가 새로 선택한 파일
 
-// 사진 첨부
+// 💡 1. 페이지 진입 시 카카오에서 받은 닉네임/이미지 기본값으로 세팅
+onMounted(async () => {
+  try {
+    const res = await api.get('/api/v1/users/profile')
+    nickname.value = res.data.nickname || ''
+    previewUrl.value = res.data.profileImage || null
+  } catch (e) {
+    // 에러처리(토큰 만료 등)
+  }
+})
+
+// 2. 사진 첨부(업로드)
 function onFileChange(e) {
   const file = e.target.files[0]
   if (!file) return
@@ -94,20 +106,21 @@ function onFileChange(e) {
   img.src = URL.createObjectURL(file)
 }
 
-// 사진 지우기
 function removeFile() {
   previewUrl.value = null
   selectedFile.value = null
 }
 
-// 닉네임 중복검사(임시: "싸피"가 포함되어 있으면 불가, 아니면 가능)
+// 3. 닉네임 중복검사 (실제 API 연동 가능)
 function checkNickname() {
   if (!nickname.value.trim()) {
     nicknameMessage.value = '닉네임을 입력해주세요.'
     nicknameAvailable.value = false
     return
   }
-  // 임시 중복검사 로직(백 연결 전용)
+  // 실제 닉네임 중복체크 API 필요시 아래처럼 호출
+  // const res = await api.get(`/api/v1/users/nickname-check?nickname=${nickname.value}`)
+  // if (res.data.exists) {...}
   if (nickname.value.includes('싸피')) {
     nicknameMessage.value = '이미 사용 중인 닉네임입니다.'
     nicknameAvailable.value = false
@@ -117,13 +130,32 @@ function checkNickname() {
   }
 }
 
-// 회원가입 완료
-function completeProfile() {
-  alert('회원가입이 완료되었습니다!')
-  // 이후 페이지 이동 or API 연동
-  router.push('/login')
+// 4. 회원가입 완료(닉네임/프로필이미지 저장)
+// 실제 업로드하려면 S3나 서버 업로드 API 필요. 여기선 URL만 저장한다고 가정
+async function completeProfile() {
+  try {
+    let profileImageUrl = previewUrl.value
+
+    // 실제 파일 업로드라면 아래 주석 참고 (예시만)
+    // if (selectedFile.value) {
+    //   const formData = new FormData()
+    //   formData.append('file', selectedFile.value)
+    //   const uploadRes = await api.post('/api/v1/files/profile', formData)
+    //   profileImageUrl = uploadRes.data.url // 업로드 결과로부터 url 받음
+    // }
+
+    await api.put('/api/v1/users/profile', {
+      nickname: nickname.value,
+      profileImage: profileImageUrl,
+    })
+    alert('회원가입이 완료되었습니다!')
+    router.push('/login')
+  } catch (e) {
+    alert('프로필 저장에 실패했습니다.')
+  }
 }
 </script>
+
 
 <style scoped>
 .profile-wrap {
