@@ -10,6 +10,7 @@ CREATE TABLE user (
     nickname            VARCHAR(100) NOT NULL, -- 홍길동
     profile_image       VARCHAR(255),
     user_role           ENUM('ADMIN', 'MEMBER', 'GUEST'),
+    personal_point      BIGINT DEFAULT 0, -- 추가
     created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at          TIMESTAMP NULL
 );
