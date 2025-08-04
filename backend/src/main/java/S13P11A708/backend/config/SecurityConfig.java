@@ -60,9 +60,10 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable());
         http
-                .formLogin(form -> form
-                        .loginPage("/login")
-                        .permitAll());
+//                .formLogin(form -> form
+//                        .loginPage("/login")
+//                        .permitAll());
+                .formLogin(form -> form.disable());
         http
                 .httpBasic((basic) -> basic.disable());
         //JWTFillter 추가
@@ -72,7 +73,7 @@ public class SecurityConfig {
         //oauth2
         http
                 .oauth2Login((oauth2) -> oauth2
-                        .loginPage("/login")
+                        // .loginPage("/") // SPA 루트로 (/login -> /) // 아예 배제(이유: 무한 리다이랙션)
                         .userInfoEndpoint((userInfoEndpointConfig)  -> userInfoEndpointConfig
                                     .userService(customOAuth2UserService))
                                 .successHandler(customSuccessHandler)

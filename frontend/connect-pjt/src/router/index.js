@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import ChallengeView from '../views/ChallengeView.vue'
+import Start from '@/views/start.vue'
 import Onboarding from '@/views/onboarding.vue'
 import ChallengeCreateView from '@/views/ChallengeCreateView.vue'
 import ChallengeFinishView from '@/views/ChallengeFinishView.vue'
@@ -14,6 +15,11 @@ const router = createRouter({
       path: '/challenges',
       name: 'challenge',
       component: ChallengeView,
+    },
+    {
+      path: '/',
+      name: 'start',
+      component: Start
     },
     {
       path: '/login',
