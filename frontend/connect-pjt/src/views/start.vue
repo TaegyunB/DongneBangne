@@ -13,15 +13,14 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUiStore } from '@/stores/useUiStore'
+import api from '@/api/axios'
 
 const router = useRouter()
 const showText = ref(false)
 const ui = useUiStore()
 
-onMounted(() => {
-  // 툴바 요소도 시각적으로 숨기기 위해 클래스 추가
+onMounted(async () => {
   document.body.classList.add('hide-toolbar')
-
   ui.showMenu = false
   ui.showProfile = false
   ui.showLogo = false
@@ -30,14 +29,26 @@ onMounted(() => {
     showText.value = true
   }, 300)
 
-  setTimeout(() => {
-    // 복구
-    document.body.classList.remove('hide-toolbar')
-    ui.showMenu = true
-    ui.showProfile = true
-    ui.showLogo = true
-    router.push('/login')
-  }, 2500)
+  // ✅ 로그인 된 상태면 바로 분기!
+  try {
+    const res = await api.get('/api/v1/users/senior-center')
+    if (res.data?.hasCenter) {
+      router.push('/mainpage')
+      return
+    } else {
+      router.push('/senior-center')
+      return
+    }
+  } catch (err) {
+    // 인증 안 된 경우만 애니메이션 후 로그인 페이지로 이동
+    setTimeout(() => {
+      document.body.classList.remove('hide-toolbar')
+      ui.showMenu = true
+      ui.showProfile = true
+      ui.showLogo = true
+      router.push('/login')
+    }, 2500)
+  }
 })
 </script>
 
