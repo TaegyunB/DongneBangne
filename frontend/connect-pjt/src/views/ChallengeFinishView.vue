@@ -2,9 +2,9 @@
     <div class="container">
         <!-- 헤더 -->
         <div class="header">
-            <h1>도전을 성공적으로 수행하셨나요?</h1>
-            <h2>도전을 인증해주세요</h2>
-            <h2>인증을 완료해야 순위에 반영이 됩니다.</h2>
+            <h1>{{ isEditMode ? '도전 인증을 수정해주세요' : '도전을 성공적으로 수행하셨나요?' }}</h1>
+            <h2>{{ isEditMode ? '기존 내용을 수정할 수 있습니다' : '도전을 인증해주세요' }}</h2>
+            <h2 v-if="!isEditMode">인증을 완료해야 순위에 반영이 됩니다.</h2>
         </div>
         
         <!-- 메인 콘텐츠 -->
@@ -19,11 +19,11 @@
                 />
             </div>
             
-            <!-- 이미지 업로드 (선택사항) -->
+            <!-- 이미지 업로드 (필수) -->
             <div class="section">
-                <h3>이미지 업로드 (선택사항)</h3>
+                <h3>이미지 업로드 <span class="required">*</span></h3>
                 <div class="upload-area" @click="triggerFileInput">
-                    <div v-if="!form.image" class="upload-placeholder">
+                    <div v-if="!form.image && !previewUrl" class="upload-placeholder">
                         <div class="upload-icon">📁</div>
                         <button type="button" class="upload-btn">파일 선택</button>
                     </div>
@@ -39,17 +39,20 @@
         <!-- 버튼 -->
         <div class="buttons">
             <button @click="cancel" class="btn-cancel">취소</button>
-            <button @click="submit" class="btn-submit" :disabled="!isValid">저장</button>
+            <button @click="submit" class="btn-submit" :disabled="!isValid">
+                {{ isEditMode ? '수정 완료' : '저장' }}
+            </button>
         </div>
         
         <!-- 모달 -->
         <div v-if="showModal" class="modal" @click="closeModal">
             <div class="modal-content" @click.stop>
-                <h2>도전 인증이 <br> 완료되었습니다.</h2>
-                <p>포인트 {{ awardedPoints }}점이 부여되었습니다.</p>
+                <h2>{{ isEditMode ? '도전 인증이 수정되었습니다.' : '도전 인증이 완료되었습니다.' }}</h2>
+                <p v-if="!isEditMode">포인트 {{ awardedPoints }}점이 부여되었습니다.</p>
+                <p v-else>변경사항이 저장되었습니다.</p>
                 <div class="modal-buttons">
                     <button @click="goToChallenge" class="btn-modal">도전 페이지로</button>
-                    <button @click="goToRanking" class="btn-modal">순위 페이지로</button>
+                    <button v-if="!isEditMode" @click="goToRanking" class="btn-modal">순위 페이지로</button>
                 </div>
             </div>
         </div>
@@ -69,14 +72,40 @@ const fileInput = ref(null)
 const showModal = ref(false)
 const awardedPoints = ref(0)
 
-const isValid = computed(() => form.value.description.trim())
+// 수정 모드 확인
+const isEditMode = computed(() => route.query.edit === 'true')
+
+const isValid = computed(() => {
+  const hasDescription = form.value.description.trim()
+  const hasImage = form.value.image || previewUrl.value
+  return hasDescription && hasImage
+})
 
 // URL 파라미터에서 challengeId 가져오기
 const challengeId = ref(null)
 
 onMounted(() => {
   challengeId.value = route.params.challengeId
+  
+  // 수정 모드일 때 기존 데이터 로드
+  if (isEditMode.value) {
+    loadExistingData()
+  }
 })
+
+// 기존 데이터 로드 함수
+const loadExistingData = () => {
+  const existingData = localStorage.getItem(`challenge_${challengeId.value}`)
+  if (existingData) {
+    const data = JSON.parse(existingData)
+    form.value.description = data.description || ''
+    if (data.image) {
+      previewUrl.value = data.image
+      // 기존 이미지가 있음을 표시 (실제 File 객체가 아닌 URL이므로)
+      form.value.image = 'existing'
+    }
+  }
+}
 
 // 도전 타입별 포인트 계산 함수
 const calculatePoints = (challengeId) => {
@@ -87,43 +116,86 @@ const calculatePoints = (challengeId) => {
     return 500
   } else if (id === 3 || id === 4) {
     return 300
-}
+  }
 }
 
 const triggerFileInput = () => fileInput.value?.click()
 
-const handleFileUpload = (event) => {
+//이미지 업로드 POST------------------------
+const handleFileUpload = async (event) => {
   const file = event.target.files[0]
   if (file) {
     form.value.image = file
     const reader = new FileReader()
     reader.onload = (e) => previewUrl.value = e.target.result
     reader.readAsDataURL(file)
+
+    // === 백엔드 연동 시 이미지 업로드 POST 요청 ===
+    /*
+    const formData = new FormData()
+    formData.append('challengeImage', file)
+
+    try {
+      const response = await axios.post(`/api/v1/admin/challenges/${challengeId.value}/image`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+      console.log('이미지 업로드 응답:', response.data)
+    } catch (error) {
+      console.error('이미지 업로드 실패:', error)
+      alert('이미지 업로드 중 오류가 발생했습니다.')
+    }
+    */
   }
 }
+//---------------------------------
 
-const removeImage = () => {
+//이미지 제거(DELETE)----------------------------
+const removeImage = async () => {
   form.value.image = null
   previewUrl.value = ''
   if (fileInput.value) fileInput.value.value = ''
+
+  // === 백엔드 연동 시 이미지 삭제 DELETE 요청 ===
+  /*
+  try {
+    const response = await axios.delete(`/api/v1/admin/challenges/${challengeId.value}/image`)
+    console.log('이미지 삭제 응답:', response.data)
+  } catch (error) {
+    console.error('이미지 삭제 실패:', error)
+    alert('이미지 삭제 중 오류가 발생했습니다.')
+  }
+  */
 }
+//----------------------------------------------
+
 
 const cancel = () => router.go(-1)
 
 const submit = async () => {
-  if (!isValid.value) {
+  if (!form.value.description.trim()) {
     alert('도전 상세 내용을 입력해주세요.')
     return
   }
+  
+  if (!form.value.image && !previewUrl.value) {
+    alert('이미지를 업로드해주세요.')
+    return
+  }
 
-  const points = calculatePoints(challengeId.value)
-  awardedPoints.value = points
+  // 수정 모드가 아닐 때만 포인트 계산
+  if (!isEditMode.value) {
+    const points = calculatePoints(challengeId.value)
+    awardedPoints.value = points
+  }
 
-  // FormData 구성
+  // FormData 구성 (백엔드 연결 시 사용)
   const formData = new FormData()
   formData.append('challengeId', challengeId.value)
   formData.append('imageDescription', form.value.description)
-  if (form.value.image) {
+  if (form.value.image && typeof form.value.image !== 'string') {
+    // 새로운 이미지 파일이 있을 때만 추가
     formData.append('challengeImage', form.value.image)
   }
 
@@ -131,35 +203,60 @@ const submit = async () => {
     challengeId: challengeId.value,
     description: form.value.description,
     image: form.value.image,
-    points: points
+    isEditMode: isEditMode.value,
+    points: isEditMode.value ? undefined : awardedPoints.value
   })
 
+//도전 완료 처리 시(PUT)------------------------------
   try {
-    // 실제 API 전송 (백엔드 연결 후 사용)
-    /*
-    const response = await axios.post(`http://localhost:8080/admin/challenges/${challengeId.value}/complete`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
+  // === 백엔드 연동 시 도전 완료 처리 ===
+  /*
+  if (!isEditMode.value) {
+    const response = await axios.put(`/api/v1/admin/challenges/${challengeId.value}/complete`, {
+      imageDescription: form.value.description,
+      isSuccess: true
     })
-    console.log('서버 응답:', response.data)
-    */
 
-    // 임시 로컬 저장
-    const completedChallenge = {
+    console.log('도전 완료 응답:', response.data)
+    awardedPoints.value = response.data.earnedPoint
+  }
+  */
+
+  // 임시 로컬 저장
+  const existingData = isEditMode.value 
+    ? JSON.parse(localStorage.getItem(`challenge_${challengeId.value}`) || '{}')
+    : {}
+//----------------------------------------------------
+    
+    const challengeData = {
+      ...existingData,
       challengeId: parseInt(challengeId.value),
       description: form.value.description,
-      image: form.value.image ? previewUrl.value : null,
-      completedAt: new Date().toISOString(),
+      completedAt: existingData.completedAt || new Date().toISOString(),
       is_success: true,
-      points: points
+      // 수정 모드일 때는 기존 포인트 유지, 새로 생성할 때만 포인트 부여
+      points: existingData.points || (isEditMode.value ? 0 : awardedPoints.value)
     }
 
-    localStorage.setItem(`challenge_${challengeId.value}`, JSON.stringify(completedChallenge))
+    // 이미지 처리
+    if (form.value.image) {
+      if (typeof form.value.image === 'string') {
+        // 기존 이미지 유지
+        challengeData.image = existingData.image
+      } else {
+        // 새로운 이미지
+        challengeData.image = previewUrl.value
+      }
+    } else {
+      // 이미지 제거
+      challengeData.image = null
+    }
+
+    localStorage.setItem(`challenge_${challengeId.value}`, JSON.stringify(challengeData))
     showModal.value = true
   } catch (error) {
     console.error('axios 오류:', error)
-    alert('도전 인증 중 오류가 발생했습니다.')
+    alert(isEditMode.value ? '도전 인증 수정 중 오류가 발생했습니다.' : '도전 인증 중 오류가 발생했습니다.')
   }
 }
 
@@ -190,6 +287,8 @@ const goToRanking = () => {
 .content { display: flex; gap: 40px; margin-bottom: 40px; }
 .section { flex: 1; }
 .section h3 { font-size: 20px; font-weight: bold; margin-bottom: 15px; }
+
+.required { color: #dc3545; font-weight: bold; }
 
 .textarea {
     width: 100%; height: 200px; padding: 15px; border: 2px solid #e0e0e0;

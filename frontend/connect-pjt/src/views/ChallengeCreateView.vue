@@ -77,7 +77,7 @@ const handleSubmit = async () => {
   try {
     // 실제 API 전송 (백 연결 후 사용)
     /*
-    const response = await axios.post('http://localhost:8080/api/challenges', challengeData)
+    const response = await axios.post('http://localhost:8000/api/challenges', challengeData)
     console.log('서버 응답:', response.data)
     */
 
