@@ -131,12 +131,12 @@ const handleFileUpload = async (event) => {
     reader.readAsDataURL(file)
 
     // === 백엔드 연동 시 이미지 업로드 POST 요청 ===
-    /*
+
     const formData = new FormData()
     formData.append('challengeImage', file)
 
     try {
-      const response = await axios.post(`/api/v1/admin/challenges/${challengeId.value}/image`, formData, {
+      const response = await axios.post(`http://localhost:8080/api/v1/admin/challenges/${challengeId.value}/image`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -146,7 +146,6 @@ const handleFileUpload = async (event) => {
       console.error('이미지 업로드 실패:', error)
       alert('이미지 업로드 중 오류가 발생했습니다.')
     }
-    */
   }
 }
 //---------------------------------
@@ -158,15 +157,13 @@ const removeImage = async () => {
   if (fileInput.value) fileInput.value.value = ''
 
   // === 백엔드 연동 시 이미지 삭제 DELETE 요청 ===
-  /*
   try {
-    const response = await axios.delete(`/api/v1/admin/challenges/${challengeId.value}/image`)
+    const response = await axios.delete(`http://localhost:8080/api/v1/admin/challenges/${challengeId.value}/image`)
     console.log('이미지 삭제 응답:', response.data)
   } catch (error) {
     console.error('이미지 삭제 실패:', error)
     alert('이미지 삭제 중 오류가 발생했습니다.')
   }
-  */
 }
 //----------------------------------------------
 
@@ -210,9 +207,8 @@ const submit = async () => {
 //도전 완료 처리 시(PUT)------------------------------
   try {
   // === 백엔드 연동 시 도전 완료 처리 ===
-  /*
   if (!isEditMode.value) {
-    const response = await axios.put(`/api/v1/admin/challenges/${challengeId.value}/complete`, {
+    const response = await axios.put(`http://localhost:8080/api/v1/admin/challenges/${challengeId.value}/complete`, {
       imageDescription: form.value.description,
       isSuccess: true
     })
@@ -220,7 +216,6 @@ const submit = async () => {
     console.log('도전 완료 응답:', response.data)
     awardedPoints.value = response.data.earnedPoint
   }
-  */
 
   // 임시 로컬 저장
   const existingData = isEditMode.value 

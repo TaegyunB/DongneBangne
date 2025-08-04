@@ -293,10 +293,9 @@ const saveEditChallenge = async () => {
   }
 
   /* === 백엔드 연동용 코드 시작(도전 수정) === */
-  /*
   try {
     const challenge = challenges.value[editingIndex]
-    const response = await axios.put(`/api/v1/admin/challenges/${challenge.challengeId}`, {
+    const response = await axios.put(`http://localhost:8080/api/v1/admin/challenges/${challenge.challengeId}`, {
       challengeTitle: form.title.trim(),
       challengePlace: form.place.trim(),
       description: form.description.trim()
@@ -315,7 +314,6 @@ const saveEditChallenge = async () => {
     alert('도전과제 수정에 실패했습니다.')
     return
   }
-  */
   /* === 백엔드 연동용 코드 끝 === */
 
   // 기존 로컬스토리지 로직 (백 연결 전까지 유지)
@@ -365,10 +363,9 @@ const confirmDelete = async () => {
   const selectedIndex = modals.value.delete.selectedIndex
   if (selectedIndex !== null) {
     /* === 백엔드 연동용 코드 시작 === */
-    /*
     try {
       const challenge = challenges.value[selectedIndex]
-      const response = await axios.delete(`/api/v1/admin/challenges/${challenge.challengeId}`)
+      const response = await axios.delete(`http://localhost:8080/api/v1/admin/challenges/${challenge.challengeId}`)
 
       console.log(response.data.message) // "도전이 성공적으로 삭제되었습니다."
       
@@ -380,7 +377,6 @@ const confirmDelete = async () => {
       alert('도전과제 삭제에 실패했습니다.')
       return
     }
-    */
     /* === 백엔드 연동용 코드 끝 === */
 
     // 기존 로컬스토리지 로직 (백 연결 전까지 유지)
