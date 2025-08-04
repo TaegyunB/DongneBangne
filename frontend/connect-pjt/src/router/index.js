@@ -6,6 +6,7 @@ import ChallengeFinishView from '@/views/ChallengeFinishView.vue'
 import SeniorCenter from '@/views/seniorCenter.vue'
 import SeniorCenterProfile from '@/views/seniorCenterProfile.vue'
 import MainPage from '@/views/MainpageView.vue'
+import GameView from '@/views/GameView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -45,6 +46,11 @@ const router = createRouter({
       name: 'challengeFinish',
       component: ChallengeFinishView,
       props: true
+    },
+    {
+      path: '/admin/game',
+      name: 'game',
+      component: GameView,
     }
   ]
 })
