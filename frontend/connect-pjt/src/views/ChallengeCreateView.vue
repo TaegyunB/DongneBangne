@@ -60,6 +60,8 @@ const isValid = computed(() => {
   return title.value.trim() && place.value.trim() && description.value.trim()
 })
 
+//-----------------------------------------
+//미션 생성 
 const handleSubmit = async () => {
   if (!isValid.value) {
     alert('모든 항목을 입력해주세요.')
@@ -75,13 +77,13 @@ const handleSubmit = async () => {
   console.log('axios로 보낼 데이터:', challengeData)
 
   try {
-    // 실제 API 전송 (백 연결 후 사용)
-    /*
-    const response = await axios.post('http://localhost:8080/api/challenges', challengeData)
+    // === 백엔드 연동 시 아래 주석 해제 ===
+    const response = await axios.post('http://localhost:8080/api/v1/admin/challenges', challengeData)
     console.log('서버 응답:', response.data)
-    */
 
-    // 임시 로컬 저장 (프론트 확인용)
+    // 생성 성공 시 응답 값을 사용해서 처리 (예: 목록에 추가)
+
+    // === 프론트 확인용 로컬 저장 ===
     const customChallenges = JSON.parse(localStorage.getItem('customChallenges') || '[]')
     const newChallenge = {
       title: challengeData.challengeTitle,
@@ -99,6 +101,7 @@ const handleSubmit = async () => {
     alert('도전 생성 중 오류가 발생했습니다.')
   }
 }
+//----------------------------------------------
 
 const goToList = () => {
   showModal.value = false
