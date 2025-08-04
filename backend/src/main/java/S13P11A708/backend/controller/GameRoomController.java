@@ -3,6 +3,7 @@ package S13P11A708.backend.controller;
 import S13P11A708.backend.dto.request.gameRoom.CreateGameRoomRequestDto;
 import S13P11A708.backend.dto.response.gameRoom.GameRoomResponseDto;
 import S13P11A708.backend.dto.response.gameRoomUser.GameRoomUserResponseDto;
+import S13P11A708.backend.dto.response.gameRoomUser.ReadyGameRoomUserResponseDto;
 import S13P11A708.backend.security.CustomOAuth2User;
 import S13P11A708.backend.service.GameRoomService;
 import lombok.RequiredArgsConstructor;
@@ -61,11 +62,12 @@ public class GameRoomController {
 
     /**
      * 참여한 게임방에서 사용자가 준비상태 전환하는 기능
+     * response에서 두 참가자 id 모두 제공
      */
     @PutMapping("/{roomId}/ready")
     public ResponseEntity<?> toggleReady(@PathVariable Long roomId,
                                          @AuthenticationPrincipal CustomOAuth2User oAuth2User){
-        gameRoomService.toggleReady(roomId, oAuth2User.getUserId());
-        return ResponseEntity.ok("게임 준비 상태로 전환됩니다.");
+        ReadyGameRoomUserResponseDto response = gameRoomService.toggleReady(roomId, oAuth2User.getUserId());
+        return ResponseEntity.ok(response);
     }
 }

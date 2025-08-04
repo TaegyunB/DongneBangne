@@ -8,6 +8,7 @@ import S13P11A708.backend.dto.request.gameRoom.CreateGameRoomRequestDto;
 import S13P11A708.backend.dto.request.gameRoom.JoinGameRoomRequestDto;
 import S13P11A708.backend.dto.response.gameRoom.GameRoomResponseDto;
 import S13P11A708.backend.dto.response.gameRoomUser.GameRoomUserResponseDto;
+import S13P11A708.backend.dto.response.gameRoomUser.ReadyGameRoomUserResponseDto;
 import S13P11A708.backend.repository.GameRoomRepository;
 import S13P11A708.backend.repository.GameRoomUserRepository;
 import S13P11A708.backend.repository.UserRepository;
@@ -122,21 +123,37 @@ public class GameRoomService {
      * 유저의 게임 준비 버튼 true/false
      */
     @Transactional
-    public void toggleReady(Long roomId, Long userId){
+    public ReadyGameRoomUserResponseDto toggleReady(Long roomId, Long userId){
         GameRoomUser gameRoomUser = gameRoomUserRepository.findByGameRoomId_IdAndUserId_Id(roomId, userId)
                 .orElseThrow(() -> new RuntimeException("해당 방 참가자가 아닙니다."));
         //준비 상태 변경 false->true
         gameRoomUser.userGetReady();
 
+        //해당 게임방에 참여하고 있던 참가자들
         List<GameRoomUser> participants = gameRoomUserRepository.findAllByGameRoomId_Id(roomId);
 
         //참가자가 2명이고 모두 ready 상태인 경우
         boolean allReady = participants.size() == 2 && participants.stream()
                 .allMatch(GameRoomUser::isReady);
 
+        GameRoom room = gameRoomUser.getGameRoomId();
         if(allReady){
-            GameRoom room = gameRoomUser.getGameRoomId();
             room.changeGameStatus(GameStatus.PROGRESS); //방 상태를 게임 진행 상태로 변경
         }
+
+        Long userId_1 = participants.size() > 0 ? participants.get(0).getUserId().getId() : null;
+        Long userId_2 = participants.size() > 1 ? participants.get(1).getUserId().getId() : null;
+
+        String message = allReady
+                ? "모든 참가자가 준비 완료되었습니다. 게임을 시작합니다."
+                : "준비 완료되었습니다. 상대방을 기다리는 중입니다.";
+
+        return ReadyGameRoomUserResponseDto.builder()
+                .gameRoomId(roomId)
+                .userId_1(userId_1)
+                .userId_2(userId_2)
+                .gameStatus(room.getGameStatus())
+                .message(message)
+                .build();
     }
 }

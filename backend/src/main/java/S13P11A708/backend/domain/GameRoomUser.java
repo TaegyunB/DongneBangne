@@ -28,7 +28,7 @@ public class GameRoomUser extends BaseEntity {
     @JoinColumn(name = "user_id")
     private User userId;
 
-    @Column(name = "ready")
+    @Column(name = "ready", nullable = false)
     private boolean ready = false;
 
     /**
