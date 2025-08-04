@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -23,11 +24,14 @@ public class ChallengeController {
      */
     @GetMapping
     public ResponseEntity<List<ChallengeResponseDto>> getMonthlyChallenges(
-            @RequestParam Integer year,
-            @RequestParam Integer month,
             @AuthenticationPrincipal CustomOAuth2User customUser) {
 
         Long userId = customUser.getUserId();
+
+        LocalDateTime now = LocalDateTime.now();
+        Integer year = now.getYear();
+        Integer month = now.getMonthValue();
+
         List<ChallengeResponseDto> challenges = challegeService.getMonthlyChallenges(userId, year, month);
 
         return ResponseEntity.status(HttpStatus.OK).body(challenges);
@@ -47,5 +51,4 @@ public class ChallengeController {
 
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
-
 }
