@@ -8,7 +8,6 @@ import lombok.*;
 @AllArgsConstructor
 public class PlayerStatus {
     private Long userId;
-    private Long roomId;
     private int correctCount;
     private boolean hintUsed;
 

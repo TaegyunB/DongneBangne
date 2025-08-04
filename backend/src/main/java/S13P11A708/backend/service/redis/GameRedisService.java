@@ -22,6 +22,7 @@ public class GameRedisService {
 
     /**
      * roomId를 Redis key로 변환하여, 게임 상태 전체를 redis에 저장
+     * 60분이 지나면 자동으로 삭제되도록 설정
      */
     public void saveGameStatus(Long roomId, GameStatusRedis status) {
         redisTemplate.opsForValue().set(getKey(roomId), status, Duration.ofMinutes(60));
@@ -37,7 +38,6 @@ public class GameRedisService {
 
     /**
      * 게임이 끝나면, Redis에 저장된 게임 상태 데이터 삭제
-     * @param roomId
      */
     public void deleteGameStatus(Long roomId) {
         redisTemplate.delete(getKey(roomId));
@@ -63,8 +63,6 @@ public class GameRedisService {
 
     /**
      * 현재 라운드에 해당하는 문제의 id를 redis 상태에 반영
-     * @param roomId
-     * @param questionId
      */
     public void updateCurrentQuestion(Long roomId, Long questionId) {
         GameStatusRedis status = getGameStatusRedis(roomId);
@@ -76,8 +74,6 @@ public class GameRedisService {
 
     /**
      * 유저가 맞춘 문제 갯수 올리기
-     * @param roomId
-     * @param userId
      */
     public void increaseScore(Long roomId, Long userId) {
         GameStatusRedis status = getGameStatusRedis(roomId);
@@ -93,8 +89,6 @@ public class GameRedisService {
 
     /**
      * hint 사용한 유저는 사용했음을 게임상태 redis에 표시
-     * @param roomId
-     * @param userId
      */
     public void markHintUsed(Long roomId, Long userId) {
         GameStatusRedis status = getGameStatus(roomId);
@@ -112,7 +106,6 @@ public class GameRedisService {
      * 해당 라운드가 끝나면 redis를 다음 라운드에 맞게 수정
      * hint 사용 여부 초기화
      * round 수 +1 증가
-     * @param roomId
      */
     public void advanceRound(Long roomId) {
         GameStatusRedis status = getGameStatus(roomId);
@@ -126,7 +119,6 @@ public class GameRedisService {
 
     /**
      * 게임이 종료되면 게임상태를 finished로 바꾼다.
-     * @param roomId
      */
     public void finishGame(Long roomId) {
         GameStatusRedis status = getGameStatus(roomId);
