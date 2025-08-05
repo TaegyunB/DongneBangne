@@ -22,68 +22,39 @@
     <div class="section-title">이야기하고, 도전하고, 함께하는 경로당 서비스</div>
     <br>
     
-    <!-- Admin UI -->
-    <!-- <div v-if="userRole === 'admin'">
-      <div class="main-card-grid-one">
-        <div class="main-card one" @click="goTo('/challenges')">
-          <div class="card-title">도전 과제</div>
-          <div class="card-desc">함께라서 더 의미있는 도전<br />매달 다양한 도전을 해보세요!</div>
-          <img src="@/assets/mainpage/assignment.png" alt="도전 아이콘" class="card-icon" />
-        </div>
-        <div class="main-card two" @click="goTo('/admin/games')">
-          <div class="card-title">게임</div>
-          <div class="card-desc">다른 경로당과 다양한 게임을<br />즐겨보세요!</div>
-          <img src="@/assets/mainpage/joystick.png" alt="게임 아이콘" class="card-icon" />
-        </div>
+    <!-- Admin,member UI 통합 -->
+    <div class="main-card-grid-one">
+      <div class="main-card one" @click="goTo('/challenges')">
+        <div class="card-title">도전 과제</div>
+        <div class="card-desc">함께라서 더 의미있는 도전<br />매달 다양한 도전을 해보세요!</div>
+        <img src="@/assets/mainpage/assignment.png" alt="도전 아이콘" class="card-icon" />
       </div>
-      <div class="main-card-grid-two">
-        <div class="main-card three" @click="goTo('/boards')">
-          <div class="card-title">게시판</div>
-          <div class="card-desc">이웃 경로당들과 소통하는 공간</div>
-          <img src="@/assets/mainpage/community.png" alt="게시판 아이콘" class="card-icon" />
-        </div>
-        <div class="main-card four" @click="goTo('/ranking')">
-          <div class="card-title">순위</div>
-          <div class="card-desc">우리 경로당은 몇 등일까요?</div>
-          <img src="@/assets/mainpage/ranking.png" alt="순위 아이콘" class="card-icon" />
-        </div>
-        <div class="main-card five" @click="goTo('/news')">
-          <div class="card-title">AI 신문</div>
-          <div class="card-desc">매달 우리만의 특별한 소식지</div>
-          <img src="@/assets/mainpage/newspaper.png" alt="신문 아이콘" class="card-icon" />
-        </div>
-      </div>
-    </div> -->
-
-    <!-- Member UI  -->
-    <!-- <div v-else-if="userRole === 'member'"> -->
-      <!-- 메인 카드 첫번째 줄 -->
-      <div class="main-card-grid-three">
-        <div class="main-card one" @click="goTo('/challenges')">
-          <div class="card-title">도전 과제</div>
-          <div class="card-desc">함께라서 더 의미있는 도전<br />매달 다양한 도전을 해보세요!</div>
-          <img src="@/assets/mainpage/assignment.png" alt="도전 아이콘" class="card-icon" />
-        </div>
-        <div class="main-card three" @click="goTo('/boards')">
-          <div class="card-title">게시판</div>
-          <div class="card-desc">이웃 경로당들과 소통하는 공간</div>
-          <img src="@/assets/mainpage/community.png" alt="게시판 아이콘" class="card-icon" />
-        </div>
-      </div>
-      <div class="main-card-grid-four">
-        <div class="main-card four" @click="goTo('/ranking')">
-          <div class="card-title">순위</div>
-          <div class="card-desc">우리 경로당은 몇 등일까요?</div>
-          <img src="@/assets/mainpage/ranking.png" alt="순위 아이콘" class="card-icon" />
-        </div>
-        <div class="main-card five" @click="goTo('/news')">
-          <div class="card-title">AI 신문</div>
-          <div class="card-desc">매달 우리만의 특별한 소식지</div>
-          <img src="@/assets/mainpage/newspaper.png" alt="신문 아이콘" class="card-icon" />
-        </div>
+      <div class="main-card two" @click="goTo('/admin/games')">
+        <div class="card-title">게임</div>
+        <div class="card-desc">다른 경로당과 다양한 게임을<br />즐겨보세요!</div>
+        <img src="@/assets/mainpage/joystick.png" alt="게임 아이콘" class="card-icon" />
       </div>
     </div>
-  <!-- </div> -->
+    <div class="main-card-grid-two">
+      <div class="main-card three" @click="goTo('/boards')">
+        <div class="card-title">게시판</div>
+        <div class="card-desc">이웃 경로당들과 소통하는 공간</div>
+        <img src="@/assets/mainpage/community.png" alt="게시판 아이콘" class="card-icon" />
+      </div>
+      <div class="main-card four" @click="goTo('/ranking')">
+        <div class="card-title">순위</div>
+        <div class="card-desc">우리 경로당은 몇 등일까요?</div>
+        <img src="@/assets/mainpage/ranking.png" alt="순위 아이콘" class="card-icon" />
+      </div>
+      <div class="main-card five" @click="goTo('/news')">
+        <div class="card-title">AI 신문</div>
+        <div class="card-desc">매달 우리만의 특별한 소식지</div>
+        <img src="@/assets/mainpage/newspaper.png" alt="신문 아이콘" class="card-icon" />
+      </div>
+    </div>
+  </div>
+
+
 </template>
 
 <script setup>
