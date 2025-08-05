@@ -68,6 +68,21 @@ spring:
       diskspace:
         enabled: true  # 디스크 공간 헬스체크 활성화
 
+  # 비동기 처리 설정
+  task:
+    execution:
+      pool:
+        core-size: 5
+        max-size: 10
+        queue-capacity: 100
+      thread-name-prefix: "ai-news-"
+
+  # 파일 업로드 크기 제한
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
 # AWS S3 - IAM 역할 사용
 cloud:
   aws:
@@ -80,6 +95,13 @@ cloud:
       static: us-east-2
     stack:
       auto: false
+
+# openAI
+openai:
+  api:
+    key: S13P12A708-bdbeb6b5-f6b2-44bd-b53a-c8c13a9c123c
+    url: https://gms.ssafy.io/gmsapi/api.openai.com/v1
+    enabled: true
 
 logging:
   level:

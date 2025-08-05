@@ -44,6 +44,9 @@ public class Challenge extends BaseEntity {
     @Column(name = "image_description")
     private String imageDescription;
 
+    @Column(name = "ai_description", columnDefinition = "LONGTEXT")
+    private String aiDescription;
+
     @Builder.Default
     @Column(name = "is_success")
     private Boolean isSuccess = false;
@@ -89,6 +92,11 @@ public class Challenge extends BaseEntity {
     }
 
     /**
+     * AI 요약 등록 setter
+     */
+    public void updateAiDescription(String aiDescription) { this.aiDescription = aiDescription; }
+
+    /**
      * 도전 완료 setter
      */
     public void completeChallenge() {
@@ -99,5 +107,12 @@ public class Challenge extends BaseEntity {
      * 도전 완료 취소 setter
      */
     public void cancelCompletion() { this.isSuccess = false; }
+
+    /**
+     * AI 신문과 연관관계 설정
+     */
+    public void setAiNews(AiNews aiNews) {
+        this.aiNews = aiNews;
+    }
 
 }

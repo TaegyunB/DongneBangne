@@ -2,15 +2,14 @@ package S13P11A708.backend.controller.admin;
 
 import S13P11A708.backend.dto.request.challenge.CreateChallengeRequestDto;
 import S13P11A708.backend.dto.request.challenge.UpdateChallengeRequestDto;
-import S13P11A708.backend.dto.response.challenge.CancelCompletedChallengeResponseDto;
-import S13P11A708.backend.dto.response.challenge.CompleteChallengeResponseDto;
-import S13P11A708.backend.dto.response.challenge.CreateChallengeResponseDto;
-import S13P11A708.backend.dto.response.challenge.UpdateChallengeResponseDto;
+import S13P11A708.backend.dto.response.challenge.*;
 import S13P11A708.backend.security.CustomOAuth2User;
 import S13P11A708.backend.service.ChallengeService;
 import S13P11A708.backend.service.S3Service;
+import com.amazonaws.Response;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -24,13 +23,14 @@ import java.util.Map;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/admin/challenges")
+@Slf4j
 public class ChallengeAdminController {
 
     private final ChallengeService challengeService;
     private final S3Service s3Service;
 
     /**
-     * 도전 생성
+     * 챌린지 생성
      * @param requestDto 도전 생성 요청 DTO
      * @param customUser JWT 토큰에서 추출한 관리자 ID
      */
@@ -46,7 +46,7 @@ public class ChallengeAdminController {
     }
 
     /**
-     * 도전 수정
+     * 챌린지 수정
      */
     @PutMapping("/{challengeId}")
     public ResponseEntity<UpdateChallengeResponseDto> updateChallenge(
@@ -61,7 +61,7 @@ public class ChallengeAdminController {
     }
 
     /**
-     * 도전 삭제
+     * 챌린지 삭제
      */
     @DeleteMapping("/{challengeId}")
     public ResponseEntity<Map<String, String>> deleteChallenge(
@@ -77,6 +77,35 @@ public class ChallengeAdminController {
         response.put("deletedChallengeId", challengeId.toString());
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 챌린지 이미지 및 설명 업로드
+     */
+    @PostMapping("/{challengeId}/missionFinishUpdate")
+    public ResponseEntity<ChallengeResponseDto> uploadChallengeImageWithDescription(
+            @PathVariable("challengeId") Long challengeId,
+            @RequestPart("imageFile") MultipartFile imageFile,
+            @RequestPart("imageDescription") String imageDescription,
+            @AuthenticationPrincipal CustomOAuth2User customUser) {
+
+        try {
+            Long userId =  customUser.getUserId();
+
+            ChallengeResponseDto response = challengeService.uploadChallengeImageWithDescription(challengeId, imageFile, imageDescription, userId);
+
+            log.info("도전 이미지 업로드 성공: userId={}, challengeId={}", userId, challengeId);
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalArgumentException e) {
+            log.warn("도전 이미지 업로드 검증 실패: challengeId={}, error={}", challengeId, e.getMessage());
+            throw e;
+
+        } catch (Exception e) {
+            log.error("도전 이미지 업로드 중 오류: challengeId={}", challengeId);
+            throw new RuntimeException("이미지 업로드 중 오류가 발생했습니다.", e);
+
+        }
     }
 
     /**
@@ -107,7 +136,7 @@ public class ChallengeAdminController {
         }
 
         // S3에 업로드
-        String fileUrl = s3Service.uploadFile(file, "images");
+        String fileUrl = s3Service.uploadMultipartFile(file, "images");
 
         // DB에 이미지URL 업데이트
         challengeService.updateChallengeImage(challengeId, fileUrl, adminId);
@@ -141,7 +170,7 @@ public class ChallengeAdminController {
     }
 
     /**
-     * 도전 완료 처리
+     * 챌린지 완료 처리
      */
     @PutMapping("/{challengeId}/complete")
     public ResponseEntity<CompleteChallengeResponseDto> completeChallenge(
@@ -155,7 +184,7 @@ public class ChallengeAdminController {
     }
 
     /**
-     * 도전 완료 취소 (Admin 전용)
+     * 챌린지 완료 취소 (Admin 전용)
      */
     @PutMapping("/{challengeId}/cancel")
     public ResponseEntity<CancelCompletedChallengeResponseDto> cancelCompletedChallengne(
