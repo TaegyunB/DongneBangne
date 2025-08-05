@@ -14,6 +14,7 @@ const router = createRouter({
       path: '/challenges',
       name: 'challenge',
       component: ChallengeView,
+      props:true //userRole 전달 
     },
     {
       path: '/login',

@@ -24,7 +24,7 @@
     
     <!-- Admin,member UI 통합 -->
     <div class="main-card-grid-one">
-      <div class="main-card one" @click="goTo('/challenges')">
+      <div class="main-card one" @click="goToChallenges">
         <div class="card-title">도전 과제</div>
         <div class="card-desc">함께라서 더 의미있는 도전<br />매달 다양한 도전을 해보세요!</div>
         <img src="@/assets/mainpage/assignment.png" alt="도전 아이콘" class="card-icon" />
@@ -53,46 +53,47 @@
       </div>
     </div>
   </div>
-
-
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
 
 const router = useRouter()
 const userRole = ref('')
 
-// 사용자 역할 정보를 백엔드에서 가져오는 함수
+// 도전으로 넘겨줄 role 백으로부터 받아오기. API주소 수정 필요. 
 const fetchUserRole = async () => {
   try {
-    // 백엔드 API 호출 (실제 엔드포인트로 변경 필요)
-    const response = await fetch('/api/user/role', {
-      method: 'GET',
+    const response = await axios.get('/api/user/role', {
       headers: {
         'Content-Type': 'application/json',
-        // 필요한 경우 인증 헤더 추가
-        // 'Authorization': `Bearer ${token}`
       }
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      userRole.value = data.role // 'admin' 또는 'member'
+    if (response.status === 200) {
+      userRole.value = response.data.userrole // API 응답에서 userrole 추출
+      console.log('사용자 역할:', userRole.value)
     } else {
       console.error('Failed to fetch user role')
-      // 기본값 설정 또는 에러 처리
-      userRole.value = 'member'
+      userRole.value = 'member' // 기본값 설정
     }
   } catch (error) {
     console.error('Error fetching user role:', error)
-    // 기본값 설정
-    userRole.value = 'member'
+    userRole.value = 'member' // 에러 시 기본값 설정
   }
 }
 
-// 카드 클릭 시 이동 함수
+// 도전 과제 페이지로 이동하면서 userRole을 props로 전달
+const goToChallenges = () => {
+  router.push({
+    name: 'challenge', // 또는 실제 라우트 이름
+    params: { userRole: userRole.value }
+  })
+}
+
+// 일반 카드 클릭 시 이동 함수
 function goTo(url) {
   router.push(url)
 }

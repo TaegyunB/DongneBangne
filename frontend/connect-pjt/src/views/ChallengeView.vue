@@ -38,10 +38,8 @@
           <div class="text-content">
             <div class="title-with-buttons">
               <h2>{{ challenge.title }}</h2>
-              <!-- 백 연결시 주석 해제: admin 역할일 때만 수정/삭제 버튼 표시 -->
-              <!-- <div v-if="challenge.role === 'admin' && !challenge.isEmpty" class="action-buttons"> -->
-              <!-- 커스텀 도전과제에만 수정/삭제 버튼 (기존 코드) -->
-              <div v-if="index >= 2 && !challenge.isEmpty" class="action-buttons">
+              <!-- userRole이 admin일 때만 수정/삭제 버튼 표시 -->
+              <div v-if="userRole === 'admin' && index >= 2 && !challenge.isEmpty" class="action-buttons">
                 <button class="edit-btn" @click.stop="editChallenge(index)">수정</button>
                 <button class="delete-btn" @click.stop="showDeleteConfirm(index)">삭제</button>
               </div>
@@ -147,10 +145,8 @@
       </div>
     </div>
 
-    <!-- 생성 버튼 -->
-    <!-- 백 연결시 주석 해제: admin 역할일 때만 생성 버튼 표시 -->
-    <!-- <div class="create-challenge" v-if="userRole === 'admin' && shouldShowCreateButton"> -->
-    <div class="create-challenge" v-if="shouldShowCreateButton">
+    <!-- 생성 버튼 - userRole이 admin일 때만 표시 -->
+    <div class="create-challenge" v-if="userRole === 'admin' && shouldShowCreateButton">
       <button class="challenge-btn" @click="moveToCreate()">도전과제 생성하기</button>
     </div>
   </div>
@@ -164,7 +160,8 @@ import axios from 'axios'
 const router = useRouter()
 
 const props = defineProps({
-  month: { type: Number, default: new Date().getMonth() + 1 }
+  month: { type: Number, default: new Date().getMonth() + 1 },
+  userRole: { type: String, default: 'member' } // MainPage에서 받는 userRole prop
 })
 
 // 반응형 데이터
@@ -174,9 +171,6 @@ const progressMessages = ref([])
 const currentMessage = ref('')
 const monthlyChallenges = ref({})
 const challenges = ref([])
-
-// 백 연결시 주석 해제: 사용자 역할 관리
-// const userRole = ref('member') // 기본값은 member
 
 // 모달 상태
 const modals = ref({
@@ -239,11 +233,6 @@ const fetchChallengesFromBackend = async () => {
       role: challenge.role,
       isEmpty: false
     }))
-    
-    // 사용자 역할 설정 (첫 번째 도전과제의 role을 기준으로, 또는 별도 API 호출)
-    if (backendChallenages.length > 0) {
-      userRole.value = backendChallenages[0].role
-    }
     
   } catch (error) {
     console.error('백엔드에서 도전과제를 불러오는 데 실패했습니다:', error)
