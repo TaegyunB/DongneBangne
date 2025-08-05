@@ -4,7 +4,9 @@
     <div class="a4-container" ref="pdfTarget">
       <!-- 내용은 그대로 -->
       <div class="header">
-        <h1> {{ seniorCenterName }} {{ month }}월 AI 신문</h1>
+        <div class="title-wrapper">
+            <h1>{{ seniorCenterName }} {{ month }}월 AI 신문</h1>
+        </div>
         <span class="date">2025.{{ month }}.31</span>
       </div>
       <div class="ranking">
@@ -60,23 +62,33 @@ defineExpose({ pdfTarget })  // View에서 ref 접근 가능하게
 }
 
 .header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid black;
+  position: relative;
   border-top: 1px solid black;
+  border-bottom: 1px solid black;
   padding-bottom: 8px;
   margin-bottom: 10mm;
+  margin-top: 10mm;
+  height: 30px; /* 높이 고정 필요 시 조정 */
 }
 
-.header h1 {
-  font-size: 22px; /* 폰트 크기 줄임 */
+.title-wrapper {
+  text-align: center;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+}
+
+.title-wrapper h1 {
+  font-size: 22px;
   margin: 0;
   font-weight: bold;
-  justify-content: center
 }
 
 .date {
+  position: absolute;
+  right: 0;
+  top: 0;
   font-size: 13px;
   color: #555;
 }
