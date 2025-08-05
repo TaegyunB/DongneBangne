@@ -4,12 +4,14 @@ import Start from '@/views/start.vue'
 import Onboarding from '@/views/onboarding.vue'
 import SeniorCenter from '@/views/seniorCenter.vue'
 import SeniorCenterProfile from '@/views/seniorCenterProfile.vue'
-import ChallengeView from '../views/ChallengeView.vue'
 import ChallengeCreateView from '@/views/ChallengeCreateView.vue'
 import ChallengeFinishView from '@/views/ChallengeFinishView.vue'
-import SeniorCenter from '@/views/seniorCenter.vue'
-import SeniorCenterProfile from '@/views/seniorCenterProfile.vue'
 import MainPage from '@/views/MainpageView.vue'
+import CommunityBoards from '@/views/communityBoards.vue'
+import CommunityWrite from '@/views/communityWrite.vue'
+import CommunityDetail from '@/views/communityDetail.vue'
+import CommunityEdit from '@/views/communityEdit.vue'
+import RankingBoard from '@/views/rankingBoard.vue'
 import GameView from '@/views/GameView.vue'
 
 const router = createRouter({
@@ -44,6 +46,31 @@ const router = createRouter({
       path: '/mainpage',
       name: 'mainPage',
       component: MainPage,
+    },
+    {
+      path: '/boards',
+      name: 'Boards',
+      component: CommunityBoards,
+    },
+    {
+      path: '/boards/write',
+      name: 'communitysWrite',
+      component: CommunityWrite,
+    },
+    {
+      path: '/boards/:id',
+      name: 'communityDetail',
+      component: CommunityDetail,
+    },
+    {
+      path: '/boards/:id/edit',
+      name: 'communityEdit',
+      component: CommunityEdit,
+    },
+    {
+      path: '/ranking',
+      name: 'Ranking',
+      component: RankingBoard,
     },
     {
       path: '/admin/challenges',
