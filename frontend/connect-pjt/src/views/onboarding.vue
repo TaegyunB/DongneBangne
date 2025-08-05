@@ -177,6 +177,13 @@ const sections = [
 </script>
 
 <style scoped>
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 .onboarding-container {
   min-height: 100vh;
   display: flex;
