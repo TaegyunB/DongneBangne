@@ -2,6 +2,7 @@ package S13P11A708.backend.service.redis;
 
 import S13P11A708.backend.domain.enums.GameStatus;
 import S13P11A708.backend.domain.redis.GameStatusRedis;
+import S13P11A708.backend.domain.redis.PlayerStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -15,6 +16,9 @@ import java.util.Map;
 public class GameRedisService {
 
     private final RedisTemplate<String, Object> redisTemplate;
+
+    private static final int HINT_COST = 20;
+    //우승 시 100
 
     private String getKey(Long roomId) {
         return "game:room:" + roomId;
@@ -100,6 +104,42 @@ public class GameRedisService {
             }
             saveGameStatus(roomId, status);
         }
+    }
+
+    /**
+     * 힌트를 사용할 수 있는 상태인지 확인
+     * 개인 포인트가 충분한지
+     */
+    public boolean canUseHint(Long roomId, Long userId) {
+        GameStatusRedis status = getGameStatusRedis(roomId);
+        if(status == null) return false;
+
+        PlayerStatus player = findPlayer(status, userId);
+        return player != null && player.getPoint() >= HINT_COST;
+    }
+
+    /**
+     * 힌트 사용시, player point 차감
+     */
+    public void useHint(Long roomId, Long userId){
+        GameStatusRedis status = getGameStatusRedis(roomId);
+        if(status == null) return;
+
+        PlayerStatus player = findPlayer(status, userId);
+        if(player != null && canUseHint(roomId, userId)) {
+            player.updateHintUsed(true);
+            player.updatePoint(player.getPoint() - HINT_COST); //힌트 포인트 차감
+            saveGameStatus(roomId, status);
+        }
+    }
+
+    /**
+     * player 정보 상태 불러오기
+     */
+    private PlayerStatus findPlayer(GameStatusRedis status, Long userId){
+        if(status.getUser1().getUserId().equals(userId)) return status.getUser1();
+        if(status.getUser2().getUserId().equals(userId)) return status.getUser2();
+        return null;
     }
 
     /**

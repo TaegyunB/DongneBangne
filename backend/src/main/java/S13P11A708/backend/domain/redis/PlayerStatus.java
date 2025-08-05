@@ -8,11 +8,17 @@ import lombok.*;
 @AllArgsConstructor
 public class PlayerStatus {
     private Long userId;
+    private Long rooomId; //소속된 방id
     private int correctCount;
     private boolean hintUsed;
+    private Long point; //개인 포인트
 
     public void updateHintUsed(boolean hintUsed){
         this.hintUsed = hintUsed;
+    }
+
+    public void updatePoint(Long point){
+        this.point = point;
     }
 
     public void updateCorrectCount(int correctCount){
