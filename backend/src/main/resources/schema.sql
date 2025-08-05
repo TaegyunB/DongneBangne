@@ -20,6 +20,7 @@ CREATE TABLE senior_center (
     senior_center_id    BIGINT AUTO_INCREMENT PRIMARY KEY,
     center_name         VARCHAR(255) NOT NULL,
     address             VARCHAR(255) NOT NULL,
+    admin_user_id 		BIGINT,
     trot_point          BIGINT DEFAULT 0,
     challenge_point     BIGINT DEFAULT 0,
     total_point         BIGINT DEFAULT 0,
