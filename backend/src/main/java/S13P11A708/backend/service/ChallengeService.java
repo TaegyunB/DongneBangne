@@ -187,7 +187,7 @@ public class ChallengeService {
     }
 
     /**
-     * 챌린지 이미지 및 설명 업로드 (Admin 전용)
+     * 챌린지 이미지 및 설명 업로드 -> 챌린지 완료 처리 (Admin 전용)
      */
     public ChallengeResponseDto uploadChallengeImageWithDescription(Long challengeId, MultipartFile imageFile,
                                                     String imageDescription, Long adminId) {
@@ -201,6 +201,16 @@ public class ChallengeService {
             // 이미지 URL과 설명 업데이트
             challenge.updateChallengeImage(imageUrl);
             challenge.updateImageDescription(imageDescription);
+
+            // 이미지와 설명이 모두 존재하면 챌린지 성공 처리
+            if (imageUrl != null && !imageUrl.isEmpty() && imageDescription != null && !imageDescription.isEmpty()) {
+                challenge.completeChallenge();
+
+                // 포인트 추가
+                SeniorCenter seniorCenter = validateAndGetSeniorCenter(adminId);
+                seniorCenter.addChallengePoint(challenge.getPoint());
+                seniorCenterRepository.save(seniorCenter);
+            }
 
             Challenge savedChallenge = challengeRepository.save(challenge);
 
@@ -245,37 +255,6 @@ public class ChallengeService {
         // DB에서 이미지 URL 제거
         challenge.updateChallengeImage(null);
         challengeRepository.save(challenge);
-    }
-
-    /**
-     * 챌린지 완료 처리 (Admin 전용)
-     */
-    public CompleteChallengeResponseDto completeChallenge(Long challengeId, Long adminId) {
-        Challenge challenge = validateAndGetChallenge(challengeId, adminId);
-
-        // 이미 완료되었는지 확인
-        if (challenge.getIsSuccess()) {
-            throw new IllegalArgumentException("해당 챌린지를 찾을 수 없거나 접근 권한이 없습니다.");
-        }
-
-        // 완료 조건 검증: 이미지와 설명이 모두 있어야 함
-        if (challenge.getChallengeImage() == null || challenge.getChallengeImage().isEmpty()) {
-            throw new IllegalArgumentException("챌린지를 완료하려면 인증 사진을 업로드해주세요.");
-        }
-
-        if (challenge.getImageDescription() == null || challenge.getImageDescription().trim().isEmpty()) {
-            throw new IllegalArgumentException("챌린지를 완료하려면 사진에 대한 설명을 작성해주세요.");
-        }
-
-        challenge.completeChallenge();
-        Challenge completedChallenge = challengeRepository.save(challenge);
-
-        SeniorCenter seniorCenter = validateAndGetSeniorCenter(adminId);
-        // 경로당 포인트 추가
-        seniorCenter.addChallengePoint(challenge.getPoint());
-        SeniorCenter updatedSeniorCenter = seniorCenterRepository.save(seniorCenter);
-
-        return CompleteChallengeResponseDto.from(completedChallenge, updatedSeniorCenter);
     }
 
     /**

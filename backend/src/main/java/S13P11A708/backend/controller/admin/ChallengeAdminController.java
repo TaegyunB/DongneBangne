@@ -80,7 +80,7 @@ public class ChallengeAdminController {
     }
 
     /**
-     * 챌린지 이미지 및 설명 업로드
+     * 챌린지 이미지 및 설명 업로드 -> 챌린지 완료 처리
      */
     @PostMapping("/{challengeId}/missionFinishUpdate")
     public ResponseEntity<ChallengeResponseDto> uploadChallengeImageWithDescription(
@@ -91,18 +91,14 @@ public class ChallengeAdminController {
 
         try {
             Long userId =  customUser.getUserId();
-
             ChallengeResponseDto response = challengeService.uploadChallengeImageWithDescription(challengeId, imageFile, imageDescription, userId);
 
-            log.info("도전 이미지 업로드 성공: userId={}, challengeId={}", userId, challengeId);
             return ResponseEntity.ok(response);
 
         } catch (IllegalArgumentException e) {
-            log.warn("도전 이미지 업로드 검증 실패: challengeId={}, error={}", challengeId, e.getMessage());
             throw e;
 
         } catch (Exception e) {
-            log.error("도전 이미지 업로드 중 오류: challengeId={}", challengeId);
             throw new RuntimeException("이미지 업로드 중 오류가 발생했습니다.", e);
 
         }
@@ -166,20 +162,6 @@ public class ChallengeAdminController {
         response.put("message", "이미지가 성공적으로 삭제되었습니다.");
         response.put("challengeId", challengeId.toString());
 
-        return ResponseEntity.ok(response);
-    }
-
-    /**
-     * 챌린지 완료 처리
-     */
-    @PutMapping("/{challengeId}/complete")
-    public ResponseEntity<CompleteChallengeResponseDto> completeChallenge(
-            @PathVariable("challengeId") Long challengeId,
-            @AuthenticationPrincipal CustomOAuth2User customUser) {
-
-        Long adminId = customUser.getUserId();
-
-        CompleteChallengeResponseDto response = challengeService.completeChallenge(challengeId, adminId);
         return ResponseEntity.ok(response);
     }
 
