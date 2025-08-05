@@ -7,8 +7,8 @@
       <div v-if="ui.showMenu" class="nav-menu">
         <router-link to="/admin/game" class="nav-item">게임</router-link>
         <router-link to="/challenges" class="nav-item">도전과제</router-link>
-        <a href="#" class="nav-item">게시판</a>
-        <a href="#" class="nav-item">순위</a>
+        <router-link to="/boards" class="nav-item">게시판</router-link>
+        <router-link to="/rankings" class="nav-item">순위</router-link>
         <a href="#" class="nav-item">AI 신문</a>
       </div>
              

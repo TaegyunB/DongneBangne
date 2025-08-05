@@ -68,8 +68,8 @@ const router = createRouter({
       component: CommunityEdit,
     },
     {
-      path: '/ranking',
-      name: 'Ranking',
+      path: '/rankings',
+      name: 'Rankings',
       component: RankingBoard,
     },
     {
