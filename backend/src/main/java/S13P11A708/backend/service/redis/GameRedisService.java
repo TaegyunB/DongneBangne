@@ -66,6 +66,25 @@ public class GameRedisService {
     }
 
     /**
+     * websocket에서 게임 시작 메세지 받으면,
+     * db에서 redis로 데이터 초기화 진행해야 됨.
+     */
+    public void initGame(Long roomId, int totalRound, Long userId1, Long point1, Long userId2, Long point2) {
+        GameStatusRedis status = GameStatusRedis.builder()
+                .roomId(roomId)
+                .round(1)
+                .totalRound(totalRound)
+                .currentQuestionId(null)
+                .status(GameStatus.PROGRESS)
+                .user1(new PlayerStatus(userId1, 0, false, point1))
+                .user2(new PlayerStatus(userId2, 0, false, point2))
+                .build();
+
+        saveGameStatus(roomId, status);
+    }
+
+
+    /**
      * 현재 라운드에 해당하는 문제의 id를 redis 상태에 반영
      */
     public void updateCurrentQuestion(Long roomId, Long questionId) {

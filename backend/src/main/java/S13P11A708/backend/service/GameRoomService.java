@@ -7,6 +7,7 @@ import S13P11A708.backend.domain.enums.GameStatus;
 import S13P11A708.backend.dto.request.gameRoom.CreateGameRoomRequestDto;
 import S13P11A708.backend.dto.request.gameRoom.JoinGameRoomRequestDto;
 import S13P11A708.backend.dto.response.gameRoom.GameRoomResponseDto;
+import S13P11A708.backend.dto.response.gameRoomUser.CurrentRoomUserResponseDto;
 import S13P11A708.backend.dto.response.gameRoomUser.GameRoomUserResponseDto;
 import S13P11A708.backend.dto.response.gameRoomUser.ReadyGameRoomUserResponseDto;
 import S13P11A708.backend.repository.GameRoomRepository;
@@ -156,4 +157,27 @@ public class GameRoomService {
                 .message(message)
                 .build();
     }
+
+    /**
+     * 해당 게임방에 들어와 있는 유저들의 정보 보내주기
+     * 게임방 대기 페이지에서 필요할 수도.
+     */
+    @Transactional
+    public List<CurrentRoomUserResponseDto> getWaitingUsers(Long roomId){
+        List<GameRoomUser> participants = gameRoomUserRepository.findAllByGameRoomId_Id(roomId);
+
+        return participants.stream()
+                .map(participant -> {
+                    User user = participant.getUserId();
+                    return CurrentRoomUserResponseDto.builder()
+                            .gameRoomId(roomId)
+                            .userId(user.getId())
+                            .nickname(user.getNickname())
+                            .seniorCenter(user.getSeniorCenter().getCenterName())
+                            .ready(participant.isReady())
+                            .build();
+                })
+                .toList();
+    }
+
 }

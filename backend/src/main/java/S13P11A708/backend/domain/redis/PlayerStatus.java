@@ -13,6 +13,9 @@ public class PlayerStatus {
     private boolean hintUsed;
     private Long point; //개인 포인트
 
+    public PlayerStatus(Long userId, int correctCount, boolean hintUsed, Long point) {
+    }
+
     public void updateHintUsed(boolean hintUsed){
         this.hintUsed = hintUsed;
     }
