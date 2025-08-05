@@ -53,9 +53,23 @@ public class GameRoomService {
      * WAITING 상태인 게임방 조회
      */
     public List<GameRoomResponseDto> getWaitingRooms(){
-        return gameRoomRepository.findByGameStatus(GameStatus.WAITING)
-                .stream()
-                .map(GameRoomResponseDto::from)
+        List<GameRoom> waitingRooms = gameRoomRepository.findByGameStatus(GameStatus.WAITING);
+
+        return waitingRooms.stream()
+                .map(room -> {
+                    //roomId가 연결된 GameRoomUser 엔티티 갯수 세기
+                    int participantCount = gameRoomUserRepository.countByGameRoomId_Id(room.getId());
+
+                    return GameRoomResponseDto.builder()
+                            .id(room.getId())
+                            .roomTitle(room.getRoomTitle())
+                            .gameRound(room.getGameRound())
+                            .musicEra(room.getMusicEra())
+                            .category(room.getCategory())
+                            .gameStatus(room.getGameStatus().name())
+                            .participantCount(participantCount)
+                            .build();
+                })
                 .toList();
     }
 
