@@ -7,6 +7,7 @@ import ChallengeFinishView from '@/views/ChallengeFinishView.vue'
 import SeniorCenter from '@/views/seniorCenter.vue'
 import SeniorCenterProfile from '@/views/seniorCenterProfile.vue'
 import MainPage from '@/views/MainpageView.vue'
+import AiNewsDetail from '@/views/AiNewsDetailView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -50,6 +51,12 @@ const router = createRouter({
       path: '/admin/challenges/:challengeId/complete',
       name: 'challengeFinish',
       component: ChallengeFinishView,
+      props: true
+    },
+    {
+      path: '/news',
+      name: 'news',
+      component: AiNewsDetail,
       props: true
     }
   ]
