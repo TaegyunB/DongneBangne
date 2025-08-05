@@ -5,7 +5,7 @@
       <img src="@/assets/logo.png" alt="로고" class="logo">
              
       <div v-if="ui.showMenu" class="nav-menu">
-        <a href="#" class="nav-item">게임</a>
+        <router-link to="/admin/game" class="nav-item">게임</router-link>
         <router-link to="/challenges" class="nav-item">도전과제</router-link>
         <a href="#" class="nav-item">게시판</a>
         <a href="#" class="nav-item">순위</a>

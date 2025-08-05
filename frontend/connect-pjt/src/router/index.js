@@ -1,17 +1,30 @@
 import { createRouter, createWebHistory } from 'vue-router'
-
+import ChallengeView from '../views/ChallengeView.vue'
+import Start from '@/views/start.vue'
 import Onboarding from '@/views/onboarding.vue'
 import SeniorCenter from '@/views/seniorCenter.vue'
 import SeniorCenterProfile from '@/views/seniorCenterProfile.vue'
 import ChallengeView from '../views/ChallengeView.vue'
 import ChallengeCreateView from '@/views/ChallengeCreateView.vue'
 import ChallengeFinishView from '@/views/ChallengeFinishView.vue'
-import CommunityBoards from '@/views/communityBoards.vue'
-import MainPage from '@/views/mainPage.vue'
+import SeniorCenter from '@/views/seniorCenter.vue'
+import SeniorCenterProfile from '@/views/seniorCenterProfile.vue'
+import MainPage from '@/views/MainpageView.vue'
+import GameView from '@/views/GameView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    {
+      path: '/challenges',
+      name: 'challenge',
+      component: ChallengeView,
+    },
+    {
+      path: '/',
+      name: 'start',
+      component: Start
+    },
     {
       path: '/login',
       name: 'onboarding',
@@ -33,11 +46,6 @@ const router = createRouter({
       component: MainPage,
     },
     {
-      path: '/challenges',
-      name: 'challenge',
-      component: ChallengeView,
-    },
-    {
       path: '/admin/challenges',
       name: 'challengeCreate',
       component: ChallengeCreateView,
@@ -49,9 +57,9 @@ const router = createRouter({
       props: true
     },
     {
-      path: '/boards',
-      name: 'communityBoards',
-      component: CommunityBoards,
+      path: '/admin/game',
+      name: 'game',
+      component: GameView,
     }
   ]
 })

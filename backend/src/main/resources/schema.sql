@@ -10,6 +10,7 @@ CREATE TABLE user (
     nickname            VARCHAR(100) NOT NULL, -- 홍길동
     profile_image       VARCHAR(255),
     user_role           ENUM('ADMIN', 'MEMBER', 'GUEST'),
+    personal_point      BIGINT DEFAULT 0, -- 추가
     created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at          TIMESTAMP NULL
 );
@@ -19,11 +20,12 @@ CREATE TABLE senior_center (
     senior_center_id    BIGINT AUTO_INCREMENT PRIMARY KEY,
     center_name         VARCHAR(255) NOT NULL,
     address             VARCHAR(255) NOT NULL,
+    admin_user_id 		BIGINT,
     trot_point          BIGINT DEFAULT 0,
-    word_point          BIGINT DEFAULT 0,
-    talk_point          BIGINT DEFAULT 0,
     challenge_point     BIGINT DEFAULT 0,
     total_point         BIGINT DEFAULT 0,
+    ranking_year        INT,
+    ranking_month       INT,
     created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at          TIMESTAMP NULL
 );
@@ -128,24 +130,28 @@ CREATE TABLE challenge (
     FOREIGN KEY (ai_news_id) REFERENCES ai_news(ai_news_id) ON DELETE SET NULL
 );
 
--- Ranking 테이블 (rank를 ranking으로 변경, ai_news_id 추가)
-CREATE TABLE ranking (
-    ranking_id          BIGINT AUTO_INCREMENT PRIMARY KEY,
-    senior_center_id    BIGINT NOT NULL,
-    ai_news_id          BIGINT,
-    ranking             INT NOT NULL,
-    year                INT NOT NULL,
-    month               INT NOT NULL,
-    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at          TIMESTAMP NULL,
-    FOREIGN KEY (senior_center_id) REFERENCES senior_center(senior_center_id) ON DELETE CASCADE,
-    FOREIGN KEY (ai_news_id) REFERENCES ai_news(ai_news_id) ON DELETE SET NULL
-);
+-- -- Ranking 테이블 (rank를 ranking으로 변경, ai_news_id 추가)
+-- CREATE TABLE ranking (
+--     ranking_id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+--     senior_center_id    BIGINT NOT NULL,
+--     ai_news_id          BIGINT,
+--     ranking             INT NOT NULL,
+--     year                INT NOT NULL,
+--     month               INT NOT NULL,
+--     created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--     updated_at          TIMESTAMP NULL,
+--     FOREIGN KEY (senior_center_id) REFERENCES senior_center(senior_center_id) ON DELETE CASCADE,
+--     FOREIGN KEY (ai_news_id) REFERENCES ai_news(ai_news_id) ON DELETE SET NULL
+-- );
 
 -- ChallengeReport 테이블 (단순 버전으로 수정)
 CREATE TABLE challenge_report (
     challenge_report_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    challenge_id        BIGINT NOT NULL,
+    report_user_id      BIGINT,
     reason              VARCHAR(1000) NOT NULL,
     created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at          TIMESTAMP NULL
+    updated_at          TIMESTAMP NULL,
+    FOREIGN KEY (challenge_id) REFERENCES challenge(challenge_id) ON DELETE CASCADE,
+    FOREIGN KEY (report_user_id) REFERENCES user(user_id) ON DELETE SET NULL
 );
