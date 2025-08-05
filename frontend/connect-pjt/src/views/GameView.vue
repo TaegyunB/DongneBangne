@@ -1,8 +1,9 @@
-<!-- src/views/UnityView.vue -->
 <template>
   <div class="unity-wrapper">
+    <button @click="sendToUnity">Vue → Unity</button>
     <iframe
-      src="/WebGLTest_Build/index.html"
+      ref="unityFrame"
+      src="/unity/index.html"
       width="1280"
       height="720"
       frameborder="0"
@@ -12,7 +13,18 @@
 </template>
 
 <script>
-export default {
+export default {mounted() {
+    // Unity가 보낸 메시지 수신
+    window.addEventListener("message", (event) => {
+      console.log("✅ Unity → Vue 메시지:", event.data);
+    });
+  },
+  methods: {
+    sendToUnity() {
+      const unityFrame = this.$refs.unityFrame;
+      unityFrame.contentWindow.postMessage("Hello from Vue!", "*");
+    }
+  },
   name: "UnityView",
 };
 </script>

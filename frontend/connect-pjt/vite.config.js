@@ -17,5 +17,11 @@ export default defineConfig({
   },
   define: {
     __VUE_PROD_DEVTOOLS__: false  // 👈 Devtools UI 비노출 (하단 Vue 아이콘 제거)
+  },
+  server: {
+    headers: {
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+      'Cross-Origin-Opener-Policy': 'same-origin',
+    }
   }
 })
