@@ -154,6 +154,11 @@ public class GameRoomService {
         GameRoom room = gameRoomUser.getGameRoomId();
         if(allReady){
             room.changeGameStatus(GameStatus.PROGRESS); //방 상태를 게임 진행 상태로 변경
+
+            /**
+             * 여기서 websocket 알림 발송 //게임 시작
+             */
+
         }
 
         Long userId_1 = participants.size() > 0 ? participants.get(0).getUserId().getId() : null;
