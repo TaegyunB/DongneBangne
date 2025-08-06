@@ -10,6 +10,7 @@ CREATE TABLE user (
     nickname            VARCHAR(100) NOT NULL, -- 홍길동
     profile_image       VARCHAR(255),
     user_role           ENUM('ADMIN', 'MEMBER', 'GUEST'),
+    personal_point      BIGINT DEFAULT 0, -- 추가
     created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at          TIMESTAMP NULL
 );
@@ -19,6 +20,7 @@ CREATE TABLE senior_center (
     senior_center_id    BIGINT AUTO_INCREMENT PRIMARY KEY,
     center_name         VARCHAR(255) NOT NULL,
     address             VARCHAR(255) NOT NULL,
+    admin_user_id 		BIGINT,
     trot_point          BIGINT DEFAULT 0,
     challenge_point     BIGINT DEFAULT 0,
     total_point         BIGINT DEFAULT 0,

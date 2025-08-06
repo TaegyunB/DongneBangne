@@ -78,7 +78,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useUiStore } from '@/stores/useUiStore'
-import axios from 'axios'
+import api from '@/api/axios'
 
 import onboarding2 from '@/assets/onboarding/onboarding2.png'
 import onboarding3 from '@/assets/onboarding/onboarding3.png'
@@ -95,16 +95,15 @@ onMounted(async () => {
 
   // code가 있으면 로그인 이후 리디렉션 상태 → 소속 경로당 확인
   const code = new URLSearchParams(window.location.search).get('code')
+  console.log('카카오 로그인 콜백 code:', code) // 이 로그가 찍히는지 확인!
   if (code) {
     try {
-      const res = await axios.get('/api/v1/users/senior-center', {
-        withCredentials: true
-      })
-
+      const res = await api.get('/api/v1/users/senior-center')
+      console.log('경로당 정보 API 응답:', res.data)
       if (res.data?.hasCenter) {
         window.location.href = '/mainpage'
       } else {
-        window.location.href = '/select-center'
+        window.location.href = '/senior-center'
       }
     } catch (err) {
       console.error('로그인 후 사용자 정보 확인 실패:', err)
@@ -178,6 +177,13 @@ const sections = [
 </script>
 
 <style scoped>
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 .onboarding-container {
   min-height: 100vh;
   display: flex;
