@@ -182,7 +182,7 @@ const router = useRouter()
 
 const props = defineProps({
   month: { type: Number, default: new Date().getMonth() + 1 },
-  userRole: { type: String, default: 'ADMIN' } // MainPage에서 받는 userRole prop
+  userRole: { type: String, default: 'MEMBER' } // MainPage에서 받는 userRole prop
 })
 
 // 반응형 데이터

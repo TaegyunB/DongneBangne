@@ -77,11 +77,11 @@ const fetchUserRole = async () => {
       console.log('사용자 역할:', userRole.value)
     } else {
       console.error('Failed to fetch user role')
-      userRole.value = 'ADMIN' // 기본값 설정
+      userRole.value = 'MEMBER' // 기본값 설정
     }
   } catch (error) {
     console.error('Error fetching user role:', error)
-    userRole.value = 'ADMIN' // 에러 시 기본값 설정
+    userRole.value = 'MEMBER' // 에러 시 기본값 설정
   }
 }
 
