@@ -25,6 +25,9 @@ public class PlayerStatus {
     public void updateHintUsed(boolean hintUsed){
         this.hintUsed = hintUsed;
     }
+    public void updateAnswered(boolean answered){
+        this.answered = answered;
+    }
 
     public void updatePoint(Long point){
         this.point = point;

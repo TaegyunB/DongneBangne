@@ -3,12 +3,14 @@ package S13P11A708.backend.service;
 import S13P11A708.backend.domain.GameRoom;
 import S13P11A708.backend.domain.TrotQuiz;
 import S13P11A708.backend.domain.enums.GameMessageType;
+import S13P11A708.backend.dto.redis.GameStatusRedis;
 import S13P11A708.backend.dto.redis.PlayerStatus;
 import S13P11A708.backend.repository.GameRoomRepository;
 import S13P11A708.backend.repository.TrotQuizRepository;
 import S13P11A708.backend.repository.UserRepository;
 import S13P11A708.backend.service.redis.GameRedisService;
 import S13P11A708.backend.websocket.GameBroadcaster;
+import S13P11A708.backend.websocket.GameMessageFactory;
 import S13P11A708.backend.websocket.GameSocketMessage;
 import S13P11A708.backend.websocket.GameSocketService;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,7 @@ public class GameService {
     private final GameBroadcaster broadcaster;
     private final TrotQuizRepository trotQuizRepository;
     private final GameRoomRepository gameRoomRepository;
+    private final GameMessageFactory messageFactory;
 
     /**
      * 게임 시작하면, 각 유저의 개인 포인트를 db에서 가져와서
@@ -64,17 +67,8 @@ public class GameService {
         gameRedisService.initGame(roomId, totalRounds, user1Id, point1, user2Id, point2, quizIdList, firstQuiz);
 
         // 6. WebSocket을 통해 참가자들에게 GAME_START 및 ROUND_QUESTION 메시지 전송
-        GameSocketMessage startMessage = GameSocketMessage.builder()
-                .type(GameMessageType.GAME_START)
-                .roomId(roomId)
-                .payload("게임이 시작됩니다!")
-                .build();
-
-        GameSocketMessage questionMessage = GameSocketMessage.builder()
-                .type(GameMessageType.ROUND_QUESTION)
-                .roomId(roomId)
-                .payload(firstQuiz.getUrl())
-                .build();
+        GameSocketMessage startMessage = messageFactory.createMessage(GameMessageType.GAME_START, roomId, "게임이 시작됩니다!");
+        GameSocketMessage questionMessage = messageFactory.createMessage(GameMessageType.ROUND_QUESTION, roomId, firstQuiz.getUrl());
 
         broadcaster.broadcastToRoom(roomId, startMessage);
         broadcaster.broadcastToRoom(roomId, questionMessage);
@@ -82,18 +76,59 @@ public class GameService {
     }
 
     /**
-     * 정답 제출 처리
+     * 정답 인증 처리
+     * 방 id, 보낸 사람 id, 보낸 answer
      */
-    public void handleAnswer(GameSocketMessage message) {
-        Long roomId = message.getRoomId();
-        Long senderId = message.getSenderId();
-        String submittedAnswer = message.getPayload();
+    public void handleAnswer(Long roomId, Long senderId, String answer) {//방 id, 보낸 사람id, 보낸 answer
 
-        //1. redis에서 현재 라운드 문제 정답 확인
-        //2. 이미 맞춘 사람인지 확인
+        //1. 현재 게임상태 불러오기
+        GameStatusRedis game = gameRedisService.getGameStatusRedis(roomId);
+        if(game == null) throw new RuntimeException("게임 상태를 찾을 수 없습니다.");
+
+        //2. 이미 정답을 맞춘 사람인지
+        PlayerStatus player = gameRedisService.getPlayer(roomId, senderId);
+        if(player == null) return;
+
+        if(player.isAnswered()){
+            broadcaster.sendToUser(senderId,
+                    messageFactory.createMessage(GameMessageType.ANSWER_REJECTED, roomId, "이미 정답을 맞추셨습니다."));
+            return;
+        }
+
         //3. 정답 여부 판별
-        //4. 결과 broadcast
-        //5. 정답이면 포인트 지금, 다음 라운드 전환
+        String correctAnswer = game.getCurrentAnswer();
+        boolean isCorrect = correctAnswer.equalsIgnoreCase(answer.trim()); //입력받은 string 앞뒤 공백 지우기
+
+        //4. 정답 결과 broadcast
+        GameMessageType resultType = isCorrect ? GameMessageType.ANSWER_RESULT : GameMessageType.ANSWER_REJECTED;
+        String message = isCorrect ? "정답입니다." : "틀렸습니다.";
+        broadcaster.broadcastToRoom(roomId,
+                messageFactory.createWithSender(resultType, roomId, senderId, message));
+
+        if(!isCorrect) return;
+
+        //5. 정답 처리: 정답이면 카운트 올리기
+        gameRedisService.increaseCount(roomId, senderId);
+
+        //6. 다음 라운드 진행
+        int nextRound = game.getRound() + 1;
+        if(nextRound > game.getTotalRound()) {
+            gameRedisService.finishGame(roomId);
+            endGame(roomId, game); // db 저장, 최종 승자 판단
+            return;
+        }
+
+        //7. 다음 문제 준비
+        List<Long> quizIdList = game.getQuizIdList();
+        Long nextQuizId = quizIdList.get(nextRound - 1);
+        TrotQuiz nextQuiz = trotQuizRepository.findById(nextQuizId)
+                .orElseThrow(() -> new RuntimeException("다음 문제를 찾을 수 없습니다."));
+        //8.redis 방 상태 업데이트
+        gameRedisService.advanceRound(roomId, nextQuiz);
+
+        //9. 다음 문제 클라언트에 전송
+        broadcaster.broadcastToRoom(roomId,
+                messageFactory.createMessage(GameMessageType.ROUND_QUESTION, roomId, nextQuiz.getUrl()));
     }
 
     /**
@@ -106,6 +141,14 @@ public class GameService {
         //1. redis에서 사용자 포인트 확인
         //2. 포인트 부족 시 HINT_REJECTED 전송
         //3. 포인트 차감 후, 첫 글자 힌트 전송
+    }
+
+    /**
+     * 게임을 끝내기
+     * db에 redis 정보 저장, 최종 승자 판단
+     */
+    public void endGame(Long roomId, GameStatusRedis gameRoom){
+
     }
 
     /**

@@ -35,14 +35,6 @@ public class GameRedisService {
     }
 
     /**
-     * roomId로 게임상태를 Redis에서 조회
-     */
-    public GameStatusRedis getGameStatus(Long roomId) {
-        Object data = redisTemplate.opsForValue().get(getKey(roomId));
-        return (data instanceof GameStatusRedis) ? (GameStatusRedis) data : null;
-    }
-
-    /**
      * 게임이 끝나면, Redis에 저장된 게임 상태 데이터 삭제
      */
     public void deleteGameStatus(Long roomId) {
@@ -50,7 +42,7 @@ public class GameRedisService {
     }
 
     /**
-     * roomId로 GameStatusRedis 가져오기
+     * roomId로 GameStatusRedis(게임방 정보) 가져오기
      */
     public GameStatusRedis getGameStatusRedis(Long roomId) {
         Object data = redisTemplate.opsForValue().get(getKey(roomId));
@@ -69,7 +61,7 @@ public class GameRedisService {
 
     /**
      * websocket에서 게임 시작 메세지 받으면,
-     * db에서 redis로 데이터 초기화 진행해야 됨.
+     * db에서 redis로 초기 데이터 전송 진행해야 됨.
      */
     public void initGame(Long roomId, int totalRound, Long userId1, Long point1, Long userId2, Long point2, List<Long> quizIdList, TrotQuiz firstQuiz) {
         GameStatusRedis status = GameStatusRedis.builder()
@@ -90,20 +82,17 @@ public class GameRedisService {
 
 
     /**
-     * 현재 라운드에 해당하는 문제의 id를 redis 상태에 반영
+     * redis 게임방 정보에 들어 있는 user 정보 get
      */
-    public void updateCurrentQuestion(Long roomId, Long questionId) {
+    public PlayerStatus getPlayer(Long roomId, Long senderId){
         GameStatusRedis status = getGameStatusRedis(roomId);
-        if (status != null) {
-            status.updateCurrentQuestionId(questionId);
-            saveGameStatus(roomId, status);
-        }
+        return status.getPlayerStatus(senderId);
     }
 
     /**
      * 유저가 맞춘 문제 갯수 올리기
      */
-    public void increaseScore(Long roomId, Long userId) {
+    public void increaseCount(Long roomId, Long userId) {
         GameStatusRedis status = getGameStatusRedis(roomId);
         if (status != null) {
             if (status.getUser1().getUserId().equals(userId)) {
@@ -119,7 +108,7 @@ public class GameRedisService {
      * hint 사용한 유저는 사용했음을 게임상태 redis에 표시
      */
     public void markHintUsed(Long roomId, Long userId) {
-        GameStatusRedis status = getGameStatus(roomId);
+        GameStatusRedis status = getGameStatusRedis(roomId);
         if (status != null) {
             if (status.getUser1().getUserId().equals(userId)) {
                 status.getUser1().updateHintUsed(true);
@@ -171,12 +160,17 @@ public class GameRedisService {
      * hint 사용 여부 초기화
      * round 수 +1 증가
      */
-    public void advanceRound(Long roomId) {
-        GameStatusRedis status = getGameStatus(roomId);
+    public void advanceRound(Long roomId, TrotQuiz nextQuiz) {
+        GameStatusRedis status = getGameStatusRedis(roomId);
         if (status != null) {
             status.nextRound(status.getRound() + 1);
+            status.updateCurrentQuizId(nextQuiz.getId());
+            status.updateCurrentAnswer(nextQuiz.getAnswer());
+            status.updateCurrentUrl(nextQuiz.getUrl());
             status.getUser1().updateHintUsed(false);
+            status.getUser1().updateAnswered(false);
             status.getUser2().updateHintUsed(false);
+            status.getUser2().updateAnswered(false);
             saveGameStatus(roomId, status);
         }
     }
@@ -185,7 +179,7 @@ public class GameRedisService {
      * 게임이 종료되면 게임상태를 finished로 바꾼다.
      */
     public void finishGame(Long roomId) {
-        GameStatusRedis status = getGameStatus(roomId);
+        GameStatusRedis status = getGameStatusRedis(roomId);
         if (status != null) {
             status.updateStatus(GameStatus.FINISHED);
             saveGameStatus(roomId, status);

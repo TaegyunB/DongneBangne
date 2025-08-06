@@ -32,8 +32,16 @@ public class GameStatusRedis {
         return user1.isAnswered() && user2.isAnswered();
     }
 
-    public void updateCurrentQuestionId(Long currentQuestionId){
+    public void updateCurrentQuizId(Long quizId){
         this.currentQuizId = currentQuizId;
+    }
+
+    public void updateCurrentAnswer(String answer){
+        this.currentAnswer = currentAnswer;
+    }
+
+    public void updateCurrentUrl(String url){
+        this.currentUrl = url;
     }
 
     public void nextRound(int round){
