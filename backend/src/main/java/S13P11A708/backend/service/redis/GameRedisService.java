@@ -1,14 +1,16 @@
 package S13P11A708.backend.service.redis;
 
+import S13P11A708.backend.domain.TrotQuiz;
 import S13P11A708.backend.domain.enums.GameStatus;
-import S13P11A708.backend.domain.redis.GameStatusRedis;
-import S13P11A708.backend.domain.redis.PlayerStatus;
+import S13P11A708.backend.dto.redis.GameStatusRedis;
+import S13P11A708.backend.dto.redis.PlayerStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -69,15 +71,18 @@ public class GameRedisService {
      * websocket에서 게임 시작 메세지 받으면,
      * db에서 redis로 데이터 초기화 진행해야 됨.
      */
-    public void initGame(Long roomId, int totalRound, Long userId1, Long point1, Long userId2, Long point2) {
+    public void initGame(Long roomId, int totalRound, Long userId1, Long point1, Long userId2, Long point2, List<Long> quizIdList, TrotQuiz firstQuiz) {
         GameStatusRedis status = GameStatusRedis.builder()
                 .roomId(roomId)
                 .round(1)
                 .totalRound(totalRound)
-                .currentQuestionId(null)
+                .quizIdList(quizIdList)
+                .currentQuizId(firstQuiz.getId())
+                .currentAnswer(firstQuiz.getAnswer())
+                .currentUrl(firstQuiz.getUrl())
                 .status(GameStatus.PROGRESS)
-                .user1(new PlayerStatus(userId1, 0, false, point1))
-                .user2(new PlayerStatus(userId2, 0, false, point2))
+                .user1(new PlayerStatus(userId1, roomId, point1, 0, false, false))
+                .user2(new PlayerStatus(userId2, roomId, point2, 0, false, false))
                 .build();
 
         saveGameStatus(roomId, status);
