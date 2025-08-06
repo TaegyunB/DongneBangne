@@ -38,10 +38,8 @@
           <div class="text-content">
             <div class="title-with-buttons">
               <h2>{{ challenge.title }}</h2>
-              <!-- 백 연결시 주석 해제: admin 역할일 때만 수정/삭제 버튼 표시 -->
-              <!-- <div v-if="challenge.role === 'admin' && !challenge.isEmpty" class="action-buttons"> -->
-              <!-- 커스텀 도전과제에만 수정/삭제 버튼 (기존 코드) -->
-              <div v-if="index >= 2 && !challenge.isEmpty" class="action-buttons">
+              <!-- ADMIN 역할일 때만 수정/삭제 버튼 표시 -->
+              <div v-if="userRole === 'ADMIN' && index >= 2 && !challenge.isEmpty" class="action-buttons">
                 <button class="edit-btn" @click.stop="editChallenge(index)">수정</button>
                 <button class="delete-btn" @click.stop="showDeleteConfirm(index)">삭제</button>
               </div>
@@ -155,36 +153,34 @@
       </div>
     </div>
 
-    <!-- 생성 버튼 -->
-    <!-- 백 연결시 주석 해제: admin 역할일 때만 생성 버튼 표시 -->
-    <!-- <div class="create-challenge" v-if="userRole === 'admin' && shouldShowCreateButton"> -->
-    <div class="create-challenge" v-if="shouldShowCreateButton">
+    <!-- 생성 버튼 - ADMIN만 표시 -->
+    <div class="create-challenge" v-if="userRole === 'ADMIN' && shouldShowCreateButton">
       <button class="challenge-btn" @click="moveToCreate()">도전과제 생성하기</button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, defineProps } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 
 const router = useRouter()
+const route = useRoute()
 
 const props = defineProps({
   month: { type: Number, default: new Date().getMonth() + 1 }
 })
 
-// 반응형 데이터
+// userRole 가져오기
+const userRole = ref(route.query.userRole || 'MEMBER')
+
 const count = ref(0)
 const percent = computed(() => Math.round((count.value / 4) * 100))
 const progressMessages = ref([])
 const currentMessage = ref('')
 const monthlyChallenges = ref({})
 const challenges = ref([])
-
-// 백 연결시 주석 해제: 사용자 역할 관리
-// const userRole = ref('member') // 기본값은 member
 
 // 모달 상태
 const modals = ref({
@@ -230,7 +226,6 @@ const updateMessage = () => {
     currentMessage.value = messages[Math.floor(Math.random() * messages.length)].message
   }
 }
-
 
 const updateChallenges = () => {
   const monthChallenges = monthlyChallenges.value[props.month.toString()]
@@ -284,7 +279,7 @@ const closeEditModal = () => {
 const closeEditSuccessModal = () => {
   modals.value.edit.showSuccess = false
 }
-// -----------------------------------
+
 const saveEditChallenge = async () => {
   const { form, editingIndex } = modals.value.edit
   if (!form.title.trim() || !form.description.trim()) {
@@ -333,7 +328,6 @@ const saveEditChallenge = async () => {
   modals.value.edit.show = false
   modals.value.edit.showSuccess = true
 }
-// -----------------------------------
 
 const confirmEdit = () => {
   closeEditSuccessModal()
@@ -357,8 +351,6 @@ const closeFinalDeleteModal = () => {
   modals.value.delete.showFinal = false
 }
 
-// --------------------------------------
-// 도전 삭제
 const confirmDelete = async () => {
   const selectedIndex = modals.value.delete.selectedIndex
   if (selectedIndex !== null) {
@@ -390,7 +382,6 @@ const confirmDelete = async () => {
   }
   closeDeleteModal()
 }
-// --------------------------------------
 
 // 데이터 로딩 함수들
 const loadMessages = async () => {
@@ -421,25 +412,28 @@ const moveToEditAuth = () => router.push(`/admin/challenges/${selectedChallengeI
 
 // 라이프사이클 훅
 onMounted(() => {
+  console.log('도전 페이지 - 받은 userRole:', userRole.value)
   loadMessages()
-  // 백 연결시 주석 해제: 백엔드에서 데이터 가져오기
-  // fetchChallengesFromBackend()
-  loadMonthlyChallenges() // 백 연결시 이 줄은 제거하거나 폴백용으로만 사용
+  loadMonthlyChallenges()
   updateCompletedCount()
 })
 
 // 감시자
 watch(percent, updateMessage)
 watch(() => props.month, () => {
-  // 백 연결시 주석 해제
-  // fetchChallengesFromBackend()
-  updateChallenges() // 백 연결시 이 줄은 제거
+  updateChallenges()
 })
 watch(() => router.currentRoute.value, () => {
   updateCompletedCount()
-  // 백 연결시 주석 해제
-  // fetchChallengesFromBackend()
-  updateChallenges() // 백 연결시 이 줄은 제거
+  updateChallenges()
+}, { immediate: true })
+
+// route의 query가 변경될 때 userRole 업데이트
+watch(() => route.query.userRole, (newRole) => {
+  if (newRole) {
+    userRole.value = newRole
+    console.log('userRole 업데이트됨:', userRole.value)
+  }
 }, { immediate: true })
 </script>
 

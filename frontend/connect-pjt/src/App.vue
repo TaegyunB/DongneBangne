@@ -6,7 +6,8 @@
              
       <div v-if="ui.showMenu" class="nav-menu">
         <router-link to="/admin/game" class="nav-item">게임</router-link>
-        <router-link to="/challenges" class="nav-item">도전과제</router-link>
+        <!-- userRole을 전달해야 하기 때문에 따로 처리  -->
+        <a href="#" @click.prevent="navigateTo('/challenges')" class="nav-item">도전과제</a>
         <a href="#" class="nav-item">게시판</a>
         <a href="#" class="nav-item">순위</a>
         <a href="#" class="nav-item">AI 신문</a>
@@ -24,17 +25,59 @@
 </template>
 
 <script setup>
-import { RouterView, useRouter  } from 'vue-router';
+import { RouterView, useRouter  } from 'vue-router'
 import { useUiStore } from '@/stores/useUiStore'
+import { ref, onMounted } from 'vue'
 
 const ui = useUiStore()
-
 const router = useRouter();
+const userRole = ref('')
+
+//userRole back에서 받아오기 
+const fetchUserInfo = async () => {
+  try {
+    const response = await fetch('/api/v1/main/me', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      userRole.value = data.userRole
+      console.log('Toolbar - User role:', userRole.value)
+    } else {
+      console.error('Failed to fetch user info')
+      userRole.value = 'MEMBER'
+    }
+  } catch (error) {
+    console.error('Error fetching user info:', error)
+    userRole.value = 'MEMBER'
+  }
+}
+
+// 네비게이션 함수 (userRole을 함께 전달)
+const navigateTo = (path) => {
+  if (path === '/challenges') {
+    router.push({ 
+      path: path, 
+      query: { userRole: userRole.value } 
+    })
+  } else {
+    router.push(path)
+  }
+}
 
 // 로고 클릭 시 홈으로 이동
 // const goToHome = () => {
 //   router.push('/');
 // };
+
+// 컴포넌트 마운트 시 사용자 정보 가져오기
+onMounted(() => {
+  fetchUserInfo()
+})
 
 </script>
 
@@ -62,17 +105,16 @@ body {
 <style scoped>
 .toolbar {
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  position: fixed; /* sticky -> fixed로 변경 */
+  position: fixed; 
   top: 0;
-  left: 0; /* 좌측에 완전히 붙이기 */
-  right: 0; /* 우측에 완전히 붙이기 */
-  width: 100vw; /* 전체 화면 너비 */
-  z-index: 999; /* 모달보다 낮은 z-index */
+  left: 0;
+  right: 0; 
+  width: 100vw;
+  z-index: 999; 
   background-color: white;
 }
 
 .toolbar-container {
-  /* max-width: 1200px; */
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -84,7 +126,6 @@ body {
 
 .logo {
   height: 60px;
-  /* 클릭 시 메인 페이지로 */
   cursor: pointer;
 }
 
@@ -98,13 +139,12 @@ body {
 .nav-item {
   text-decoration: none;
   color: #333;
-  font-weight: 700; /* 볼드 */
+  font-weight: 700; 
   font-size: 20px;
   padding: 8px 16px;
   border-radius: 6px;
-} /* font-size 수정(nav-bar) */
+} 
 
-/* 마우스 위에 가져다 댈 때 */
 .nav-item:hover {
   background: white;
   color: #007bff;
@@ -113,13 +153,11 @@ body {
 .profile {
   height: 40px;
   width: 40px;
-  /* 클릭 시 프로필 페이지로 */
   cursor: pointer;
 }
 
-/* 메인 컨텐츠가 툴바에 가려지지 않도록 상단 여백 추가 */
 main {
-  margin-top: 60px; /* 툴바 높이만큼 여백 */
-  padding-top: 20px; /* 추가: 내용과 툴바 사이 여백 */
+  margin-top: 60px; 
+  padding-top: 20px; 
 }
 </style>
