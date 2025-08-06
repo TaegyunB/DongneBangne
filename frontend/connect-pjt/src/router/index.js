@@ -7,6 +7,7 @@ import SeniorCenterProfile from '@/views/seniorCenterProfile.vue'
 import ChallengeCreateView from '@/views/ChallengeCreateView.vue'
 import ChallengeFinishView from '@/views/ChallengeFinishView.vue'
 import MainPage from '@/views/MainpageView.vue'
+import AiNewsDetail from '@/views/AiNewsDetailView.vue'
 import CommunityBoards from '@/views/communityBoards.vue'
 import CommunityWrite from '@/views/communityWrite.vue'
 import CommunityDetail from '@/views/communityDetail.vue'
@@ -81,6 +82,12 @@ const router = createRouter({
       path: '/admin/challenges/:challengeId/complete',
       name: 'challengeFinish',
       component: ChallengeFinishView,
+      props: true
+    },
+    {
+      path: '/news',
+      name: 'news',
+      component: AiNewsDetail,
       props: true
     },
     {
