@@ -22,9 +22,9 @@
     <div class="section-title">이야기하고, 도전하고, 함께하는 경로당 서비스</div>
     <br>
     
-    <!-- Admin,member UI 통합 -->
+    <!-- Admin,member UI 공통 -->
     <div class="main-card-grid-one">
-      <div class="main-card one" @click="goToChallenges">
+      <div class="main-card one" @click="goTo('/challenges')">
         <div class="card-title">도전 과제</div>
         <div class="card-desc">함께라서 더 의미있는 도전<br />매달 다양한 도전을 해보세요!</div>
         <img src="@/assets/mainpage/assignment.png" alt="도전 아이콘" class="card-icon" />
@@ -51,8 +51,8 @@
         <div class="card-desc">매달 우리만의 특별한 소식지</div>
         <img src="@/assets/mainpage/newspaper.png" alt="신문 아이콘" class="card-icon" />
       </div>
-    </div>
   </div>
+</div>
 </template>
 
 <script setup>
@@ -63,44 +63,75 @@ import axios from 'axios'
 const router = useRouter()
 const userRole = ref('')
 
-// 도전으로 넘겨줄 role 백으로부터 받아오기. API주소 수정 필요. 
-const fetchUserRole = async () => {
+// axios 설정
+const api = axios.create({
+  baseURL: '/api', // vite 프록시 설정 활용
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json',
+  }
+})
+
+// userRole을 백에서 가져오기 (axios 사용)
+const fetchUserInfo = async () => {
   try {
-    const response = await axios.get('/api/user/role', {
-      headers: {
-        'Content-Type': 'application/json',
-      }
-    })
+    console.log('API 호출 시작')
+    console.log('요청 URL:', '/api/v1/main/me')
+    console.log('axios 설정:', api.defaults)
     
-    if (response.status === 200) {
-      userRole.value = response.data.userrole // API 응답에서 userrole 추출
-      console.log('사용자 역할:', userRole.value)
-    } else {
-      console.error('Failed to fetch user role')
-      userRole.value = 'MEMBER' // 기본값 설정
-    }
+    const response = await api.get('/v1/main/me')
+    
+    console.log('응답 상태:', response.status)
+    console.log('응답 헤더:', response.headers['content-type'])
+    console.log('응답 내용:', response.data)
+    
+    userRole.value = response.data.userRole // 'ADMIN' or 'MEMBER'
+    console.log('User role:', userRole.value)
+    
   } catch (error) {
-    console.error('Error fetching user role:', error)
-    userRole.value = 'MEMBER' // 에러 시 기본값 설정
+    console.error('Error fetching user info:', error)
+    
+    // 에러 상세 정보
+    if (error.response) {
+      console.error('서버 응답 에러:')
+      console.error('- 상태:', error.response.status)
+      console.error('- 데이터:', error.response.data)
+      console.error('- 헤더:', error.response.headers)
+    } else if (error.request) {
+      console.error('네트워크 에러 - 요청 전송됐지만 응답 없음:')
+      console.error('- 요청 정보:', error.request)
+      console.error('- readyState:', error.request.readyState)
+      console.error('- status:', error.request.status)
+    } else {
+      console.error('요청 설정 중 에러:', error.message)
+    }
+    console.error('전체 에러:', error)
+    
+    // 기본값 설정
+    userRole.value = 'MEMBER'
   }
 }
 
-// 도전 과제 페이지로 이동하면서 userRole을 props로 전달
-const goToChallenges = () => {
-  router.push({
-    name: 'challenge', // 또는 실제 라우트 이름
-    params: { userRole: userRole.value }
-  })
-}
-
-// 일반 카드 클릭 시 이동 함수
+// userRole을 prop으로 전달 
 function goTo(url) {
-  router.push(url)
+  if (url === '/challenges') {
+    router.push({ 
+      path: url, 
+      query: { userRole: userRole.value } 
+    })
+  } else {
+    router.push(url)
+  }
 }
 
-// 컴포넌트 마운트 시 사용자 역할 정보 가져오기
+// 컴포넌트 마운트 시 사용자 정보 가져오기
 onMounted(() => {
-  fetchUserRole()
+  fetchUserInfo()
+})
+
+// userRole을 외부에서 사용할 수 있도록 export
+defineExpose({
+  userRole
 })
 </script>
 

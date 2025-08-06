@@ -321,30 +321,6 @@ const closeStatusModal = () => {
   modals.value.status.show = false
 }
 
-// 백 연결시 주석 해제: 백엔드에서 도전과제 데이터 가져오기
-/*
-const fetchChallengesFromBackend = async () => {
-  try {
-    const response = await axios.get('/api/challenges')
-    const backendChallenages = response.data
-    
-    // 백엔드 데이터를 기존 구조에 맞게 변환
-    challenges.value = backendChallenages.map(challenge => ({
-      challengeId: challenge.challengeId,
-      title: challenge.challeneTitle, // 백엔드 오타 그대로 맞춰서
-      description: challenge.description,
-      place: challenge.challengePlace,
-      role: challenge.role,
-      isEmpty: false
-    }))
-    
-  } catch (error) {
-    console.error('백엔드에서 도전과제를 불러오는 데 실패했습니다:', error)
-    // 에러 시 기존 로직으로 폴백
-    loadMonthlyChallenges()
-  }
-}
-*/
 
 const updateChallenges = () => {
   const monthChallenges = monthlyChallenges.value[props.month.toString()]
@@ -399,7 +375,8 @@ const closeEditSuccessModal = () => {
   modals.value.edit.showSuccess = false
 }
 
-// 백 연결시 주석 해제: 백엔드로 수정 요청 보내기
+// -----------------------------------
+//도전 수정
 const saveEditChallenge = async () => {
   const { form, editingIndex } = modals.value.edit
   if (!form.title.trim() || !form.description.trim()) {
@@ -407,29 +384,27 @@ const saveEditChallenge = async () => {
     return
   }
 
-  /* 백 연결시 주석 해제
   try {
     const challenge = challenges.value[editingIndex]
-    const response = await axios.put(`/api/challenges/${challenge.challengeId}`, {
-      title: form.title.trim(),
-      description: form.description.trim(),
-      place: form.place.trim()
+    const response = await axios.put(`http://localhost:8080/api/v1/admin/challenges/${challenge.challengeId}`, {
+      challengeTitle: form.title.trim(),
+      challengePlace: form.place.trim(),
+      description: form.description.trim()
     })
-    
-    // 성공 시 로컬 데이터 업데이트
+
+    // 응답으로 받은 데이터로 갱신
     challenges.value[editingIndex] = {
       ...challenges.value[editingIndex],
-      title: form.title.trim(),
-      description: form.description.trim(),
-      place: form.place.trim()
+      challengeTitle: response.data.challengeTitle,
+      challengePlace: response.data.challengePlace,
+      description: response.data.description
     }
-    
+
   } catch (error) {
     console.error('도전과제 수정 실패:', error)
     alert('도전과제 수정에 실패했습니다.')
     return
   }
-  */
 
   // 기존 로컬스토리지 로직 (백 연결 전까지 유지)
   const customIndex = editingIndex - 2
@@ -449,6 +424,7 @@ const saveEditChallenge = async () => {
   modals.value.edit.show = false
   modals.value.edit.showSuccess = true
 }
+//----------------------------------------------------
 
 const confirmEdit = () => {
   closeEditSuccessModal()
@@ -472,33 +448,24 @@ const closeFinalDeleteModal = () => {
   modals.value.delete.showFinal = false
 }
 
-// 백 연결시 주석 해제: 백엔드로 삭제 요청 보내기
+//--------------------------------------
+// 도전 삭제 
 const confirmDelete = async () => {
   const selectedIndex = modals.value.delete.selectedIndex
   if (selectedIndex !== null) {
-    /* 백 연결시 주석 해제
     try {
       const challenge = challenges.value[selectedIndex]
-      await axios.delete(`/api/challenges/${challenge.challengeId}`)
-      
+      const response = await axios.delete(`http://localhost:8080/api/v1/admin/challenges/${challenge.challengeId}`)
+      console.log(response.data.message) 
+  
       // 성공 시 로컬에서도 제거
       challenges.value.splice(selectedIndex, 1)
-      
+
     } catch (error) {
       console.error('도전과제 삭제 실패:', error)
       alert('도전과제 삭제에 실패했습니다.')
       return
     }
-    */
-
-    // 기존 로컬스토리지 로직 (백 연결 전까지 유지)
-    const customIndex = selectedIndex - 2
-    const customChallenges = JSON.parse(localStorage.getItem('customChallenges') || '[]')
-    customChallenges.splice(customIndex, 1)
-    localStorage.setItem('customChallenges', JSON.stringify(customChallenges))
-    localStorage.removeItem(`challenge_${selectedIndex + 1}`)
-    updateChallenges()
-    updateCompletedCount()
   }
   closeDeleteModal()
 }
