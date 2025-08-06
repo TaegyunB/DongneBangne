@@ -5,6 +5,7 @@ import S13P11A708.backend.domain.User;
 import S13P11A708.backend.domain.enums.UserRole;
 import S13P11A708.backend.dto.request.user.UpdateProfileRequestDto;
 import S13P11A708.backend.dto.response.user.UserProfileResponseDto;
+import S13P11A708.backend.dto.response.user.UserResponseDto;
 import S13P11A708.backend.jwt.JWTUtil;
 import S13P11A708.backend.repository.SeniorCenterRepository;
 import S13P11A708.backend.repository.UserRepository;
@@ -87,4 +88,16 @@ public class UserService {
                 .profileImage(user.getProfileImage())
                 .build();
     }
+
+    /**
+     * 현재 로그인한 사용자 정보 조회
+     */
+    public UserResponseDto getCurrentUser(Long userId) {
+        User user = userRepository.findByIdWithSeniorCenter(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        return UserResponseDto.from(user);
+    }
+
+
 }

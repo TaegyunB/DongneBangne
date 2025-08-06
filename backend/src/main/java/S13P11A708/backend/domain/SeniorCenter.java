@@ -34,12 +34,6 @@ public class SeniorCenter extends BaseEntity {
     @Column(name = "trot_point")
     private Long trotPoint = 0L;
 
-    @Column(name = "word_point")
-    private Long wordPoint = 0L;
-
-    @Column(name = "talk_point")
-    private Long talkPoint = 0L;
-
     @Column(name = "challenge_point")
     private Long challengePoint = 0L;
 
