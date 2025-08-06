@@ -39,17 +39,18 @@
         <!-- 버튼 -->
         <div class="buttons">
             <button @click="cancel" class="btn-cancel">취소</button>
-            <button @click="submit" class="btn-submit" :disabled="!isValid">저장</button>
+            <button @click="submit" class="btn-submit" :disabled="!isValid || loading">
+                {{ loading ? '업로드 중...' : '저장' }}
+            </button>
         </div>
         
         <!-- 모달 -->
         <div v-if="showModal" class="modal" @click="closeModal">
             <div class="modal-content" @click.stop>
-                <h2>도전 인증이 <br> 완료되었습니다.</h2>
-                <p>포인트 {{ awardedPoints }}점이 부여되었습니다.</p>
+                <h2>도전 인증 정보가 <br> 업로드되었습니다.</h2>
+                <p>관리자의 승인을 기다려주세요.</p>
                 <div class="modal-buttons">
                     <button @click="goToChallenge" class="btn-modal">도전 페이지로</button>
-                    <button @click="goToRanking" class="btn-modal">순위 페이지로</button>
                 </div>
             </div>
         </div>
@@ -67,7 +68,7 @@ const form = ref({ description: '', image: null })
 const previewUrl = ref('')
 const fileInput = ref(null)
 const showModal = ref(false)
-const awardedPoints = ref(0)
+const loading = ref(false)
 
 const isValid = computed(() => form.value.description.trim())
 
@@ -77,18 +78,6 @@ const challengeId = ref(null)
 onMounted(() => {
   challengeId.value = route.params.challengeId
 })
-
-// 도전 타입별 포인트 계산 함수
-const calculatePoints = (challengeId) => {
-  const id = parseInt(challengeId)
-  
-  // 제공하는 도전은 500점, 자체 생성 도전은 300점 
-  if (id === 1 || id === 2) {
-    return 500
-  } else if (id === 3 || id === 4) {
-    return 300
-}
-}
 
 const triggerFileInput = () => fileInput.value?.click()
 
@@ -116,61 +105,62 @@ const submit = async () => {
     return
   }
 
-  const points = calculatePoints(challengeId.value)
-  awardedPoints.value = points
-
-  // FormData 구성
-  const formData = new FormData()
-  formData.append('challengeId', challengeId.value)
-  formData.append('imageDescription', form.value.description)
-  if (form.value.image) {
-    formData.append('challengeImage', form.value.image)
-  }
-
-  console.log('axios로 보낼 FormData:', {
-    challengeId: challengeId.value,
-    description: form.value.description,
-    image: form.value.image,
-    points: points
-  })
+  loading.value = true
 
   try {
-    // 실제 API 전송 (백엔드 연결 후 사용)
-    /*
-    const response = await axios.post(`http://localhost:8080/admin/challenges/${challengeId.value}/complete`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })
-    console.log('서버 응답:', response.data)
-    */
+    // FormData 구성
+    const formData = new FormData()
+    formData.append('imageDescription', form.value.description)
+    if (form.value.image) {
+      formData.append('imageFile', form.value.image)
+    }
 
-    // 임시 로컬 저장
-    const completedChallenge = {
+    console.log('missionFinishUpdate API 호출:', {
+      challengeId: challengeId.value,
+      description: form.value.description,
+      image: form.value.image
+    })
+
+    // 실제 API 호출
+    const response = await axios.post(
+      `/api/v1/admin/challenges/${challengeId.value}/missionFinishUpdate`, 
+      formData, 
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      }
+    )
+
+    console.log('서버 응답:', response.data)
+
+    // 임시 로컬 저장 (업로드됨을 표시하지만 아직 완료되지 않음)
+    const uploadedChallenge = {
       challengeId: parseInt(challengeId.value),
       description: form.value.description,
       image: form.value.image ? previewUrl.value : null,
-      completedAt: new Date().toISOString(),
-      is_success: true,
-      points: points
+      uploadedAt: new Date().toISOString(),
+      is_success: false, // 아직 완료되지 않음
+      is_uploaded: true, // 업로드는 완료됨
+      serverData: response.data // 서버에서 받은 데이터 저장
     }
 
-    localStorage.setItem(`challenge_${challengeId.value}`, JSON.stringify(completedChallenge))
+    localStorage.setItem(`challenge_${challengeId.value}`, JSON.stringify(uploadedChallenge))
     showModal.value = true
+
   } catch (error) {
-    console.error('axios 오류:', error)
-    alert('도전 인증 중 오류가 발생했습니다.')
+    console.error('업로드 오류:', error)
+    alert('도전 인증 업로드 중 오류가 발생했습니다.')
+  } finally {
+    loading.value = false
   }
 }
 
 const closeModal = () => showModal.value = false
+
 const goToChallenge = () => {
   showModal.value = false
   router.push('/challenges')
-}
-const goToRanking = () => {
-  showModal.value = false
-  console.log('순위 페이지로 이동 (미구현)')
 }
 </script>
 
