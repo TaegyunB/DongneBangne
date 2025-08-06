@@ -24,6 +24,19 @@ public class JWTFilter extends OncePerRequestFilter {
     }
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        String uri = request.getRequestURI();
+
+        boolean skip = uri.startsWith("/api/v1/senior-centers")
+            || uri.startsWith("/oauth2")
+            || uri.startsWith("/login")
+            || uri.equals("/");
+
+        System.out.println("🚫 shouldNotFilter → " + uri + " → " + skip);
+        return skip;
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         System.out.println("\n==== [JWTFilter] doFilterInternal 진입! ====");
         //cookie들을 불러온 뒤 Authorization Key에 담긴 쿠키를 찾음

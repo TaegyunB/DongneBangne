@@ -93,8 +93,6 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 const userRole = ref('')
 
-// console.log('userRole:', userRole, typeof userRole) // ADMIN 타입 보기
-
 // 사용자 역할 정보를 백엔드에서 가져오는 함수
 const fetchUserRole = async () => {
   try {
