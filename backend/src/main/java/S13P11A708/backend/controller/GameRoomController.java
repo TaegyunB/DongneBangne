@@ -2,6 +2,7 @@ package S13P11A708.backend.controller;
 
 import S13P11A708.backend.dto.request.gameRoom.CreateGameRoomRequestDto;
 import S13P11A708.backend.dto.response.gameRoom.GameRoomResponseDto;
+import S13P11A708.backend.dto.response.gameRoomUser.CurrentRoomUserResponseDto;
 import S13P11A708.backend.dto.response.gameRoomUser.GameRoomUserResponseDto;
 import S13P11A708.backend.dto.response.gameRoomUser.ReadyGameRoomUserResponseDto;
 import S13P11A708.backend.security.CustomOAuth2User;
@@ -68,6 +69,15 @@ public class GameRoomController {
     public ResponseEntity<?> toggleReady(@PathVariable Long roomId,
                                          @AuthenticationPrincipal CustomOAuth2User oAuth2User){
         ReadyGameRoomUserResponseDto response = gameRoomService.toggleReady(roomId, oAuth2User.getUserId());
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 특정 게임방의 참가자 목록 조회 (polling 필요)
+     */
+    @GetMapping("/{roomId}/waiting-users")
+    public ResponseEntity<List<CurrentRoomUserResponseDto>> getWaitingUsers(@PathVariable Long roomId){
+        List<CurrentRoomUserResponseDto> response = gameRoomService.getWaitingUsers(roomId);
         return ResponseEntity.ok(response);
     }
 }

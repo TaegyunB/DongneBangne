@@ -7,6 +7,7 @@ import S13P11A708.backend.domain.enums.GameStatus;
 import S13P11A708.backend.dto.request.gameRoom.CreateGameRoomRequestDto;
 import S13P11A708.backend.dto.request.gameRoom.JoinGameRoomRequestDto;
 import S13P11A708.backend.dto.response.gameRoom.GameRoomResponseDto;
+import S13P11A708.backend.dto.response.gameRoomUser.CurrentRoomUserResponseDto;
 import S13P11A708.backend.dto.response.gameRoomUser.GameRoomUserResponseDto;
 import S13P11A708.backend.dto.response.gameRoomUser.ReadyGameRoomUserResponseDto;
 import S13P11A708.backend.repository.GameRoomRepository;
@@ -52,9 +53,23 @@ public class GameRoomService {
      * WAITING 상태인 게임방 조회
      */
     public List<GameRoomResponseDto> getWaitingRooms(){
-        return gameRoomRepository.findByGameStatus(GameStatus.WAITING)
-                .stream()
-                .map(GameRoomResponseDto::from)
+        List<GameRoom> waitingRooms = gameRoomRepository.findByGameStatus(GameStatus.WAITING);
+
+        return waitingRooms.stream()
+                .map(room -> {
+                    //roomId가 연결된 GameRoomUser 엔티티 갯수 세기
+                    int participantCount = gameRoomUserRepository.countByGameRoomId_Id(room.getId());
+
+                    return GameRoomResponseDto.builder()
+                            .id(room.getId())
+                            .roomTitle(room.getRoomTitle())
+                            .gameRound(room.getGameRound())
+                            .musicEra(room.getMusicEra())
+                            .category(room.getCategory())
+                            .gameStatus(room.getGameStatus().name())
+                            .participantCount(participantCount)
+                            .build();
+                })
                 .toList();
     }
 
@@ -139,6 +154,11 @@ public class GameRoomService {
         GameRoom room = gameRoomUser.getGameRoomId();
         if(allReady){
             room.changeGameStatus(GameStatus.PROGRESS); //방 상태를 게임 진행 상태로 변경
+
+            /**
+             * 여기서 websocket 알림 발송 //게임 시작
+             */
+
         }
 
         Long userId_1 = participants.size() > 0 ? participants.get(0).getUserId().getId() : null;
@@ -156,4 +176,27 @@ public class GameRoomService {
                 .message(message)
                 .build();
     }
+
+    /**
+     * 해당 게임방에 들어와 있는 유저들의 정보 보내주기
+     * 게임방 대기 페이지에서 필요할 수도.
+     */
+    @Transactional
+    public List<CurrentRoomUserResponseDto> getWaitingUsers(Long roomId){
+        List<GameRoomUser> participants = gameRoomUserRepository.findAllByGameRoomId_Id(roomId);
+
+        return participants.stream()
+                .map(participant -> {
+                    User user = participant.getUserId();
+                    return CurrentRoomUserResponseDto.builder()
+                            .gameRoomId(roomId)
+                            .userId(user.getId())
+                            .nickname(user.getNickname())
+                            .seniorCenter(user.getSeniorCenter().getCenterName())
+                            .ready(participant.isReady())
+                            .build();
+                })
+                .toList();
+    }
+
 }

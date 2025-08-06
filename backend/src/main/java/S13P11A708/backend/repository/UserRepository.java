@@ -20,4 +20,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
      */
     @Query("SELECT u FROM User u LEFT JOIN FETCH u.seniorCenter WHERE u.id = :userId")
     Optional<User> findByIdWithSeniorCenter(@Param("userId") Long userId);
+
+    @Query("SELECT u.personalPoint FROM User u WHERE u.id = :userId")
+    Long findPointByUserId(@Param("userId") Long userId);
+
 }
