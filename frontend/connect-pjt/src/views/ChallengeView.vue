@@ -388,7 +388,7 @@ const saveEditChallenge = async () => {
 
   try {
     const challenge = challenges.value[editingIndex]
-    // 절대 URL 제거하고 상대 URL 사용 (프록시 통과)
+    // 절대 URL 제거하고 상대 URL 사용 
     const response = await axios.put(`/api/v1/admin/challenges/${challenge.challengeId}`, {
       challengeTitle: form.title.trim(),
       challengePlace: form.place.trim(),
