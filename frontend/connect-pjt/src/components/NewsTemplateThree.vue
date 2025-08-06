@@ -196,7 +196,7 @@ hr {
 }
 
 .article-column .content {
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.4;
   margin-bottom: 4mm;
   word-wrap: break-word;

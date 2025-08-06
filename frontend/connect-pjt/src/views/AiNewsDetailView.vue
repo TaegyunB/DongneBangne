@@ -13,7 +13,13 @@
     /> -->
 
     <!-- template3 test -->
-    <NewsTemplateThree 
+    <!-- <NewsTemplateThree 
+      ref="pdfComponent"
+      v-bind="newsData"
+    /> -->
+
+    <!-- template4 test -->
+    <NewsTemplateFour 
       ref="pdfComponent"
       v-bind="newsData"
     />
@@ -28,6 +34,7 @@
 import NewsTemplateOne from '@/components/NewsTemplateOne.vue'
 import NewsTemplateTwo from '@/components/NewsTemplateTwo.vue'
 import NewsTemplateThree from '@/components/NewsTemplateThree.vue'
+import NewsTemplateFour from '@/components/NewsTemplateFour.vue'
 import html2pdf from 'html2pdf.js'
 import { ref, nextTick } from 'vue' // 
 
@@ -59,6 +66,25 @@ const pdfComponent = ref(null)
 // }
 
 //template3 test
+// const newsData = {
+//   seniorCenterName: '씨피 경로당',
+//   month: '07',
+//   ranking: 1,
+//   // 기사1 (메인)
+//   headline1: 'AI가 생성한 도전 헤드라인 AI가 생성한',
+//   content1: '7월의 아이아이터 더위에 지친 몸을 회복 시켜주는 삼계탕을 먹는 "복날"입니다. 역삼골로뜰에서는 이번 7월 머나먹으러 "영양간식으로 짚을 담금작으로 승짜습니다. 지난 주 초복을 맞이 어르신들이 한자리에 모이자떠 대화를 나누며 괴근한 시간을 보냈습니다. 이름에 진정한 우정을 다져 나가는 소중한 수여를 만들어가는 시간이었습니다.7월의 아이아이터 더위에 지친 몸을 회복 시켜주는 삼계탕을 먹는 "복날"입니다. 역삼골로뜰에서는 이번 7월 머나먹으러 "영양간식으로 짚을 담금작으로 승짜습니다. ',
+//   imageUrl1: 'https://picsum.photos/300?random=1',
+//   // 기사2
+//   headline2: 'AI가 생성한 도전 헤드라인 AI가 생성한',
+//   content2: '7월의 아이아이터 더위에 지친 몸을 회복 시켜주는 삼계탕을 먹는 "복날"입니다. 역삼골로뜰에서는 이번 7월 머나먹으러 "영양간식으로 짚을 담금작으로 승짜습니다. 지난 주 초복을 맞이 어르신들이 한자리에 모이자떠 대화를 나누며 괴근한 시간을 보냈습니다. 이름에 진정한 우정을 다져 나가는 소중한 수여를 만들어가는 시간이었습니다.7월의 아이아이터 더위에 지친 몸을 회복 시켜주는 삼계탕을 먹는 "복날"입니다. 역삼골로뜰에서는 이번 7월 머나먹으러 "영양간식으로 짚을 담금작으로 승짜습니다. ',
+//   imageUrl2: 'https://picsum.photos/300?random=2',
+//   // 기사3
+//   headline3: 'AI가 생성한 도전 헤드라인!',
+//   content3: '7월의 아이아이터 더위에 지친 몸을 회복 시켜주는 삼계탕을 먹는 "복날"입니다. 역삼골로뜰에서는 이번 7월 머나먹으러 "영양간식으로 짚을 담금작으로 승짜습니다. 지난 주 초복을 맞이 어르신들이 한자리에 모이자떠 대화를 나누며 괴근한 시간을 보냈습니다.',
+//   imageUrl3: 'https://picsum.photos/300?random=3'
+// }
+
+//template4 test
 const newsData = {
   seniorCenterName: '씨피 경로당',
   month: '07',
@@ -74,7 +100,11 @@ const newsData = {
   // 기사3
   headline3: 'AI가 생성한 도전 헤드라인!',
   content3: '7월의 아이아이터 더위에 지친 몸을 회복 시켜주는 삼계탕을 먹는 "복날"입니다. 역삼골로뜰에서는 이번 7월 머나먹으러 "영양간식으로 짚을 담금작으로 승짜습니다. 지난 주 초복을 맞이 어르신들이 한자리에 모이자떠 대화를 나누며 괴근한 시간을 보냈습니다.',
-  imageUrl3: 'https://picsum.photos/300?random=3'
+  imageUrl3: 'https://picsum.photos/300?random=3',
+  // 기사4
+  headline4: 'AI가 생성한 도전 헤드라인!',
+  content4: '7월의 아이아이터 더위에 지친 몸을 회복 시켜주는 삼계탕을 먹는 "복날"입니다. 역삼골로뜰에서는 이번 7월 머나먹으러 "영양간식으로 짚을 담금작으로 승짜습니다. 지난 주 초복을 맞이 어르신들이 한자리에 모이자떠 대화를 나누며 괴근한 시간을 보냈습니다.',
+  imageUrl4: 'https://picsum.photos/300?random=3'
 }
 
 
