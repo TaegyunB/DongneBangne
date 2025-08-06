@@ -22,68 +22,37 @@
     <div class="section-title">이야기하고, 도전하고, 함께하는 경로당 서비스</div>
     <br>
     
-    <!-- Admin UI -->
-    <div v-if="userRole === 'ADMIN' || userRole === 1">
-      <div class="main-card-grid-one">
-        <div class="main-card one" @click="goTo('/challenges')">
-          <div class="card-title">도전 과제</div>
-          <div class="card-desc">함께라서 더 의미있는 도전<br />매달 다양한 도전을 해보세요!</div>
-          <img src="@/assets/mainpage/assignment.png" alt="도전 아이콘" class="card-icon" />
-        </div>
-        <div class="main-card two" @click="goTo('/admin/games')">
-          <div class="card-title">게임</div>
-          <div class="card-desc">다른 경로당과 다양한 게임을<br />즐겨보세요!</div>
-          <img src="@/assets/mainpage/joystick.png" alt="게임 아이콘" class="card-icon" />
-        </div>
+    <!-- Admin,member UI 공통 -->
+    <div class="main-card-grid-one">
+      <div class="main-card one" @click="goTo('/challenges')">
+        <div class="card-title">도전 과제</div>
+        <div class="card-desc">함께라서 더 의미있는 도전<br />매달 다양한 도전을 해보세요!</div>
+        <img src="@/assets/mainpage/assignment.png" alt="도전 아이콘" class="card-icon" />
       </div>
-      <div class="main-card-grid-two">
-        <div class="main-card three" @click="goTo('/boards')">
-          <div class="card-title">게시판</div>
-          <div class="card-desc">이웃 경로당들과 소통하는 공간</div>
-          <img src="@/assets/mainpage/community.png" alt="게시판 아이콘" class="card-icon" />
-        </div>
-        <div class="main-card four" @click="goTo('/ranking')">
-          <div class="card-title">순위</div>
-          <div class="card-desc">우리 경로당은 몇 등일까요?</div>
-          <img src="@/assets/mainpage/ranking.png" alt="순위 아이콘" class="card-icon" />
-        </div>
-        <div class="main-card five" @click="goTo('/news')">
-          <div class="card-title">AI 신문</div>
-          <div class="card-desc">매달 우리만의 특별한 소식지</div>
-          <img src="@/assets/mainpage/newspaper.png" alt="신문 아이콘" class="card-icon" />
-        </div>
+      <div class="main-card two" @click="goTo('/admin/games')">
+        <div class="card-title">게임</div>
+        <div class="card-desc">다른 경로당과 다양한 게임을<br />즐겨보세요!</div>
+        <img src="@/assets/mainpage/joystick.png" alt="게임 아이콘" class="card-icon" />
       </div>
     </div>
-
-    <!-- Member UI  -->
-    <!-- <div v-else-if="userRole === 'member'"> -->
-      <!-- 메인 카드 첫번째 줄 -->
-      <div class="main-card-grid-three">
-        <div class="main-card one" @click="goTo('/challenges')">
-          <div class="card-title">도전 과제</div>
-          <div class="card-desc">함께라서 더 의미있는 도전<br />매달 다양한 도전을 해보세요!</div>
-          <img src="@/assets/mainpage/assignment.png" alt="도전 아이콘" class="card-icon" />
-        </div>
-        <div class="main-card three" @click="goTo('/boards')">
-          <div class="card-title">게시판</div>
-          <div class="card-desc">이웃 경로당들과 소통하는 공간</div>
-          <img src="@/assets/mainpage/community.png" alt="게시판 아이콘" class="card-icon" />
-        </div>
+    <div class="main-card-grid-two">
+      <div class="main-card three" @click="goTo('/boards')">
+        <div class="card-title">게시판</div>
+        <div class="card-desc">이웃 경로당들과 소통하는 공간</div>
+        <img src="@/assets/mainpage/community.png" alt="게시판 아이콘" class="card-icon" />
       </div>
-      <div class="main-card-grid-four">
-        <div class="main-card four" @click="goTo('/ranking')">
-          <div class="card-title">순위</div>
-          <div class="card-desc">우리 경로당은 몇 등일까요?</div>
-          <img src="@/assets/mainpage/ranking.png" alt="순위 아이콘" class="card-icon" />
-        </div>
-        <div class="main-card five" @click="goTo('/news')">
-          <div class="card-title">AI 신문</div>
-          <div class="card-desc">매달 우리만의 특별한 소식지</div>
-          <img src="@/assets/mainpage/newspaper.png" alt="신문 아이콘" class="card-icon" />
-        </div>
+      <div class="main-card four" @click="goTo('/ranking')">
+        <div class="card-title">순위</div>
+        <div class="card-desc">우리 경로당은 몇 등일까요?</div>
+        <img src="@/assets/mainpage/ranking.png" alt="순위 아이콘" class="card-icon" />
       </div>
-    </div>
-  <!-- </div> -->
+      <div class="main-card five" @click="goTo('/news')">
+        <div class="card-title">AI 신문</div>
+        <div class="card-desc">매달 우리만의 특별한 소식지</div>
+        <img src="@/assets/mainpage/newspaper.png" alt="신문 아이콘" class="card-icon" />
+      </div>
+  </div>
+</div>
 </template>
 
 <script setup>
@@ -93,42 +62,52 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 const userRole = ref('')
 
-// 사용자 역할 정보를 백엔드에서 가져오는 함수
-const fetchUserRole = async () => {
+// userRole을 백에서 가져오기 
+const fetchUserInfo = async () => {
   try {
-    // 백엔드 API 호출 (실제 엔드포인트로 변경 필요)
-    const response = await fetch('/api/user/role', {
+    const response = await fetch('/api/v1/main/me', {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        // 필요한 경우 인증 헤더 추가
-        // 'Authorization': `Bearer ${token}`
       }
     })
     
     if (response.ok) {
       const data = await response.json()
-      userRole.value = data.role // 'admin' 또는 'member'
+      userRole.value = data.userRole // 'ADMIN' or 'MEMBER'
+      console.log('User role:', userRole.value)
     } else {
-      console.error('Failed to fetch user role')
+      console.error('Failed to fetch user info')
       // 기본값 설정 또는 에러 처리
-      userRole.value = 'member'
+      userRole.value = 'MEMBER'
     }
   } catch (error) {
-    console.error('Error fetching user role:', error)
+    console.error('Error fetching user info:', error)
     // 기본값 설정
-    userRole.value = 'member'
+    userRole.value = 'MEMBER'
   }
 }
 
-// 카드 클릭 시 이동 함수
+// userRole을 prop으로 전달 
 function goTo(url) {
-  router.push(url)
+  if (url === '/challenges') {
+    router.push({ 
+      path: url, 
+      query: { userRole: userRole.value } 
+    })
+  } else {
+    router.push(url)
+  }
 }
 
-// 컴포넌트 마운트 시 사용자 역할 정보 가져오기
+// 컴포넌트 마운트 시 사용자 정보 가져오기
 onMounted(() => {
-  fetchUserRole()
+  fetchUserInfo()
+})
+
+// userRole을 외부에서 사용할 수 있도록 export
+defineExpose({
+  userRole
 })
 </script>
 
