@@ -4,6 +4,7 @@ import S13P11A708.backend.domain.AiNews;
 import S13P11A708.backend.domain.Challenge;
 import S13P11A708.backend.domain.SeniorCenter;
 import S13P11A708.backend.domain.User;
+import S13P11A708.backend.domain.enums.UserRole;
 import S13P11A708.backend.dto.response.aiNews.AiNewsResponseDto;
 import S13P11A708.backend.dto.response.aiNews.GeneratePdfResponseDto;
 import S13P11A708.backend.repository.AiNewsRepository;
@@ -12,14 +13,10 @@ import S13P11A708.backend.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.bouncycastle.pqc.crypto.ExchangePair;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -38,13 +35,44 @@ public class AiNewsService {
     private final S3Service s3Service;
 
     /**
-     * AI 신문 생성 (비동기 처리)
+     * AI 신문 목록 조회
+     */
+    public List<AiNewsResponseDto> getAiNewsList(Long userId) {
+        SeniorCenter seniorCenter = validateMemberAndGetSeniorCenter(userId);
+
+        List<AiNews> newsList = aiNewsRepository.findAiNewsBySeniorCenterIdOrderByCreatedAtDesc(seniorCenter.getId());
+
+        return newsList.stream()
+                .map(AiNewsResponseDto::from)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * AI 신문 상세 조회
+     */
+    public AiNewsResponseDto getAiNewsDetail(Long newsId, Long userId) {
+        SeniorCenter seniorCenter = validateMemberAndGetSeniorCenter(userId);
+
+        AiNews aiNews = aiNewsRepository.findById(newsId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 AI 신문입니다."));
+
+        // 권한 확인 (해당 경로당의 신분인지)
+        if (!aiNews.getSeniorCenter().getId().equals(seniorCenter.getId())) {
+            throw new IllegalArgumentException("해당 AI 신문에 접근할 권한이 없습니다.");
+        }
+
+        return AiNewsResponseDto.from(aiNews);
+    }
+
+    //== Admin 전용 메서드 ==//
+    /**
+     * AI 신문 생성 - 비동기 처리 (Admin 전용)
      */
     @Async
     public CompletableFuture<AiNewsResponseDto> createAiNews(Long userId) {
 
         try {
-            SeniorCenter seniorCenter = validateAndGetSeniorCenter(userId);
+            SeniorCenter seniorCenter = validateAdminAndGetSeniorCenter(userId);
 
             // 현재 년월 자동 설정
             LocalDateTime now = LocalDateTime.now();
@@ -106,11 +134,11 @@ public class AiNewsService {
     }
 
     /**
-     * PDF 생성
+     * PDF 생성 (Admin 전용)
      */
     public GeneratePdfResponseDto generatePdf(Long newsId, Long userId, String newsPaper) {
         try {
-            SeniorCenter seniorCenter = validateAndGetSeniorCenter(userId);
+            SeniorCenter seniorCenter = validateAdminAndGetSeniorCenter(userId);
 
             // AI 신문 조회 및 권한 확인
             AiNews aiNews = aiNewsRepository.findById(newsId)
@@ -149,48 +177,44 @@ public class AiNewsService {
         }
     }
 
-
+    //== 공통 검증 메서드 ==//
     /**
-     * AI 신문 목록 조회
+     * 회원 권한 검증
      */
-    public List<AiNewsResponseDto> getAiNewsList(Long userId) {
-        SeniorCenter seniorCenter = validateAndGetSeniorCenter(userId);
+    private SeniorCenter validateMemberAndGetSeniorCenter(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 관리자입니다."));
 
-        List<AiNews> newsList = aiNewsRepository.findAiNewsBySeniorCenterIdOrderByCreatedAtDesc(seniorCenter.getId());
-
-        return newsList.stream()
-                .map(AiNewsResponseDto::from)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * AI 신문 상세 조회
-     */
-    public AiNewsResponseDto getAiNewsDetail(Long newsId, Long userId) {
-        SeniorCenter seniorCenter = validateAndGetSeniorCenter(userId);
-
-        AiNews aiNews = aiNewsRepository.findById(newsId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 AI 신문입니다."));
-
-        // 권한 확인 (해당 경로당의 신분인지)
-        if (!aiNews.getSeniorCenter().getId().equals(seniorCenter.getId())) {
-            throw new IllegalArgumentException("해당 AI 신문에 접근할 권한이 없습니다.");
+        SeniorCenter seniorCenter = user.getSeniorCenter();
+        if(seniorCenter == null) {
+            throw new IllegalArgumentException("경로당에 소속되지 않은 사용자입니다.");
         }
 
-        return AiNewsResponseDto.from(aiNews);
+        return seniorCenter;
     }
 
-    //== 공통 검증 메서드 ==//
     /**
      * 관리자 권한 및 경로당 소속 검증
      */
-    private SeniorCenter validateAndGetSeniorCenter(Long adminId) {
+    private SeniorCenter validateAdminAndGetSeniorCenter(Long adminId) {
         User admin = userRepository.findById(adminId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 관리자입니다."));
 
+        if (admin.getUserRole() != UserRole.ADMIN) {
+            throw new IllegalArgumentException("관리자 권한이 필요합니다.");
+        }
+
         SeniorCenter seniorCenter = admin.getSeniorCenter();
         if(seniorCenter == null) {
-            throw new IllegalArgumentException("경로당에 소속되지 않은 사용자입니다.");
+            throw new IllegalArgumentException("경로당에 소속되지 않은 관리자입니다.");
+        }
+
+        if (seniorCenter.getAdminUserId() == null) {
+            throw new IllegalArgumentException("해당 경로당에 관리자가 설정되지 않았습니다.");
+        }
+
+        if (!seniorCenter.getAdminUserId().equals(adminId)) {
+            throw new IllegalArgumentException("해당 경로당의 관리자가 아닙니다");
         }
 
         return seniorCenter;
