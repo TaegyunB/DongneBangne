@@ -80,7 +80,7 @@ public class ChallengeAdminController {
     }
 
     /**
-     * 챌린지 이미지 및 설명 업로드 -> 챌린지 완료 처리
+     * 챌린지 이미지 및 설명 업로드
      */
     @PostMapping("/{challengeId}/missionFinishUpdate")
     public ResponseEntity<ChallengeResponseDto> uploadChallengeImageWithDescription(
@@ -166,10 +166,24 @@ public class ChallengeAdminController {
     }
 
     /**
-     * 챌린지 완료 취소 (Admin 전용)
+     * 챌린지 완료
+     */
+    @PutMapping("/{challengeId}/complete")
+    public ResponseEntity<CompleteChallengeResponseDto> completeChallenge(
+            @PathVariable("challengeId") Long challengeId,
+            @AuthenticationPrincipal CustomOAuth2User customUser) {
+
+        Long adminId = customUser.getUserId();
+
+        CompleteChallengeResponseDto response = challengeService.completeChallenge(challengeId, adminId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 챌린지 완료 취소
      */
     @PutMapping("/{challengeId}/cancel")
-    public ResponseEntity<CancelCompletedChallengeResponseDto> cancelCompletedChallengne(
+    public ResponseEntity<CancelCompletedChallengeResponseDto> cancelCompletedChallenge(
             @PathVariable("challengeId") Long challengeId,
             @AuthenticationPrincipal CustomOAuth2User customUser) {
 
