@@ -25,7 +25,7 @@ public interface ChallengeRepository extends JpaRepository<Challenge, Long> {
      */
     @Query("SELECT COUNT(c) FROM Challenge c WHERE c.seniorCenter.id = :seniorCenterId " +
             "AND c.year = :year AND c.month = :month AND c.isSuccess = true")
-    Long countSuccessChallenge(
+    Long countSuccessChallengeByYearAndMonth(
             @Param("seniorCenterId") Long seniorCenterId,
             @Param("year") Integer year,
             @Param("month") Integer month);
@@ -37,5 +37,14 @@ public interface ChallengeRepository extends JpaRepository<Challenge, Long> {
     Challenge findChallengeByIdAndSeniorCenterId(@Param("challengeId") Long challengeId,
                                                  @Param("seniorCenterId") Long seniorCenterId);
 
-
+    /**
+     * 특정 경로당의 특정 년월 완료된 도전 목록 조회 (AI 신문 생성용)
+     */
+    @Query("SELECT c FROM Challenge c WHERE c.seniorCenter.id = :seniorCenterId " +
+            "AND c.year = :year AND c.month = :month AND c.isSuccess = true " +
+            "ORDER BY c.createdAt ASC")
+    List<Challenge> findCompletedChallengesByYearAndMonth(
+            @Param("seniorCenterId") Long seniorCenterId,
+            @Param("year") Integer year,
+            @Param("month") Integer month);
 }

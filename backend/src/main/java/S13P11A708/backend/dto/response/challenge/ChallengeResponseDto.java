@@ -21,6 +21,7 @@ public class ChallengeResponseDto {
     private Integer point;
     private String challengeImage;
     private String imageDescription;
+    private String aiDescription;
     private Boolean isSuccess;
     private String seniorCenterName;
 
@@ -35,6 +36,7 @@ public class ChallengeResponseDto {
                 .point(challenge.getPoint())
                 .challengeImage(challenge.getChallengeImage())
                 .imageDescription(challenge.getImageDescription())
+                .aiDescription(challenge.getAiDescription())
                 .isSuccess(challenge.getIsSuccess())
                 .seniorCenterName(challenge.getSeniorCenter().getCenterName())
                 .build();
