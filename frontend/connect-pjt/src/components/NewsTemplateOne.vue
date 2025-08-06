@@ -1,33 +1,32 @@
 <template>
   <div>
-    <!-- 이 부분만 PDF로 저장 -->
+    <!-- PDF로 저장할 영역 -->
     <div class="a4-container" ref="pdfTarget">
-      <!-- 내용은 그대로 -->
-      <div class="header">
-        <div class="title-wrapper">
-            <h1>{{ seniorCenterName }} {{ month }}월 AI 신문</h1>
-        </div>
-        <span class="date">2025.{{ month }}.31</span>
-      </div>
-      <div class="ranking">
-        <h3>이번달 랭킹 {{ ranking }}위</h3>
-      </div>
-      <div class="image-wrapper">
+      <!-- 공통 헤더 컴포넌트 -->
+      <NewsHeader 
+        :seniorCenterName="seniorCenterName" 
+        :month="month" 
+        :ranking="ranking" 
+      />
+      
+      <!-- 중앙 이미지 -->
+      <div class="center-image">
         <img :src="imageUrl" alt="경로당 활동 이미지" />
         <p class="caption">도전 체험을 하는 모습</p>
       </div>
-      <div class="headline-section">
-        <h2>AI 헤드라인 :AI 헤드라인 :AI 헤드라인 :{{ headline }}</h2>
+      
+      <!-- 메인 기사 내용 -->
+      <div class="main-content">
+        <h2>{{ headline }}</h2>
         <p class="content">{{ content }}</p>
       </div>
     </div>
-
   </div>
 </template>
 
 <script setup>
-import html2pdf from 'html2pdf.js'
-import { defineProps, ref, defineExpose  } from 'vue'
+import { defineProps, ref, defineExpose } from 'vue'
+import NewsHeader from '@/components/NewsHeader.vue'
 
 const props = defineProps({
   seniorCenterName: String,
@@ -39,76 +38,31 @@ const props = defineProps({
 })
 
 const pdfTarget = ref(null)
-defineExpose({ pdfTarget })  // View에서 ref 접근 가능하게
+defineExpose({ pdfTarget })
 </script>
 
 <style scoped>
 .a4-container {
-  width: 190mm; /* 크기를 좀 더 키움 */
-  height: 270mm; /* 고정 높이로 설정 */
-  max-width: 190mm;
+  width: 190mm;
+  height: 270mm;
   margin: 0 auto;
-  border: 2px solid black; /* 테두리 두께 줄임 */
-  padding: 12mm; /* 패딩 줄임 */
+  border: 2px solid black;
+  padding: 12mm;
   box-sizing: border-box;
   font-family: 'Noto Sans KR', sans-serif;
   background-color: white;
   color: #000;
-  page-break-inside: avoid;
-  page-break-after: avoid;
-  page-break-before: avoid;
   overflow: hidden;
   position: relative;
 }
 
-.header {
-  position: relative;
-  border-top: 1px solid black;
-  border-bottom: 1px solid black;
-  padding: 15px 0; 
-  margin-bottom: 5mm;
-  display: flex;
-  align-items: center; 
-  justify-content: center; 
-}
-
-.title-wrapper {
+.center-image {
   text-align: center;
-  flex: 1; 
+  margin: 10mm 0;
 }
 
-.title-wrapper h1 {
-  font-size: 22px;
-  margin: 0;
-  font-weight: bold;
-}
-
-.date {
-  position: absolute;
-  right: 0;
-  top: 0;
-  font-size: 13px;
-  color: #555;
-}
-
-.ranking {
-  text-align: center;
-  margin: 10mm 0; /* 마진 줄임 */
-  font-weight: bold;
-  font-size: 16px; /* 폰트 크기 줄임 */
-}
-
-.ranking h3 {
-  margin: 0;
-}
-
-.image-wrapper {
-  text-align: center;
-  margin: 10mm 0; /* 마진 줄임 */
-}
-
-.image-wrapper img {
-  width: 70mm; /* 이미지 크기 줄임 */
+.center-image img {
+  width: 70mm;
   height: 70mm;
   object-fit: cover;
   border: 1px solid #ccc;
@@ -120,26 +74,21 @@ defineExpose({ pdfTarget })  // View에서 ref 접근 가능하게
   margin-top: 3px;
 }
 
-.headline-section {
-  margin-top: 15mm; /* 마진 줄임 */
+.main-content {
+  margin-top: 15mm;
 }
 
-.headline-section h2 {
-  font-size: 20px; /* 폰트 크기 줄임 */
+.main-content h2 {
+  font-size: 20px;
   margin-bottom: 8mm;
-}
-.headline-section p {
-  font-size: 16px; /* 폰트 크기 줄임 */
-  margin-bottom: 8mm;
+  font-weight: bold;
 }
 
 .content {
-  font-size: 14px; /* 폰트 크기 줄임 */
-  line-height: 1.5; /* 라인 높이 줄임 */
+  font-size: 14px;
+  line-height: 1.5;
   margin-bottom: 6mm;
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
-
-
 </style>
