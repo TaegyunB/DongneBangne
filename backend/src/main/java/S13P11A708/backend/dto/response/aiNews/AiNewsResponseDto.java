@@ -26,6 +26,7 @@ public class AiNewsResponseDto {
     private String pdfUrl;
     private String seniorCenterName;
     private List<ChallengeResponseDto> challenges;
+    private Long successChallengeCount;
     private LocalDateTime createdAt;
 
     public static AiNewsResponseDto from(AiNews aiNews) {
@@ -46,6 +47,7 @@ public class AiNewsResponseDto {
                 .pdfUrl(aiNews.getPdfUrl())
                 .seniorCenterName(aiNews.getSeniorCenter().getCenterName())
                 .challenges(challengeResponseDtos)
+                .successChallengeCount((long) challengeResponseDtos.size())
                 .createdAt(aiNews.getCreatedAt())
                 .build();
     }

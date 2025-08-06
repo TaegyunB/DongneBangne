@@ -48,7 +48,7 @@ public class OpenAiService {
         promptBuilder.append("- 미션 진행 사진 설명: ").append(challenge.getImageDescription()).append("\n");
 
         promptBuilder.append("\n신문 작성 요구사항:\n");
-        promptBuilder.append("1. 어르신들이 읽기 쉬운 큰 글씨체를 고려한 적절한 길이\n");
+        promptBuilder.append("1. 어르신들이 읽기 쉬운 큰 글씨체를 고려하고 200자 이내로 작성\n");
         promptBuilder.append("2. 따뜻하고 긍정적인 톤앤매너\n");
         promptBuilder.append("3. 각 미션의 의미와 가치를 부각\n");
         promptBuilder.append("4. 신문 기사 형식이긴 하지만 본문으로만 구성\n");

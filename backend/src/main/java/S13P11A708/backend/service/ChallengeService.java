@@ -3,6 +3,7 @@ package S13P11A708.backend.service;
 import S13P11A708.backend.domain.Challenge;
 import S13P11A708.backend.domain.SeniorCenter;
 import S13P11A708.backend.domain.User;
+import S13P11A708.backend.domain.enums.UserRole;
 import S13P11A708.backend.dto.request.challenge.CreateChallengeRequestDto;
 import S13P11A708.backend.dto.request.challenge.UpdateChallengeRequestDto;
 import S13P11A708.backend.dto.response.challenge.*;
@@ -39,13 +40,7 @@ public class ChallengeService {
      * 사용자 경로당의 특정 년월 챌린지 조회
      */
     public List<ChallengeResponseDto> getMonthlyChallenges(Long userId, Integer year, Integer month) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
-
-        SeniorCenter seniorCenter = user.getSeniorCenter();
-        if(seniorCenter == null) {
-            throw new IllegalArgumentException("경로당에 소속되지 않은 사용자입니다.");
-        }
+        SeniorCenter seniorCenter = validateMemberAndGetSeniorCenter(userId);
 
         List<Challenge> challenges = challengeRepository.findChallengesByYearAndMonth(seniorCenter.getId(), year, month);
 
@@ -58,13 +53,7 @@ public class ChallengeService {
      * 특정 챌린지 상세 조회
      */
     public ChallengeResponseDto getChallengeDetail(Long challengeId, Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
-
-        SeniorCenter seniorCenter = user.getSeniorCenter();
-        if (seniorCenter == null) {
-            throw new IllegalArgumentException("경로당에 소속되지 않은 사용자입니다.");
-        }
+        SeniorCenter seniorCenter = validateMemberAndGetSeniorCenter(userId);
 
         // 사용자의 경로당에 속한 도전만 조회 가능
         Challenge challenge = challengeRepository.findChallengeByIdAndSeniorCenterId(challengeId, seniorCenter.getId());
@@ -76,7 +65,7 @@ public class ChallengeService {
     }
 
     /**
-     * 특정 경로당의 특정 년월 챌린지 목록 조회
+     * 특정 경로당의 특정 년월 챌린지 목록 조회 (공개)
      */
     public SeniorCenterChallengeListResponseDto getSeniorCenterChallengesByYearMonth(Long seniorCenterId, Integer year, Integer month) {
         // 경로당 존재 여부 확인
@@ -100,7 +89,7 @@ public class ChallengeService {
     }
 
     /**
-     * 특정 챌린지 상세 조회
+     * 특정 챌린지 상세 조회 (공개)
      */
     public ChallengeResponseDto getSeniorCenterChallengeDetail(Long challengeId, Long seniorCenterId) {
         Challenge challenge = challengeRepository.findChallengeByIdAndSeniorCenterId(challengeId, seniorCenterId);
@@ -118,7 +107,7 @@ public class ChallengeService {
      * 챌린지 생성 (Admin 전용)
      */
     public CreateChallengeResponseDto createChallenge(CreateChallengeRequestDto requestDto, Long adminId) {
-        SeniorCenter seniorCenter = validateAndGetSeniorCenter(adminId);
+        SeniorCenter seniorCenter = validateAdminAndGetSeniorCenter(adminId);
 
         // 현재 월의 도전 개수 확인
         LocalDateTime now = LocalDateTime.now();
@@ -207,7 +196,7 @@ public class ChallengeService {
                 challenge.completeChallenge();
 
                 // 포인트 추가
-                SeniorCenter seniorCenter = validateAndGetSeniorCenter(adminId);
+                SeniorCenter seniorCenter = validateAdminAndGetSeniorCenter(adminId);
                 seniorCenter.addChallengePoint(challenge.getPoint());
                 seniorCenterRepository.save(seniorCenter);
             }
@@ -272,8 +261,7 @@ public class ChallengeService {
         challenge.cancelCompletion();
         Challenge canceledChallenge = challengeRepository.save(challenge);
 
-
-        SeniorCenter seniorCenter = validateAndGetSeniorCenter(adminId);
+        SeniorCenter seniorCenter = validateAdminAndGetSeniorCenter(adminId);
         // 경로당 포인트 차감
         seniorCenter.subtractChallengePoint(challenge.getPoint());
         SeniorCenter updatedSeniorCenter = seniorCenterRepository.save(seniorCenter);
@@ -284,38 +272,44 @@ public class ChallengeService {
     //== 공통 검증 메서드 ==//
 
     /**
-     * 경로당 관리자 권환 확인
+     * 회원 권한 및 경로당 소속 검증
      */
-    private void validateAdminPermission(SeniorCenter seniorCenter, Long adminId) {
-        Long adminUserId = seniorCenter.getAdminUserId();
+    private SeniorCenter validateMemberAndGetSeniorCenter(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
 
-        // 디버깅
-        log.info("JWT에서 추출한 adminId: {}", adminId);
-        log.info("DB의 adminUserId: {}", adminUserId);
-        log.info("seniorCenterId: {}", seniorCenter.getId());
-
-        if (adminUserId == null) {
-            throw new IllegalArgumentException("해당 경로당에 관리자가 설정되지 않았습니다.");
-        }
-
-        if(!seniorCenter.getAdminUserId().equals(adminId)) {
-            throw new IllegalArgumentException("해당 경로당의 관리자만 도전을 관리할 수 있습니다.");
-        }
-    }
-
-    /**
-     * 관리자 권한 및 경로당 소속 검증
-     */
-    private SeniorCenter validateAndGetSeniorCenter(Long adminId) {
-        User admin = userRepository.findById(adminId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 관리자입니다."));
-
-        SeniorCenter seniorCenter = admin.getSeniorCenter();
+        SeniorCenter seniorCenter = user.getSeniorCenter();
         if(seniorCenter == null) {
             throw new IllegalArgumentException("경로당에 소속되지 않은 사용자입니다.");
         }
 
-        validateAdminPermission(seniorCenter, adminId);
+        return seniorCenter;
+    }
+
+    /**
+     * 경로당 관리자 권환 확인
+     */
+    private SeniorCenter validateAdminAndGetSeniorCenter(Long adminId) {
+        User admin = userRepository.findById(adminId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 관리자입니다."));
+
+        if (admin.getUserRole() != UserRole.ADMIN) {
+            throw new IllegalArgumentException("관리자 권한이 필요합니다.");
+        }
+
+        SeniorCenter seniorCenter = admin.getSeniorCenter();
+        if (seniorCenter == null) {
+            throw new IllegalArgumentException("경로당에 소속되지 않은 관리자입닌다.");
+        }
+
+        if (seniorCenter.getAdminUserId() == null) {
+            throw new IllegalArgumentException("해당 경로당에 관리자가 설정되지 않았습니다.");
+        }
+
+        if (!seniorCenter.getAdminUserId().equals(adminId)) {
+            throw new IllegalArgumentException("해당 경로당의 관리자가 아닙니다.");
+        }
+
         return seniorCenter;
     }
 
@@ -323,7 +317,7 @@ public class ChallengeService {
      * 관리자 권한 검증 후 챌린지 조회
      */
     private Challenge validateAndGetChallenge(Long challengeId, Long adminId) {
-        SeniorCenter seniorCenter = validateAndGetSeniorCenter(adminId);
+        SeniorCenter seniorCenter = validateAdminAndGetSeniorCenter(adminId);
 
         // 도전 존재 및 권환 확인
         Challenge challenge = challengeRepository.findChallengeByIdAndSeniorCenterId(challengeId, seniorCenter.getId());
