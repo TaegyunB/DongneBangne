@@ -24,6 +24,7 @@ public class GameHistory extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "game_history_id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)

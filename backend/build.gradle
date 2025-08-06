@@ -26,7 +26,8 @@ repositories {
 dependencies {
 	// Spring Boot Starter
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-//	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+	implementation 'com.fasterxml.jackson.core:jackson-databind'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-websocket'
@@ -50,6 +51,22 @@ dependencies {
 
 	// .env 파일 자동 로드
 	implementation 'me.paulschwarz:spring-dotenv:3.0.0'
+
+
+	// PDF 생성 (iText 7)
+	implementation 'com.itextpdf:html2pdf:4.0.5'
+
+	// HTTP 클라이언트 (OpenAI API 호출용)
+	implementation 'org.springframework.boot:spring-boot-starter-webflux' // WebClient 사용
+
+	// JSON 처리 강화
+	implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+	// HTML 파싱 및 조작 (신문 레이아웃)
+	implementation 'org.jsoup:jsoup:1.17.2'
+
+	// 비동기 처리 및 스케줄링
+	implementation 'org.springframework:spring-context-support'
 
 	// Lombok
 	compileOnly 'org.projectlombok:lombok'
