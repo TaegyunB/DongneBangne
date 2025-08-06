@@ -174,16 +174,17 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, defineProps } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue' 
 import { useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user' 
 import axios from 'axios'
 
 const router = useRouter()
+const userStore = useUserStore()
 
-const props = defineProps({
-  month: { type: Number, default: new Date().getMonth() + 1 },
-  userRole: { type: String, default: 'MEMBER' } // MainPage에서 받는 userRole prop
-})
+// props 대신 store 사용
+const userRole = computed(() => userStore.userRole || 'MEMBER')
+const currentMonth = ref(new Date().getMonth() + 1)
 
 // 반응형 데이터
 const count = ref(0)
@@ -193,7 +194,7 @@ const currentMessage = ref('')
 const monthlyChallenges = ref({})
 const challenges = ref([])
 
-// 모달 상태
+// 모달 상태 
 const modals = ref({
   detail: { show: false, selectedChallenge: { title: '', description: '', place: '' }, selectedChallengeId: null },
   edit: { show: false, form: { title: '', description: '', place: '' }, editingIndex: null, showSuccess: false },
@@ -206,7 +207,7 @@ const shouldShowCreateButton = computed(() =>
   JSON.parse(localStorage.getItem('customChallenges') || '[]').length < 2
 )
 
-// 모달 상태 단축 접근
+// 모달 상태 단축 접근 
 const showModal = computed(() => modals.value.detail.show)
 const selectedChallenge = computed(() => modals.value.detail.selectedChallenge)
 const selectedChallengeId = computed(() => modals.value.detail.selectedChallengeId)
@@ -219,7 +220,7 @@ const selectedDeleteChallenge = computed(() => modals.value.delete.selectedChall
 const showStatusModal = computed(() => modals.value.status.show)
 const statusModalMessage = computed(() => modals.value.status.message)
 
-// 핵심 기능 함수들
+// 핵심 기능 함수들 
 const isCompleted = (index) => {
   const data = localStorage.getItem(`challenge_${index + 1}`)
   return data ? JSON.parse(data).is_success === true : false
@@ -256,9 +257,9 @@ const updateMessage = () => {
   }
 }
 
-// 도전과제 상태 토글 함수 (ADMIN 전용)
+// 도전과제 상태 토글 함수 - userRole만 수정
 const toggleChallengeStatus = async (index) => {
-  if (props.userRole !== 'ADMIN') return
+  if (userRole.value !== 'ADMIN') return  // props.userRole → userRole.value
 
   const challengeId = index + 1
   const currentlyCompleted = isCompleted(index)
@@ -321,15 +322,15 @@ const closeStatusModal = () => {
   modals.value.status.show = false
 }
 
-
+// updateChallenges
 const updateChallenges = () => {
-  const monthChallenges = monthlyChallenges.value[props.month.toString()]
+  const monthChallenges = monthlyChallenges.value[currentMonth.value.toString()]
   const customChallenges = JSON.parse(localStorage.getItem('customChallenges') || '[]')
 
   if (monthChallenges?.length > 0) {
     const getSeededIndex = (seed) => Math.floor((Math.sin(seed) * 10000 - Math.floor(Math.sin(seed) * 10000)) * monthChallenges.length)
-    const index1 = getSeededIndex(props.month * 31 + 17)
-    const index2 = getSeededIndex(props.month * 37 + 23) === index1 ? (index1 + 1) % monthChallenges.length : getSeededIndex(props.month * 37 + 23)
+    const index1 = getSeededIndex(currentMonth.value * 31 + 17)
+    const index2 = getSeededIndex(currentMonth.value * 37 + 23) === index1 ? (index1 + 1) % monthChallenges.length : getSeededIndex(currentMonth.value * 37 + 23)
     
     challenges.value = [
       monthChallenges[index1], 
@@ -347,7 +348,7 @@ const updateChallenges = () => {
   }
 }
 
-// 모달 함수들
+// 모달 함수
 const openModal = (challenge, index) => {
   if (challenge.isEmpty) return
   modals.value.detail = { show: true, selectedChallenge: challenge, selectedChallengeId: index + 1 }
@@ -375,8 +376,9 @@ const closeEditSuccessModal = () => {
   modals.value.edit.showSuccess = false
 }
 
-// -----------------------------------
-//도전 수정
+// 도전 수정 
+// ChallengeView.vue의 saveEditChallenge 함수 수정
+
 const saveEditChallenge = async () => {
   const { form, editingIndex } = modals.value.edit
   if (!form.title.trim() || !form.description.trim()) {
@@ -386,13 +388,18 @@ const saveEditChallenge = async () => {
 
   try {
     const challenge = challenges.value[editingIndex]
-    const response = await axios.put(`http://localhost:8080/api/v1/admin/challenges/${challenge.challengeId}`, {
+    // 절대 URL 제거하고 상대 URL 사용 (프록시 통과)
+    const response = await axios.put(`/api/v1/admin/challenges/${challenge.challengeId}`, {
       challengeTitle: form.title.trim(),
       challengePlace: form.place.trim(),
       description: form.description.trim()
+    }, {
+      withCredentials: true, // 인증 정보 포함
+      headers: {
+        'Content-Type': 'application/json'
+      }
     })
 
-    // 응답으로 받은 데이터로 갱신
     challenges.value[editingIndex] = {
       ...challenges.value[editingIndex],
       challengeTitle: response.data.challengeTitle,
@@ -402,11 +409,17 @@ const saveEditChallenge = async () => {
 
   } catch (error) {
     console.error('도전과제 수정 실패:', error)
-    alert('도전과제 수정에 실패했습니다.')
+    
+    // 인증 오류 처리
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      alert('로그인이 필요합니다. 다시 로그인해주세요.')
+    } else {
+      alert('도전과제 수정에 실패했습니다.')
+    }
     return
   }
 
-  // 기존 로컬스토리지 로직 (백 연결 전까지 유지)
+  // 로컬스토리지 업데이트 (기존 로직)
   const customIndex = editingIndex - 2
   const customChallenges = JSON.parse(localStorage.getItem('customChallenges') || '[]')
   
@@ -420,11 +433,9 @@ const saveEditChallenge = async () => {
   localStorage.setItem('customChallenges', JSON.stringify(customChallenges))
   updateChallenges()
   
-  // 수정 모달 닫고 성공 모달 열기
   modals.value.edit.show = false
   modals.value.edit.showSuccess = true
 }
-//----------------------------------------------------
 
 const confirmEdit = () => {
   closeEditSuccessModal()
@@ -448,29 +459,41 @@ const closeFinalDeleteModal = () => {
   modals.value.delete.showFinal = false
 }
 
-//--------------------------------------
 // 도전 삭제 
+// ChallengeView.vue의 confirmDelete 함수 수정
+
 const confirmDelete = async () => {
   const selectedIndex = modals.value.delete.selectedIndex
   if (selectedIndex !== null) {
     try {
       const challenge = challenges.value[selectedIndex]
-      const response = await axios.delete(`http://localhost:8080/api/v1/admin/challenges/${challenge.challengeId}`)
+      // 절대 URL 제거하고 상대 URL 사용 (프록시 통과)
+      const response = await axios.delete(`/api/v1/admin/challenges/${challenge.challengeId}`, {
+        withCredentials: true, // 인증 정보 포함
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
       console.log(response.data.message) 
   
-      // 성공 시 로컬에서도 제거
       challenges.value.splice(selectedIndex, 1)
 
     } catch (error) {
       console.error('도전과제 삭제 실패:', error)
-      alert('도전과제 삭제에 실패했습니다.')
+      
+      // 인증 오류 처리
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        alert('로그인이 필요합니다. 다시 로그인해주세요.')
+      } else {
+        alert('도전과제 삭제에 실패했습니다.')
+      }
       return
     }
   }
   closeDeleteModal()
 }
 
-// 데이터 로딩 함수들
+// 데이터 로딩 함수들 
 const loadMessages = async () => {
   try {
     const response = await fetch('/progress_sentence.json')
@@ -492,31 +515,32 @@ const loadMonthlyChallenges = async () => {
   }
 }
 
-// 네비게이션
+// 네비게이션 
 const moveToCreate = () => router.push({ name: 'challengeCreate' })
 const moveToFinish = () => router.push(`/admin/challenges/${selectedChallengeId.value}/complete`)
 
-// 라이프사이클 훅
-onMounted(() => {
+// 라이프사이클 훅 - userRole 가져오기 추가
+onMounted(async () => {
+  // userRole이 없으면 가져오기
+  if (!userStore.userRole) {
+    await userStore.fetchUserRole()
+  }
+  
+  console.log('ChallengeView userRole:', userRole.value)
+  console.log('ChallengeView currentMonth:', currentMonth.value)
+  
   loadMessages()
-  // 백 연결시 주석 해제: 백엔드에서 데이터 가져오기
-  // fetchChallengesFromBackend()
-  loadMonthlyChallenges() // 백 연결시 이 줄은 제거하거나 폴백용으로만 사용
+  loadMonthlyChallenges()
   updateCompletedCount()
 })
 
-// 감시자
 watch(percent, updateMessage)
-watch(() => props.month, () => {
-  // 백 연결시 주석 해제
-  // fetchChallengesFromBackend()
-  updateChallenges() // 백 연결시 이 줄은 제거
+watch(currentMonth, () => {
+  updateChallenges()
 })
 watch(() => router.currentRoute.value, () => {
   updateCompletedCount()
-  // 백 연결시 주석 해제
-  // fetchChallengesFromBackend()
-  updateChallenges() // 백 연결시 이 줄은 제거
+  updateChallenges()
 }, { immediate: true })
 </script>
 

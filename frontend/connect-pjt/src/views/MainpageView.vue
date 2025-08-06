@@ -58,70 +58,19 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
-const userRole = ref('')
+const userStore = useUserStore()
 
-// axios 설정
-const api = axios.create({
-  baseURL: '/api', // vite 프록시 설정 활용
-  withCredentials: true,
-  headers: {
-    'Content-Type': 'application/json',
-  }
-})
-
-// userRole을 백에서 가져오기 (axios 사용)
+// userRole을 백에서 가져오기
 const fetchUserInfo = async () => {
-  try {
-    console.log('API 호출 시작')
-    console.log('요청 URL:', '/api/v1/main/me')
-    console.log('axios 설정:', api.defaults)
-    
-    const response = await api.get('/v1/main/me')
-    
-    console.log('응답 상태:', response.status)
-    console.log('응답 헤더:', response.headers['content-type'])
-    console.log('응답 내용:', response.data)
-    
-    userRole.value = response.data.userRole // 'ADMIN' or 'MEMBER'
-    console.log('User role:', userRole.value)
-    
-  } catch (error) {
-    console.error('Error fetching user info:', error)
-    
-    // 에러 상세 정보
-    if (error.response) {
-      console.error('서버 응답 에러:')
-      console.error('- 상태:', error.response.status)
-      console.error('- 데이터:', error.response.data)
-      console.error('- 헤더:', error.response.headers)
-    } else if (error.request) {
-      console.error('네트워크 에러 - 요청 전송됐지만 응답 없음:')
-      console.error('- 요청 정보:', error.request)
-      console.error('- readyState:', error.request.readyState)
-      console.error('- status:', error.request.status)
-    } else {
-      console.error('요청 설정 중 에러:', error.message)
-    }
-    console.error('전체 에러:', error)
-    
-    // 기본값 설정
-    userRole.value = 'MEMBER'
-  }
+  await userStore.fetchUserRole()
 }
 
-// userRole을 prop으로 전달 
+// userRole을 prop으로 전달하지 않고 그냥 이동
 function goTo(url) {
-  if (url === '/challenges') {
-    router.push({ 
-      path: url, 
-      query: { userRole: userRole.value } 
-    })
-  } else {
-    router.push(url)
-  }
+  router.push(url)
 }
 
 // 컴포넌트 마운트 시 사용자 정보 가져오기
@@ -129,9 +78,9 @@ onMounted(() => {
   fetchUserInfo()
 })
 
-// userRole을 외부에서 사용할 수 있도록 export
+// userRole을 외부에서 사용할 수 있도록 export (필요시)
 defineExpose({
-  userRole
+  userRole: userStore.userRole
 })
 </script>
 
