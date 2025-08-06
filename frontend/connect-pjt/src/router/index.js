@@ -8,6 +8,7 @@ import SeniorCenter from '@/views/seniorCenter.vue'
 import SeniorCenterProfile from '@/views/seniorCenterProfile.vue'
 import MainPage from '@/views/MainpageView.vue'
 import GameView from '@/views/GameView.vue'
+import WebRTCTestView from '@/views/WebRTCTestView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -57,6 +58,11 @@ const router = createRouter({
       path: '/admin/game',
       name: 'game',
       component: GameView,
+    },
+    {
+      path: '/webrtc',
+      name: 'webrtc',
+      component: WebRTCTestView,
     }
   ]
 })
