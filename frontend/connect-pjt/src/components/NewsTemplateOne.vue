@@ -65,18 +65,16 @@ defineExpose({ pdfTarget })  // View에서 ref 접근 가능하게
   position: relative;
   border-top: 1px solid black;
   border-bottom: 1px solid black;
-  padding-bottom: 8px;
-  margin-bottom: 10mm;
-  margin-top: 10mm;
-  height: 30px; /* 높이 고정 필요 시 조정 */
+  padding: 15px 0; 
+  margin-bottom: 5mm;
+  display: flex;
+  align-items: center; 
+  justify-content: center; 
 }
 
 .title-wrapper {
   text-align: center;
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
+  flex: 1; 
 }
 
 .title-wrapper h1 {
