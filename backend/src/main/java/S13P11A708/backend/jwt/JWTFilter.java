@@ -24,18 +24,44 @@ public class JWTFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        String uri = request.getRequestURI();
 
+        boolean skip = uri.startsWith("/api/v1/senior-centers")
+            || uri.startsWith("/oauth2")
+            || uri.startsWith("/login")
+            || uri.equals("/");
+
+        System.out.println("🚫 shouldNotFilter → " + uri + " → " + skip);
+        return skip;
+    }
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        System.out.println("\n==== [JWTFilter] doFilterInternal 진입! ====");
         //cookie들을 불러온 뒤 Authorization Key에 담긴 쿠키를 찾음
         String authorization = null;
 
         //쿠키에서 JWT 토큰 꺼내기
+//        Cookie[] cookies = request.getCookies();
+//        for (Cookie cookie : cookies) {
+//            System.out.println(cookie.getName());
+//            if (cookie.getName().equals("Authorization")) {
+//                authorization = cookie.getValue();
+//            }
+//        }
         Cookie[] cookies = request.getCookies();
-        for (Cookie cookie : cookies) {
-            System.out.println(cookie.getName());
-            if (cookie.getName().equals("Authorization")) {
-                authorization = cookie.getValue();
+        System.out.println("==== 쿠키 전체 확인 ====");
+        // 1. 쿠키 전체 출력
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                System.out.println(cookie.getName() + "=" + cookie.getValue());
+                if (cookie.getName().equals("Authorization")) {
+                    authorization = cookie.getValue();
+                }
             }
+        } else {
+            System.out.println("쿠키 없음!");
         }
 
         //Authorization 헤더 검증
@@ -47,7 +73,7 @@ public class JWTFilter extends OncePerRequestFilter {
             //조건이 해당되면 메소드 종료 (필수)
             return;
         }
-
+        System.out.println("[JWTFilter] Authorization 토큰 추출: " + authorization);
         //토큰
         String token = authorization;
 
@@ -62,7 +88,7 @@ public class JWTFilter extends OncePerRequestFilter {
         }
 
         //토큰이 없거나 만료되었으면, 필터 체인만 진행하고 인증하지 않음
-
+        System.out.println("토큰 만료 아님, 인증 계속 진행");
         //토큰에서 username과 role 획득
         Long userId = jwtUtil.getUserId(token);
         String role = jwtUtil.getRole(token);

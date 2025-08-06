@@ -24,4 +24,9 @@ public interface SeniorCenterRepository extends JpaRepository<SeniorCenter, Long
     @Query("SELECT sc FROM SeniorCenter sc ORDER BY sc.totalPoint DESC, sc.id ASC ")
     Page<SeniorCenter> orderSeniorCenterByTotalPointDesc(Pageable pageable);
 
+    // 이름으로 검색 (대소문자 무시, 부분일치)
+    List<SeniorCenter> findByCenterNameContainingIgnoreCase(String centerName);
+
+    // 주소로 검색 (대소문자 무시, 부분일치)
+    List<SeniorCenter> findByAddressContainingIgnoreCase(String address);
 }
