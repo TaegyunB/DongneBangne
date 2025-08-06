@@ -2,19 +2,31 @@
   <div class="container">
     <h1 class="title">경로당 순위</h1>
 
+    
+    <!-- 검색창 추가 -->
+    <div class="search-bar">
+      <input
+        type="text"
+        v-model="searchQuery"
+        placeholder="경로당 이름을 입력하세요"
+        class="search-input"
+      />
+    </div>
+
     <table class="ranking-table">
       <thead>
         <tr>
           <th>순위</th>
           <th class="text-left">경로당 이름</th>
-          <th>트로트 맞추기 포인트</th>
           <th>도전 현황</th>
+          <th>트로트 맞추기 포인트</th>
+          <th>도전 포인트</th>
           <th class="text-blue">월간 포인트</th>
         </tr>
       </thead>
       <tbody>
         <tr v-if="centers.length === 0">
-          <td colspan="5" class="empty">데이터가 없습니다.</td>
+          <td colspan="6" class="empty">데이터가 없습니다.</td>
         </tr>
         <tr v-for="(center, index) in paginatedCenters" :key="center.id">
           <td>{{ index + 1 + (currentPage - 1) * pageSize }}</td>
@@ -22,12 +34,12 @@
             <div class="center-name">
               <img src="@/assets/logo.png" class="logo" />
               <span>{{ center.name }}</span>
-              <span class="arrow">»</span>
             </div>
           </td>
-          <td>{{ center.trotPoint }}</td>
+
+          <!-- 도전 현황 -->
           <td>
-            <div class="status-box">
+            <div class="status-box with-arrow">
               <span
                 v-for="(status, idx) in center.challengeStatuses"
                 :key="idx"
@@ -35,14 +47,26 @@
               >
                 {{ status === 'success' ? '✓' : '✕' }}
               </span>
+              <span class="arrow">»</span>
+              <span class="describe-text">다음 버튼을 클릭 시 해당 경로당의 도전 현황을 열람 가능하세요!</span>
             </div>
           </td>
+
+          <!-- 트로트 맞추기 포인트 -->
+          <td>{{ center.trotPoint.toLocaleString() }}</td>
+
+          <!-- 도전 포인트 -->
+          <td>{{ center.missionPoint.toLocaleString() }}</td>
+
+          <!-- 월간 포인트 -->
           <td class="text-blue bold">{{ center.monthlyPoint.toLocaleString() }}</td>
         </tr>
       </tbody>
+
+
     </table>
 
-    <<!-- Pagination -->
+    <!-- Pagination -->
     <div class="pagination">
       <button @click="goToPage(1)" :disabled="currentPage === 1">«</button>
       <button @click="goToPage(currentPage - 1)" :disabled="currentPage === 1">‹</button>
@@ -63,24 +87,30 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 
 const centers = ref([])
 const currentPage = ref(1)
 const pageSize = 10
 const totalPages = ref(1)
+const searchQuery = ref('')
 
+// ✅ 검색된 센터만 반환
+const filteredCenters = computed(() => {
+  if (!searchQuery.value.trim()) return centers.value
+  return centers.value.filter((center) =>
+    center.name.toLowerCase().includes(searchQuery.value.toLowerCase())
+  )
+})
+
+// ✅ 페이지네이션 적용된 센터 목록
 const paginatedCenters = computed(() => {
   const start = (currentPage.value - 1) * pageSize
   const end = start + pageSize
-  return centers.value.slice(start, end)
+  return filteredCenters.value.slice(start, end)
 })
 
-const goToPage = (page) => {
-  if (page < 1 || page > totalPages.value) return
-  currentPage.value = page
-}
-
+// ✅ 페이지 버튼 목록
 const visiblePages = computed(() => {
   const pages = []
   const maxVisible = 5
@@ -98,26 +128,42 @@ const visiblePages = computed(() => {
   return pages
 })
 
-onMounted(() => {
-  const dummy = []
-  for (let i = 1; i <= 35; i++) {
-    dummy.push({
-      id: i,
-      name: `SSAFY 경로당`,
-      trotPoint: 100,
-      monthlyPoint: 2000,
-      challengeStatuses: [
-        i % 2 === 0 ? 'success' : 'fail',
-        i % 3 === 0 ? 'success' : 'fail',
-        i % 4 === 0 ? 'success' : 'fail',
-        i % 5 === 0 ? 'success' : 'fail'
-      ]
-    })
+// ✅ 페이지 이동
+const goToPage = (page) => {
+  if (page < 1 || page > totalPages.value) return
+  currentPage.value = page
+}
+
+// ✅ 페이지 수 계산 (필터링 결과 기준)
+watch(filteredCenters, (filtered) => {
+  totalPages.value = Math.ceil(filtered.length / pageSize)
+  currentPage.value = 1
+})
+
+// ✅ JSON 불러오기 및 정제
+onMounted(async () => {
+  try {
+    const response = await fetch('/dummy_centers.json')
+    if (!response.ok) throw new Error('JSON 파일을 불러올 수 없습니다.')
+
+    const data = await response.json()
+
+    const normalized = data.map((center) => ({
+      ...center,
+      challengeStatuses: center.challengeStatuses.map((s) =>
+        s === 'yes' ? 'success' : 'fail'
+      )
+    }))
+
+    normalized.sort((a, b) => b.monthlyPoint - a.monthlyPoint)
+
+    centers.value = normalized
+  } catch (error) {
+    console.error('데이터 로드 실패:', error)
   }
-  centers.value = dummy
-  totalPages.value = Math.ceil(dummy.length / pageSize)
 })
 </script>
+
 
 <style scoped>
 .container {
@@ -177,6 +223,19 @@ onMounted(() => {
   gap: 4px;
   justify-items: center;
 }
+
+/* .status-box.with-arrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* .status-box.with-arrow .arrow {
+  color: #aaa;
+  font-size: 14px;
+  margin-left: 4px;
+} */ 
+
 .status {
   width: 24px;
   height: 24px;
@@ -241,4 +300,15 @@ onMounted(() => {
   cursor: not-allowed;
 }
 
+/* ✅ 검색창 스타일 */
+.search-bar {
+  margin-bottom: 16px;
+  text-align: right;
+}
+.search-input {
+  padding: 6px 10px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
 </style>
