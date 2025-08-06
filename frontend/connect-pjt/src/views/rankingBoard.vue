@@ -1,93 +1,244 @@
 <template>
-  <div class="px-10 py-8">
-    <h1 class="text-3xl font-bold mb-6">경로당 순위</h1>
+  <div class="container">
+    <h1 class="title">경로당 순위</h1>
 
-    <table class="w-full border text-center text-sm">
-      <thead class="bg-gray-50">
+    <table class="ranking-table">
+      <thead>
         <tr>
-          <th class="py-3 border">순위</th>
-          <th class="py-3 border">경로당 이름</th>
-          <th class="py-3 border">트로트 맞추기 포인트</th>
-          <th class="py-3 border">도전 현황</th>
-          <th class="py-3 border text-blue-600">월간 포인트</th>
+          <th>순위</th>
+          <th class="text-left">경로당 이름</th>
+          <th>트로트 맞추기 포인트</th>
+          <th>도전 현황</th>
+          <th class="text-blue">월간 포인트</th>
         </tr>
       </thead>
       <tbody>
         <tr v-if="centers.length === 0">
-          <td colspan="5" class="py-4 text-gray-400">데이터가 없습니다.</td>
+          <td colspan="5" class="empty">데이터가 없습니다.</td>
         </tr>
-        <tr v-for="(center, index) in centers" :key="center.id" class="hover:bg-gray-50">
-          <td class="py-2 border">{{ index + 1 + (currentPage - 1) * 10 }}</td>
-          <td class="py-2 border text-left">
-            <div class="flex items-center gap-2 pl-2">
-              <img src="@/assets/logo.png" class="w-6 h-6 rounded-full" />
+        <tr v-for="(center, index) in paginatedCenters" :key="center.id">
+          <td>{{ index + 1 + (currentPage - 1) * pageSize }}</td>
+          <td class="text-left">
+            <div class="center-name">
+              <img src="@/assets/logo.png" class="logo" />
               <span>{{ center.name }}</span>
-              <span class="text-gray-400 ml-auto">&#xbb;</span>
+              <span class="arrow">»</span>
             </div>
           </td>
-          <td class="py-2 border">{{ center.trotPoint }}</td>
-          <td class="py-2 border text-lg">
-            <span v-for="(status, idx) in center.challengeStatuses" :key="idx" class="mx-1">
-              <span v-if="status === 'success'" class="text-green-600">✔️</span>
-              <span v-else-if="status === 'fail'" class="text-red-600">❌</span>
-              <span v-else class="text-gray-500">⬇️</span>
-            </span>
+          <td>{{ center.trotPoint }}</td>
+          <td>
+            <div class="status-box">
+              <span
+                v-for="(status, idx) in center.challengeStatuses"
+                :key="idx"
+                :class="status === 'success' ? 'status success' : 'status fail'"
+              >
+                {{ status === 'success' ? '✓' : '✕' }}
+              </span>
+            </div>
           </td>
-          <td class="py-2 border text-blue-600 font-semibold">{{ center.monthlyPoint.toLocaleString() }}</td>
+          <td class="text-blue bold">{{ center.monthlyPoint.toLocaleString() }}</td>
         </tr>
       </tbody>
     </table>
 
-    <!-- Pagination -->
-    <div class="flex justify-center items-center mt-6 gap-2">
-      <button @click="goToPage(currentPage - 1)" :disabled="currentPage === 1" class="text-gray-600 px-2">Previous</button>
-      <button v-for="page in totalPages" :key="page" @click="goToPage(page)"
-        :class="['px-3 py-1', currentPage === page ? 'bg-blue-100 text-blue-600 font-bold rounded' : '']">
+    <<!-- Pagination -->
+    <div class="pagination">
+      <button @click="goToPage(1)" :disabled="currentPage === 1">«</button>
+      <button @click="goToPage(currentPage - 1)" :disabled="currentPage === 1">‹</button>
+
+      <button
+        v-for="page in visiblePages"
+        :key="page"
+        @click="goToPage(page)"
+        :class="['page-button', { active: currentPage === page }]"
+      >
         {{ page }}
       </button>
-      <button @click="goToPage(currentPage + 1)" :disabled="currentPage === totalPages" class="text-gray-600 px-2">Next</button>
+
+      <button @click="goToPage(currentPage + 1)" :disabled="currentPage === totalPages">›</button>
+      <button @click="goToPage(totalPages)" :disabled="currentPage === totalPages">»</button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import { ref, computed, onMounted } from 'vue'
 
 const centers = ref([])
 const currentPage = ref(1)
+const pageSize = 10
 const totalPages = ref(1)
 
-const fetchRanking = async () => {
-  try {
-    const res = await axios.get(`/api/v1/rankings?page=${currentPage.value}`)
-    console.log('API 응답:', res.data)
-    const data = res.data
-
-    centers.value = (data.content || []).map(item => ({
-      id: item.seniorCenterId,
-      name: item.seniorCenterName,
-      trotPoint: item.trotPoint,
-      monthlyPoint: item.totalPoint,
-      challengeStatuses: item.challengeStatuses || []
-    }))
-    totalPages.value = data.totalPages || 1
-  } catch (err) {
-    console.error('랭킹 조회 실패:', err)
-  }
-}
+const paginatedCenters = computed(() => {
+  const start = (currentPage.value - 1) * pageSize
+  const end = start + pageSize
+  return centers.value.slice(start, end)
+})
 
 const goToPage = (page) => {
   if (page < 1 || page > totalPages.value) return
   currentPage.value = page
-  fetchRanking()
 }
 
-onMounted(fetchRanking)
+const visiblePages = computed(() => {
+  const pages = []
+  const maxVisible = 5
+  let start = Math.max(1, currentPage.value - Math.floor(maxVisible / 2))
+  let end = start + maxVisible - 1
+
+  if (end > totalPages.value) {
+    end = totalPages.value
+    start = Math.max(1, end - maxVisible + 1)
+  }
+
+  for (let i = start; i <= end; i++) {
+    pages.push(i)
+  }
+  return pages
+})
+
+onMounted(() => {
+  const dummy = []
+  for (let i = 1; i <= 35; i++) {
+    dummy.push({
+      id: i,
+      name: `SSAFY 경로당`,
+      trotPoint: 100,
+      monthlyPoint: 2000,
+      challengeStatuses: [
+        i % 2 === 0 ? 'success' : 'fail',
+        i % 3 === 0 ? 'success' : 'fail',
+        i % 4 === 0 ? 'success' : 'fail',
+        i % 5 === 0 ? 'success' : 'fail'
+      ]
+    })
+  }
+  centers.value = dummy
+  totalPages.value = Math.ceil(dummy.length / pageSize)
+})
 </script>
 
 <style scoped>
-th, td {
+.container {
+  padding: 32px;
+}
+.title {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 24px;
+}
+.ranking-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  text-align: center;
+}
+.ranking-table th,
+.ranking-table td {
+  border: 1px solid #ddd;
+  padding: 10px;
   min-width: 100px;
 }
+.ranking-table th.text-left,
+.ranking-table td.text-left {
+  text-align: left;
+}
+.ranking-table th.text-blue,
+.ranking-table td.text-blue {
+  color: #007bff;
+}
+.bold {
+  font-weight: 600;
+}
+.empty {
+  padding: 20px;
+  color: #999;
+  text-align: center;
+}
+.center-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.logo {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.arrow {
+  margin-left: auto;
+  color: #ccc;
+}
+.status-box {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  justify-items: center;
+}
+.status {
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  text-align: center;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: bold;
+  color: white;
+}
+.success {
+  background-color: #28a745;
+}
+.fail {
+  background-color: #dc3545;
+}
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+.page-button {
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  background-color: white;
+  cursor: pointer;
+}
+.page-button.active {
+  background-color: #007bff;
+  color: white;
+  font-weight: bold;
+  border-color: #007bff;
+}
+.pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  align-items: center;
+}
+.page-button,
+.pagination button {
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  background-color: white;
+  cursor: pointer;
+}
+.page-button.active {
+  background-color: #007bff;
+  color: white;
+  font-weight: bold;
+  border-color: #007bff;
+}
+.pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 </style>

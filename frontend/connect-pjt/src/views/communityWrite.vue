@@ -33,7 +33,7 @@ import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
-const categories = ['잡담', '나눔', '취미', '정보', '인기'] // 인기 포함은 선택사항
+const categories = ['잡담', '나눔', '취미', '정보', '인기'] // 인기 -> 인기는 좋아요 10 이상이면 조회되도록 필터링
 const form = ref({
   category: '',
   title: '',
