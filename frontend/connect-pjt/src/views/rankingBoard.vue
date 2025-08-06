@@ -2,8 +2,7 @@
   <div class="container">
     <h1 class="title">경로당 순위</h1>
 
-    
-    <!-- 검색창 추가 -->
+    <!-- 검색창 -->
     <div class="search-bar">
       <input
         type="text"
@@ -16,16 +15,16 @@
     <table class="ranking-table">
       <thead>
         <tr>
-          <th>순위</th>
+          <th class="text-center">순위</th>
           <th class="text-left">경로당 이름</th>
-          <th>도전 현황</th>
-          <th>트로트 맞추기 포인트</th>
-          <th>도전 포인트</th>
-          <th class="text-blue">월간 포인트</th>
+          <th class="text-center">도전 현황</th>
+          <th class="text-center">트로트 맞추기 포인트</th>
+          <th class="text-center">도전 포인트</th>
+          <th class="text-blue text-center">월간 포인트</th>
         </tr>
       </thead>
       <tbody>
-        <tr v-if="centers.length === 0">
+        <tr v-if="paginatedCenters.length === 0">
           <td colspan="6" class="empty">데이터가 없습니다.</td>
         </tr>
         <tr v-for="(center, index) in paginatedCenters" :key="center.id">
@@ -47,30 +46,24 @@
               >
                 {{ status === 'success' ? '✓' : '✕' }}
               </span>
-              <span class="arrow">»</span>
-              <span class="describe-text">다음 버튼을 클릭 시 해당 경로당의 도전 현황을 열람 가능하세요!</span>
+              <div class="challenge-info-btn" @click="openModal(center)">
+                <span class="arrow">»</span>
+                <span class="describe-text">도전 미션 현황 보기</span>
+              </div>
             </div>
           </td>
 
-          <!-- 트로트 맞추기 포인트 -->
-          <td>{{ center.trotPoint.toLocaleString() }}</td>
-
-          <!-- 도전 포인트 -->
-          <td>{{ center.missionPoint.toLocaleString() }}</td>
-
-          <!-- 월간 포인트 -->
-          <td class="text-blue bold">{{ center.monthlyPoint.toLocaleString() }}</td>
+          <td class="text-center">{{ center.trotPoint.toLocaleString() }}</td>
+          <td class="text-center">{{ center.missionPoint.toLocaleString() }}</td>
+          <td class="text-blue text-center">{{ center.monthlyPoint.toLocaleString() }}</td>
         </tr>
       </tbody>
-
-
     </table>
 
     <!-- Pagination -->
     <div class="pagination">
       <button @click="goToPage(1)" :disabled="currentPage === 1">«</button>
       <button @click="goToPage(currentPage - 1)" :disabled="currentPage === 1">‹</button>
-
       <button
         v-for="page in visiblePages"
         :key="page"
@@ -79,9 +72,17 @@
       >
         {{ page }}
       </button>
-
       <button @click="goToPage(currentPage + 1)" :disabled="currentPage === totalPages">›</button>
       <button @click="goToPage(totalPages)" :disabled="currentPage === totalPages">»</button>
+    </div>
+
+    <!-- 모달 -->
+    <div class="modal-overlay" v-if="selectedCenter" @click.self="closeModal">
+      <div class="modal-content">
+        <h3>{{ selectedCenter.name }}</h3>
+        <p>이곳에 도전 미션 요약 정보가 들어갈 예정입니다.</p>
+        <button class="close-btn" @click="closeModal">닫기</button>
+      </div>
     </div>
   </div>
 </template>
@@ -95,7 +96,7 @@ const pageSize = 10
 const totalPages = ref(1)
 const searchQuery = ref('')
 
-// ✅ 검색된 센터만 반환
+// 검색된 센터만 반환
 const filteredCenters = computed(() => {
   if (!searchQuery.value.trim()) return centers.value
   return centers.value.filter((center) =>
@@ -103,14 +104,14 @@ const filteredCenters = computed(() => {
   )
 })
 
-// ✅ 페이지네이션 적용된 센터 목록
+// 페이지네이션 적용된 센터 목록
 const paginatedCenters = computed(() => {
   const start = (currentPage.value - 1) * pageSize
   const end = start + pageSize
   return filteredCenters.value.slice(start, end)
 })
 
-// ✅ 페이지 버튼 목록
+// 페이지 버튼 목록
 const visiblePages = computed(() => {
   const pages = []
   const maxVisible = 5
@@ -128,19 +129,29 @@ const visiblePages = computed(() => {
   return pages
 })
 
-// ✅ 페이지 이동
+const selectedCenter = ref(null)
+
+const openModal = (center) => {
+  selectedCenter.value = center
+}
+
+const closeModal = () => {
+  selectedCenter.value = null
+}
+
+// 페이지 이동
 const goToPage = (page) => {
   if (page < 1 || page > totalPages.value) return
   currentPage.value = page
 }
 
-// ✅ 페이지 수 계산 (필터링 결과 기준)
+// 페이지 수 계산 (필터링 결과 기준)
 watch(filteredCenters, (filtered) => {
   totalPages.value = Math.ceil(filtered.length / pageSize)
   currentPage.value = 1
 })
 
-// ✅ JSON 불러오기 및 정제
+// JSON 불러오기 및 정제
 onMounted(async () => {
   try {
     const response = await fetch('/dummy_centers.json')
@@ -168,54 +179,76 @@ onMounted(async () => {
 <style scoped>
 .container {
   padding: 32px;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 .title {
   font-size: 24px;
   font-weight: bold;
   margin-bottom: 24px;
 }
+.search-bar {
+  margin-bottom: 16px;
+  text-align: right;
+}
+.search-input {
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+/* 테이블 스타일 */
 .ranking-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.05);
   font-size: 14px;
+}
+.ranking-table thead {
+  background-color: #f9fafb;
+}
+.ranking-table th {
+  padding: 14px;
+  font-weight: 600;
   text-align: center;
+  border-bottom: 1px solid #eee;
 }
-.ranking-table th,
+/* 테이블 내 여백을 균일하게 유지 */
 .ranking-table td {
-  border: 1px solid #ddd;
-  padding: 10px;
-  min-width: 100px;
+  padding: 12px 16px;
 }
-.ranking-table th.text-left,
-.ranking-table td.text-left {
-  text-align: left;
+.ranking-table tr:hover {
+  background-color: #f8f9fa;
 }
-.ranking-table th.text-blue,
+
+.ranking-table th.text-center,
+.ranking-table td.text-center {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+/* 기존 스타일 수정 */
 .ranking-table td.text-blue {
   color: #007bff;
+  font-weight: normal;  /* bold 제거 */
 }
-.bold {
-  font-weight: 600;
+.ranking-table td:last-child {
+  border-right: none;
 }
-.empty {
-  padding: 20px;
-  color: #999;
-  text-align: center;
-}
+
 .center-name {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 .logo {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   object-fit: cover;
-}
-.arrow {
-  margin-left: auto;
-  color: #ccc;
 }
 .status-box {
   display: grid;
@@ -223,19 +256,6 @@ onMounted(async () => {
   gap: 4px;
   justify-items: center;
 }
-
-/* .status-box.with-arrow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-/* .status-box.with-arrow .arrow {
-  color: #aaa;
-  font-size: 14px;
-  margin-left: 4px;
-} */ 
-
 .status {
   width: 24px;
   height: 24px;
@@ -253,30 +273,7 @@ onMounted(async () => {
   background-color: #dc3545;
 }
 .pagination {
-  margin-top: 20px;
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-}
-.page-button {
-  padding: 6px 10px;
-  border: 1px solid #ccc;
-  background-color: white;
-  cursor: pointer;
-}
-.page-button.active {
-  background-color: #007bff;
-  color: white;
-  font-weight: bold;
-  border-color: #007bff;
-}
-.pagination button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.pagination {
-  margin-top: 20px;
+  margin-top: 24px;
   display: flex;
   justify-content: center;
   gap: 6px;
@@ -288,6 +285,7 @@ onMounted(async () => {
   border: 1px solid #ccc;
   background-color: white;
   cursor: pointer;
+  font-size: 14px;
 }
 .page-button.active {
   background-color: #007bff;
@@ -299,16 +297,82 @@ onMounted(async () => {
   opacity: 0.4;
   cursor: not-allowed;
 }
+.empty {
+  padding: 20px;
+  color: #999;
+  text-align: center;
+}
 
-/* ✅ 검색창 스타일 */
-.search-bar {
-  margin-bottom: 16px;
+.text-right {
   text-align: right;
 }
-.search-input {
-  padding: 6px 10px;
-  font-size: 14px;
-  border: 1px solid #ccc;
+.text-blue {
+  color: #007bff;
+}
+.bold {
+  font-weight: bold;
+}
+.clickable {
+  cursor: pointer;
+}
+
+/* 모달 스타일 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+.modal-content {
+  background: #fff;
+  padding: 24px 32px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+}
+.close-btn {
+  margin-top: 16px;
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 16px;
   border-radius: 4px;
+  cursor: pointer;
+}
+.challenge-info-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  grid-column: span 4;
+  cursor: pointer;
+  margin-top: 6px;
+  color: #555;
+  font-size: 12px;
+  transition: color 0.2s ease;
+}
+.challenge-info-btn:hover {
+  color: #007bff;
+}
+.challenge-info-btn .arrow {
+  font-size: 14px;
+  color: inherit;
+}
+/* 스타일 일관성 위해 모든 숫자 열에 공통 적용 */
+.ranking-table td.text-right {
+  font-variant-numeric: tabular-nums; /* 폰트에서 숫자 폭 균등 */
+  padding-right: 14px;
+}
+/* 월간 포인트 강조는 색상만 */
+.ranking-table td.text-blue {
+  color: #007bff;
+  /* font-weight: bold; ← 주석 처리 가능 */
 }
 </style>
