@@ -1,13 +1,18 @@
 package S13P11A708.backend.domain;
 
 import S13P11A708.backend.domain.common.BaseEntity;
+import S13P11A708.backend.domain.enums.BoardCategory;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
+@Builder
 @NoArgsConstructor
+@AllArgsConstructor
 @Table(name = "board")
 public class Board extends BaseEntity {
 
@@ -20,8 +25,33 @@ public class Board extends BaseEntity {
 
     private String content;
 
-    private String image;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "category")
+    private BoardCategory category;
 
-    private Integer like_count = 0;
+    @Column(name = "board_image")
+    private String boardImage;
+
+    @Column(name = "like_count")
+    private Integer likeCount = 0;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    //== Setter 메서드 ==//
+    /**
+     * 좋아요 수 증가
+     */
+    public void increaseLike() {
+        this.likeCount++;
+    }
+
+    /**
+     * 좋아요 수 감소
+     */
+    public void decreaseLike() {
+        this.likeCount--;
+    }
 
 }

@@ -7,4 +7,3 @@ LINES TERMINATED BY '\r\n'
 (center_name, address);
 
 SELECT * FROM senior_center LIMIT 5;
-

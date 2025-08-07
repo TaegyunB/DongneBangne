@@ -38,21 +38,22 @@
           <div class="text-content">
             <div class="title-with-buttons">
               <h2>{{ challenge.title }}</h2>
-              <!-- 백 연결시 주석 해제: admin 역할일 때만 수정/삭제 버튼 표시 -->
-              <!-- <div v-if="challenge.role === 'admin' && !challenge.isEmpty" class="action-buttons"> -->
-              <!-- 커스텀 도전과제에만 수정/삭제 버튼 (기존 코드) -->
-              <div v-if="index >= 2 && !challenge.isEmpty" class="action-buttons">
+              <!-- userRole이 admin일 때만 수정/삭제 버튼 표시 -->
+              <div v-if="userRole === 'ADMIN' && index >= 2 && !challenge.isEmpty" class="action-buttons">
                 <button class="edit-btn" @click.stop="editChallenge(index)">수정</button>
                 <button class="delete-btn" @click.stop="showDeleteConfirm(index)">삭제</button>
               </div>
             </div>
             <p>{{ challenge.description }}</p>
           </div>
+          <!-- ADMIN만 완료/미완료 버튼을 클릭할 수 있도록 수정 -->
           <button 
             class="challenge-complete-btn"
-            :class="{ 'completed': isCompleted(index) }"
+            :class="{ 'completed': isCompleted(index), 'uploaded': isUploaded(index) && !isCompleted(index) }"
+            @click.stop="userRole === 'ADMIN' ? toggleChallengeStatus(index) : null"
+            :disabled="userRole !== 'ADMIN'"
           >
-            {{ isCompleted(index) ? '완료' : '미완료' }}
+            {{ getButtonText(index) }}
           </button>
         </div>
       </div>
@@ -70,7 +71,7 @@
         </div>
         
         <button 
-          v-if="!selectedChallenge.isEmpty && !isCompleted(selectedChallengeId - 1)" 
+          v-if="userRole === 'ADMIN' && !selectedChallenge.isEmpty && !isCompleted(selectedChallengeId - 1)" 
           class="modal-button" 
           @click="moveToFinish"
         >
@@ -82,6 +83,14 @@
           class="completed-message"
         >
           완료된 도전입니다
+        </div>
+
+        <!-- 업로드된 상태 표시 -->
+        <div 
+          v-if="!selectedChallenge.isEmpty && isUploaded(selectedChallengeId - 1) && !isCompleted(selectedChallengeId - 1)"
+          class="uploaded-message"
+        >
+          관리자 승인 대기 중입니다
         </div>
       </div>
     </div>
@@ -147,10 +156,18 @@
       </div>
     </div>
 
-    <!-- 생성 버튼 -->
-    <!-- 백 연결시 주석 해제: admin 역할일 때만 생성 버튼 표시 -->
-    <!-- <div class="create-challenge" v-if="userRole === 'admin' && shouldShowCreateButton"> -->
-    <div class="create-challenge" v-if="shouldShowCreateButton">
+    <!-- 상태 변경 성공 모달 -->
+    <div v-if="showStatusModal" class="modal-overlay" @click.self="closeStatusModal">
+      <div class="modal-content delete-modal">
+        <h2>{{ statusModalMessage }}</h2>
+        <div class="modal-buttons">
+          <button class="delete-success-btn" @click="closeStatusModal">확인</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 생성 버튼 - userRole이 admin일 때만 표시 -->
+    <div class="create-challenge" v-if="userRole === 'ADMIN' && shouldShowCreateButton">
       <button class="challenge-btn" @click="moveToCreate()">도전과제 생성하기</button>
     </div>
   </div>
@@ -164,7 +181,8 @@ import axios from 'axios'
 const router = useRouter()
 
 const props = defineProps({
-  month: { type: Number, default: new Date().getMonth() + 1 }
+  month: { type: Number, default: new Date().getMonth() + 1 },
+  userRole: { type: String, default: 'MEMBER' } // MainPage에서 받는 userRole prop
 })
 
 // 반응형 데이터
@@ -175,14 +193,12 @@ const currentMessage = ref('')
 const monthlyChallenges = ref({})
 const challenges = ref([])
 
-// 백 연결시 주석 해제: 사용자 역할 관리
-// const userRole = ref('member') // 기본값은 member
-
 // 모달 상태
 const modals = ref({
   detail: { show: false, selectedChallenge: { title: '', description: '', place: '' }, selectedChallengeId: null },
   edit: { show: false, form: { title: '', description: '', place: '' }, editingIndex: null, showSuccess: false },
-  delete: { show: false, showFinal: false, selectedChallenge: null, selectedIndex: null }
+  delete: { show: false, showFinal: false, selectedChallenge: null, selectedIndex: null },
+  status: { show: false, message: '' }
 })
 
 // 계산된 속성
@@ -200,11 +216,28 @@ const editForm = computed(() => modals.value.edit.form)
 const showDeleteModal = computed(() => modals.value.delete.show)
 const showFinalDeleteModal = computed(() => modals.value.delete.showFinal)
 const selectedDeleteChallenge = computed(() => modals.value.delete.selectedChallenge)
+const showStatusModal = computed(() => modals.value.status.show)
+const statusModalMessage = computed(() => modals.value.status.message)
 
 // 핵심 기능 함수들
 const isCompleted = (index) => {
   const data = localStorage.getItem(`challenge_${index + 1}`)
   return data ? JSON.parse(data).is_success === true : false
+}
+
+const isUploaded = (index) => {
+  const data = localStorage.getItem(`challenge_${index + 1}`)
+  return data ? JSON.parse(data).is_uploaded === true : false
+}
+
+const getButtonText = (index) => {
+  if (isCompleted(index)) {
+    return '완료'
+  } else if (isUploaded(index)) {
+    return '대기'
+  } else {
+    return '미완료'
+  }
 }
 
 const getChallengeImage = (index) => {
@@ -223,6 +256,71 @@ const updateMessage = () => {
   }
 }
 
+// 도전과제 상태 토글 함수 (ADMIN 전용)
+const toggleChallengeStatus = async (index) => {
+  if (props.userRole !== 'ADMIN') return
+
+  const challengeId = index + 1
+  const currentlyCompleted = isCompleted(index)
+  const currentlyUploaded = isUploaded(index)
+
+  // 업로드되지 않은 상태에서는 토글 불가
+  if (!currentlyUploaded && !currentlyCompleted) {
+    alert('먼저 도전 인증을 업로드해주세요.')
+    return
+  }
+
+  try {
+    if (currentlyCompleted) {
+      // 완료 → 미완료 (cancel API)
+      const response = await axios.put(`/api/v1/admin/challenges/${challengeId}/cancel`)
+      console.log('Cancel API 응답:', response.data)
+      
+      // 로컬 상태 업데이트
+      const data = localStorage.getItem(`challenge_${challengeId}`)
+      if (data) {
+        const challengeData = JSON.parse(data)
+        challengeData.is_success = false
+        localStorage.setItem(`challenge_${challengeId}`, JSON.stringify(challengeData))
+      }
+      
+      modals.value.status = { 
+        show: true, 
+        message: `도전이 취소되었습니다.<br>${response.data.subtractedPoint}점이 차감되었습니다.` 
+      }
+    } else {
+      // 미완료(업로드됨) → 완료 (complete API)
+      const response = await axios.post(`/api/v1/admin/challenges/${challengeId}/complete`)
+      console.log('Complete API 응답:', response.data)
+      
+      // 로컬 상태 업데이트
+      const data = localStorage.getItem(`challenge_${challengeId}`)
+      if (data) {
+        const challengeData = JSON.parse(data)
+        challengeData.is_success = true
+        challengeData.completedAt = new Date().toISOString()
+        challengeData.earnedPoints = response.data.earnedPoint
+        localStorage.setItem(`challenge_${challengeId}`, JSON.stringify(challengeData))
+      }
+      
+      modals.value.status = { 
+        show: true, 
+        message: `도전이 완료되었습니다!<br>${response.data.earnedPoint}점이 부여되었습니다.` 
+      }
+    }
+    
+    updateCompletedCount()
+    
+  } catch (error) {
+    console.error('상태 변경 오류:', error)
+    alert('도전 상태 변경 중 오류가 발생했습니다.')
+  }
+}
+
+const closeStatusModal = () => {
+  modals.value.status.show = false
+}
+
 // 백 연결시 주석 해제: 백엔드에서 도전과제 데이터 가져오기
 /*
 const fetchChallengesFromBackend = async () => {
@@ -239,11 +337,6 @@ const fetchChallengesFromBackend = async () => {
       role: challenge.role,
       isEmpty: false
     }))
-    
-    // 사용자 역할 설정 (첫 번째 도전과제의 role을 기준으로, 또는 별도 API 호출)
-    if (backendChallenages.length > 0) {
-      userRole.value = backendChallenages[0].role
-    }
     
   } catch (error) {
     console.error('백엔드에서 도전과제를 불러오는 데 실패했습니다:', error)
@@ -546,6 +639,11 @@ watch(() => router.currentRoute.value, () => {
 }
 
 .challenge-complete-btn.completed { background-color: #3074FF; }
+.challenge-complete-btn.uploaded { background-color: #FFA500; }
+.challenge-complete-btn:disabled { 
+  cursor: not-allowed; 
+  opacity: 0.7;
+}
 
 /* 생성 버튼 */
 .create-challenge { display: flex; justify-content: center; align-items: center; width: 100%; }
@@ -594,6 +692,11 @@ watch(() => router.currentRoute.value, () => {
 
 .completed-message {
   background-color: #e8f5e8; color: #2d5a2d; padding: 12px 24px;
+  border-radius: 10px; font-size: 20px; font-weight: 600;
+}
+
+.uploaded-message {
+  background-color: #fff3cd; color: #856404; padding: 12px 24px;
   border-radius: 10px; font-size: 20px; font-weight: 600;
 }
 

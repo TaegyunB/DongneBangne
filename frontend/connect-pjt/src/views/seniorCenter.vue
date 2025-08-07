@@ -62,17 +62,8 @@
 
 <script setup>
 import { ref } from 'vue'
+import api from '@/api/axios' // axios 인스턴스 import만!
 import { useRouter } from 'vue-router'
-
-// 더미 경로당 데이터
-const data = [
-  { id: 1, name: '싸피 경로당', address: '서울 강남구 테헤란로 212' },
-  { id: 2, name: '해피하우스 경로당', address: '서울 송파구 송파대로 500' },
-  { id: 3, name: '어르신 사랑방', address: '경기도 수원시 영통구 대학로 1' },
-  { id: 4, name: '행복 경로당', address: '인천 부평구 경원대로 123' },
-  { id: 5, name: '행복한집', address: '서울 강서구 공항대로 345' },
-]
-// 더미 데이터 끝
 
 const selectedType = ref('name')
 const keyword = ref('')
@@ -83,31 +74,33 @@ const router = useRouter()
 const showModal = ref(false)
 const modalCenter = ref({ name: '', address: '' })
 
-function onSearch() {
-  searched.value = true
-  const kw = keyword.value.trim().toLowerCase()
-  if (!kw) {
+// DB에서 실제 검색
+async function fetchCenters() {
+  try {
+    const res = await api.get('/api/v1/senior-centers', {
+      params: { type: selectedType.value, keyword: keyword.value.trim() }
+    })
+    console.log('백엔드 응답 데이터:', res.data)
+    searchResults.value = res.data
+    searched.value = true
+  } catch (e) {
     searchResults.value = []
+    searched.value = true
+  }
+}
+
+function onSearch() {
+  if (!keyword.value.trim()) {
+    searchResults.value = []
+    searched.value = true
     return
   }
-  if (selectedType.value === 'name') {
-    searchResults.value = data.filter(center =>
-      center.name.toLowerCase().includes(kw)
-    )
-  } else if (selectedType.value === 'address') {
-    searchResults.value = data.filter(center =>
-      center.address.toLowerCase().includes(kw)
-    )
-  } else {
-    // alert('해당 경로당이 검색되지 않았습니다!')
-    searchResults.value = []
-  }
+  fetchCenters()
 }
 
 // 지도 버튼 클릭시 카카오맵 새 창 열기
 function openKakaoMap(address) {
-  const url =
-    'https://map.kakao.com/?q=' + encodeURIComponent(address)
+  const url = 'https://map.kakao.com/?q=' + encodeURIComponent(address)
   window.open(url, '_blank', 'width=700,height=600')
 }
 
@@ -117,16 +110,30 @@ function openConfirm(center) {
   showModal.value = true
 }
 
-// 모달 내 확인/취소 버튼 동작
-function confirmCenter() {
-//   alert('경로당이 선택되었습니다!')
-  showModal.value = false
-  // 차후 여기에 프로필 페이지로 넘어가게 설정할 것
-  router.push('/senior-center/profile')
+// // 모달 내 확인/취소 버튼 동작
+// function confirmCenter() {
+//   showModal.value = false
+//   router.push('/senior-center/profile')
+// }
+// function closeModal() {
+//   showModal.value = false
+// }
+
+async function confirmCenter() {
+  try {
+    // 실제 DB에 저장 요청
+    await api.post('/api/v1/users/senior-center', {
+      seniorCenterId: modalCenter.value.id // ← id가 맞는지 반드시 확인!
+    })
+    showModal.value = false
+    // 성공 시 라우터 이동
+    router.push('/senior-center/profile')
+  } catch (err) {
+    alert('경로당 선택에 실패했습니다.')
+    showModal.value = false
+  }
 }
-function closeModal() {
-  showModal.value = false
-}
+
 </script>
 
 <style scoped>
