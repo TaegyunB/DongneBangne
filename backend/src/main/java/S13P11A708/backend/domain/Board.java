@@ -41,14 +41,21 @@ public class Board extends BaseEntity {
 
     //== Setter 메서드 ==//
     /**
-     * 좋아요 수 증가
+     * 이미지 업로드 setter
+     */
+    public void updateBoardImage(String boardImage) {
+        this.boardImage = boardImage;
+    }
+
+    /**
+     * 좋아요 수 증가 setter
      */
     public void increaseLike() {
         this.likeCount++;
     }
 
     /**
-     * 좋아요 수 감소
+     * 좋아요 수 감소 setter
      */
     public void decreaseLike() {
         this.likeCount--;

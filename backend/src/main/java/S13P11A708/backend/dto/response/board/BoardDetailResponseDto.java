@@ -17,6 +17,7 @@ public class BoardDetailResponseDto {
     private Long boardId;
     private String nickname;
     private String seniorCenterName;
+    private String title;
     private String content;
     private String category;
     private String boardImage;
@@ -28,6 +29,7 @@ public class BoardDetailResponseDto {
                 .boardId(board.getId())
                 .nickname(board.getUser().getNickname())
                 .seniorCenterName(board.getUser().getSeniorCenter().getCenterName())
+                .title(board.getTitle())
                 .content(board.getContent())
                 .category(board.getCategory().name())
                 .boardImage(board.getBoardImage())
