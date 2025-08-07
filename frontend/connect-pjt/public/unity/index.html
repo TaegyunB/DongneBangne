@@ -35,10 +35,15 @@
       window.addEventListener('message', function (event) {
         try{
 
-          const data = JSON.parse(event.data);
-          if(data.type === "video-frame"){
-            if(typeof unityInstance !== 'undefined'){
-              unityInstance.SendMessage("VueReceiver", "ReceiveVideoFrame", data.data);
+          if(typeof unityInstance !== 'undefined'){
+            const data = JSON.parse(event.data);
+            if(data.type === "video-frame"){
+              if(data.sender === "local"){
+                unityInstance.SendMessage("VueReceiver", "ReceiveLocalVideoFrame", data.data);
+              }
+              else if(data.sender === "remote"){
+                unityInstance.SendMessage("VueReceiver", "ReceiveRemoteVideoFrame", data.data);
+              }
             }
           }
         }
