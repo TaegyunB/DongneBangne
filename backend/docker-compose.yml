@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # Spring Boot 애플리케이션
   dongnae-backend:
-    image: taegyunb99/dongnae-backend:latest
+    image: taegyunb99/dongnae-backend:${DOCKER_IMAGE_TAG:-latest}
     container_name: dongnae-backend
     ports:
       - "8080:8080"
