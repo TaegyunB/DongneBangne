@@ -1,7 +1,7 @@
 package S13P11A708.backend.controller;
 
 import S13P11A708.backend.dto.webSocket.GameAnsSocketMessage;
-import S13P11A708.backend.dto.webSocket.GameStartSocketMessage;
+import S13P11A708.backend.dto.webSocket.GameHintSocketMessage;
 import S13P11A708.backend.security.CustomOAuth2User;
 import S13P11A708.backend.service.GameService;
 import lombok.RequiredArgsConstructor;
@@ -41,9 +41,21 @@ public class GameSocketController {
         Long roomId = message.getRoomId();
         String answer = message.getPayload();
 
-        log.info("[ANSWER_SUBMIT] userId: {}, roomId: {}, answer: {}", userId, roomId, answer);
+        log.info("[ANSWER_SUBMIT] roomId: {}, userId: {}, answer: {}", roomId, userId, answer);
 
         gameService.handleAnswer(roomId, userId, answer);
+    }
+
+    /**
+     * 힌트 요청, 힌트 보여주기 처리
+     */
+    public void requestHint(GameHintSocketMessage message, Principal principal){
+        Long userId = extractUserIdFromPrincipal(principal);
+        Long roomId = message.getRoomId();
+
+        log.info("[HINT_REQUEST] roomId: {}, userId:{}", roomId, userId);
+
+        gameService.handleHint(roomId, userId);
     }
 
 

@@ -13,7 +13,5 @@ import lombok.NoArgsConstructor;
 public class GameAnsSocketMessage {
     private GameMessageType type;
     private Long roomId;
-    private Long senderId;
     private String payload;
-
 }

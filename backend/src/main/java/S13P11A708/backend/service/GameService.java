@@ -133,13 +133,35 @@ public class GameService {
     /**
      * 힌트 사용 처리
      */
-    public void handleHint(GameAnsSocketMessage message) {
-        Long roomId = message.getRoomId();
-        Long senderId = message.getSenderId();
+    public void handleHint(Long roomId, Long userId) {
+        //레디스에서 게임정보 가져오기
+        GameStatusRedis game = gameRedisService.getGameStatusRedis(roomId);
+        if(game == null) throw new RuntimeException("게임 상태를 찾을 수 없습니다.");
 
-        //1. redis에서 사용자 포인트 확인
-        //2. 포인트 부족 시 HINT_REJECTED 전송
-        //3. 포인트 차감 후, 첫 글자 힌트 전송
+        //1. 이미 힌트 사용 가능한지(포인트, 사용여부)
+        if(gameRedisService.canUseHint(roomId, userId)){
+            broadcaster.sendToUser(userId,
+                    messageFactory.createMessage(GameMessageType.HINT_REJECTED, roomId, "힌트를 더 이상 사용할 수 없습니다."));
+            return;
+        }
+
+        //2. 포인트 차감 시도
+        boolean deducted = gameRedisService.deductPointForHint(roomId, userId);
+        if(!deducted){
+            broadcaster.sendToUser(userId,
+                    messageFactory.createMessage(GameMessageType.HINT_REJECTED, roomId, "포인트가 부족합니다."));
+            return;
+        }
+
+        //3. 힌트 사용 기록
+        gameRedisService.markHintUsed(roomId, userId);
+
+        //4. 첫 글자 힌트 전송
+        String answer = game.getCurrentAnswer();
+        String hint = answer.substring(0,1);
+
+        broadcaster.sendToUser(userId,
+                messageFactory.createMessage(GameMessageType.HINT_RESPONSE, roomId, hint));
     }
 
     /**

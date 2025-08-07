@@ -56,7 +56,7 @@ public class JWTFilter extends OncePerRequestFilter {
         if (cookies != null) {
             for (Cookie cookie : cookies) {
                 System.out.println(cookie.getName() + "=" + cookie.getValue());
-                if (cookie.getName().equals("Authorization")) {
+                if (cookie.getName().equals("access_token")) {
                     authorization = cookie.getValue();
                 }
             }
@@ -73,7 +73,7 @@ public class JWTFilter extends OncePerRequestFilter {
             //조건이 해당되면 메소드 종료 (필수)
             return;
         }
-        System.out.println("[JWTFilter] Authorization 토큰 추출: " + authorization);
+        System.out.println("[JWTFilter] access_token 토큰 추출: " + authorization);
         //토큰
         String token = authorization;
 
