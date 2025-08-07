@@ -30,6 +30,8 @@ export default {
       isWaiting: true,        // 상대방 대기중
       peerClosed: false,      // 상대방 종료 여부
       frameIntervalId: null,  // 프레임 전송 반복 ID
+      localId: "ID",          // 내 아이디
+      remoteId: "ID",         // 상대방 아이디
     }
   },
   mounted: async function() {
@@ -159,7 +161,7 @@ export default {
     //////// startCall()끝
     async connectSignalingServer() {
       // 1.시그널링 서버 연결(백엔드에서 맞춰놓은 쿼리파라미터 형식으로)
-      this.signalingServer = new WebSocket(`ws://localhost:5000/`) //WebSocketConfig에 설정한 url과 경로 맞추어야함
+      this.signalingServer = new WebSocket(`ws://localhost:5000/signal`) //WebSocketConfig에 설정한 url과 경로 맞추어야함
 
       //2. 연결이 열리면 실행
       this.signalingServer.onopen = () => {
