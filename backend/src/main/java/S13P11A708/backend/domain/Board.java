@@ -33,6 +33,7 @@ public class Board extends BaseEntity {
     private String boardImage;
 
     @Column(name = "like_count")
+    @Builder.Default
     private Integer likeCount = 0;
 
     @ManyToOne(fetch = FetchType.LAZY)
