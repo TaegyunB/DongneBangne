@@ -7,13 +7,14 @@ import SeniorCenterProfile from '@/views/seniorCenterProfile.vue'
 import ChallengeCreateView from '@/views/ChallengeCreateView.vue'
 import ChallengeFinishView from '@/views/ChallengeFinishView.vue'
 import MainPage from '@/views/MainpageView.vue'
-import AiNewsDetail from '@/views/AiNewsDetailView.vue'
+import AiNewsView from '@/views/AiNewsView.vue'
 import CommunityBoards from '@/views/communityBoards.vue'
 import CommunityWrite from '@/views/communityWrite.vue'
 import CommunityDetail from '@/views/communityDetail.vue'
 import CommunityEdit from '@/views/communityEdit.vue'
 import RankingBoard from '@/views/rankingBoard.vue'
 import GameView from '@/views/GameView.vue'
+import AiNewsDetailView from '@/views/AiNewsDetailView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -87,14 +88,19 @@ const router = createRouter({
     {
       path: '/news',
       name: 'news',
-      component: AiNewsDetail,
+      component: AiNewsView,
       props: true
     },
     {
       path: '/admin/game',
       name: 'game',
-      component: GameView,
-    }
+      component: GameView
+    },
+    {
+      path: '/news/:id',
+      name: 'newsDetail',
+      component: AiNewsDetailView
+    },
   ]
 })
 
