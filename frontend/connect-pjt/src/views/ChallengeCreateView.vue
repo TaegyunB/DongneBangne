@@ -29,8 +29,8 @@
         class="styled-textarea"
       />
       <!-- isValid를 통과해야 버튼이 활성화되게 -->
-      <button class="submit-button" @click="handleSubmit" :disabled="!isValid">
-        ✔ 저장
+      <button class="submit-button" @click="handleSubmit" :disabled="!isValid || loading">
+        {{ loading ? '저장 중...' : '✔ 저장' }}
       </button>
     </div>
     
@@ -48,15 +48,14 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-// import { useUserStore } from '@/stores/user' 
 import axios from 'axios'
 
 const title = ref('')
 const place = ref('')
 const description = ref('')
 const showModal = ref(false)
+const loading = ref(false)
 const router = useRouter()
-// const userStore = useUserStore()
 
 const isValid = computed(() => {
   return title.value.trim() && place.value.trim() && description.value.trim()
@@ -68,16 +67,18 @@ const handleSubmit = async () => {
     return
   }
 
+  loading.value = true
+
   const challengeData = {
     challengeTitle: title.value.trim(),
     challengePlace: place.value.trim(),
     description: description.value.trim()
   }
 
-  console.log('axios로 보낼 데이터:', challengeData)
+  console.log('API로 보낼 데이터:', challengeData)
 
   try {
-    const response = await axios.post('/api/v1/admin/challenges', challengeData, {
+    const response = await axios.post('/api/v1/admin/challenges/create', challengeData, {
       withCredentials: true,
       headers: {
         'Content-Type': 'application/json'
@@ -85,22 +86,31 @@ const handleSubmit = async () => {
     })
     console.log('서버 응답:', response.data)
 
-    // 로컬스토리지 저장 
-    const customChallenges = JSON.parse(localStorage.getItem('customChallenges') || '[]')
+    // localStorage에 ADMIN 도전과제로 저장 (challengeId 포함)
+    const adminChallenges = JSON.parse(localStorage.getItem('adminChallenges') || '[]')
     const newChallenge = {
-      title: challengeData.challengeTitle,
-      description: challengeData.description,
-      place: challengeData.challengePlace,
+      challengeId: response.data.challengeId,
+      challengeTitle: response.data.challengeTitle,
+      challengePlace: response.data.challengePlace,
+      description: response.data.description,
       isCustom: true,
       createdAt: new Date().toISOString()
     }
 
-    customChallenges.push(newChallenge)
-    localStorage.setItem('customChallenges', JSON.stringify(customChallenges))
+    adminChallenges.push(newChallenge)
+    localStorage.setItem('adminChallenges', JSON.stringify(adminChallenges))
+    
     showModal.value = true
   } catch (error) {
-    console.error('axios 오류:', error)
-    alert('도전 생성 중 오류가 발생했습니다.')
+    console.error('도전과제 생성 실패:', error)
+    
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      alert('로그인이 필요합니다. 다시 로그인해주세요.')
+    } else {
+      alert('도전 생성 중 오류가 발생했습니다.')
+    }
+  } finally {
+    loading.value = false
   }
 }
 
