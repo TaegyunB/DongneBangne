@@ -1,7 +1,9 @@
 package S13P11A708.backend.websocket;
 
 import S13P11A708.backend.domain.enums.GameMessageType;
+import org.springframework.stereotype.Component;
 
+@Component
 public class GameMessageFactory {
 
     public static GameSocketMessage createMessage(GameMessageType type, Long roomId, String payload) {
