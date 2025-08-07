@@ -6,7 +6,11 @@ import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
@@ -21,6 +25,7 @@ public class S3Service {
 
     // Spring Cloud AWS가 자동 주입
     private final AmazonS3Client amazonS3Client;
+    private final RestTemplate restTemplate;
 
     @Value("${cloud.aws.s3.bucket}")
     private String bucketName;
@@ -90,6 +95,39 @@ public class S3Service {
         DeleteObjectRequest deleteObjectRequest = new DeleteObjectRequest(bucketName, fileName);
         amazonS3Client.deleteObject(deleteObjectRequest);
         log.info(fileName);
+    }
+
+    /**
+     * URL에서 PDF를 다운로드하고 S3에 업로드
+     */
+    public String downloadAndUploadPdf(String pdfUrl, String s3FileName) {
+        try {
+            // PDF URL에서 데이터 다운로드
+            ResponseEntity<byte[]> response =  restTemplate.getForEntity(pdfUrl, byte[].class);
+
+            if (response.getStatusCode() != HttpStatus.OK || response.getBody() ==  null) {
+                throw new RuntimeException("PDF 다운로드에 실패했습니다. Status: " + response.getStatusCode());
+            }
+
+            byte[] pdfData = response.getBody();
+
+            // S3에 업로드
+            ObjectMetadata metadata = new ObjectMetadata();
+            metadata.setContentLength(pdfData.length);
+            metadata.setContentType("application/pdf");
+            metadata.setContentDisposition("inline; filename=\"" + s3FileName + "\"");
+
+            try (ByteArrayInputStream inputStream = new ByteArrayInputStream(pdfData)) {
+                amazonS3Client.putObject(bucketName, s3FileName, inputStream, metadata);
+            }
+
+            String s3Url = amazonS3Client.getUrl(bucketName, s3FileName).toString();
+
+            return s3Url;
+
+        } catch (Exception e) {
+            throw new RuntimeException("PDF 저장에 실패했습니다: " + e.getMessage(), e);
+        }
     }
 
     /**

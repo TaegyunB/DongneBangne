@@ -1,5 +1,7 @@
 package S13P11A708.backend.websocket;
 
+import org.springframework.context.annotation.Configuration;
+
 import S13P11A708.backend.domain.enums.GameMessageType;
 import org.springframework.stereotype.Component;
 

@@ -22,9 +22,9 @@
     <div class="section-title">이야기하고, 도전하고, 함께하는 경로당 서비스</div>
     <br>
     
-    <!-- Admin,member UI 통합 -->
+    <!-- Admin,member UI 공통 -->
     <div class="main-card-grid-one">
-      <div class="main-card one" @click="goToChallenges">
+      <div class="main-card one" @click="goTo('/challenges')">
         <div class="card-title">도전 과제</div>
         <div class="card-desc">함께라서 더 의미있는 도전<br />매달 다양한 도전을 해보세요!</div>
         <img src="@/assets/mainpage/assignment.png" alt="도전 아이콘" class="card-icon" />
@@ -41,7 +41,7 @@
         <div class="card-desc">이웃 경로당들과 소통하는 공간</div>
         <img src="@/assets/mainpage/community.png" alt="게시판 아이콘" class="card-icon" />
       </div>
-      <div class="main-card four" @click="goTo('/ranking')">
+      <div class="main-card four" @click="goTo('/rankings')">
         <div class="card-title">순위</div>
         <div class="card-desc">우리 경로당은 몇 등일까요?</div>
         <img src="@/assets/mainpage/ranking.png" alt="순위 아이콘" class="card-icon" />
@@ -51,56 +51,36 @@
         <div class="card-desc">매달 우리만의 특별한 소식지</div>
         <img src="@/assets/mainpage/newspaper.png" alt="신문 아이콘" class="card-icon" />
       </div>
-    </div>
   </div>
+</div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
-const userRole = ref('')
+const userStore = useUserStore()
 
-// 도전으로 넘겨줄 role 백으로부터 받아오기. API주소 수정 필요. 
-const fetchUserRole = async () => {
-  try {
-    const response = await axios.get('/api/user/role', {
-      headers: {
-        'Content-Type': 'application/json',
-      }
-    })
-    
-    if (response.status === 200) {
-      userRole.value = response.data.userrole // API 응답에서 userrole 추출
-      console.log('사용자 역할:', userRole.value)
-    } else {
-      console.error('Failed to fetch user role')
-      userRole.value = 'MEMBER' // 기본값 설정
-    }
-  } catch (error) {
-    console.error('Error fetching user role:', error)
-    userRole.value = 'MEMBER' // 에러 시 기본값 설정
-  }
+// userRole을 백에서 가져오기
+const fetchUserInfo = async () => {
+  await userStore.fetchUserRole()
 }
 
-// 도전 과제 페이지로 이동하면서 userRole을 props로 전달
-const goToChallenges = () => {
-  router.push({
-    name: 'challenge', // 또는 실제 라우트 이름
-    params: { userRole: userRole.value }
-  })
-}
-
-// 일반 카드 클릭 시 이동 함수
+// userRole을 prop으로 전달하지 않고 그냥 이동
 function goTo(url) {
   router.push(url)
 }
 
-// 컴포넌트 마운트 시 사용자 역할 정보 가져오기
+// 컴포넌트 마운트 시 사용자 정보 가져오기
 onMounted(() => {
-  fetchUserRole()
+  fetchUserInfo()
+})
+
+// userRole을 외부에서 사용할 수 있도록 export (필요시)
+defineExpose({
+  userRole: userStore.userRole
 })
 </script>
 

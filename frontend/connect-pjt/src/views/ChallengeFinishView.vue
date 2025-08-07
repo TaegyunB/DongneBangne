@@ -60,10 +60,13 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+// import { useUserStore } from '@/stores/user' // 필요시 주석 해제
 import axios from 'axios'
 
 const router = useRouter()
 const route = useRoute()
+// const userStore = useUserStore() // 필요시 주석 해제
+
 const form = ref({ description: '', image: null })
 const previewUrl = ref('')
 const fileInput = ref(null)
@@ -72,7 +75,6 @@ const loading = ref(false)
 
 const isValid = computed(() => form.value.description.trim())
 
-// URL 파라미터에서 challengeId 가져오기
 const challengeId = ref(null)
 
 onMounted(() => {
@@ -108,7 +110,6 @@ const submit = async () => {
   loading.value = true
 
   try {
-    // FormData 구성
     const formData = new FormData()
     formData.append('imageDescription', form.value.description)
     if (form.value.image) {
@@ -121,10 +122,9 @@ const submit = async () => {
       image: form.value.image
     })
 
-    // 실제 API 호출
     const response = await axios.post(
       `/api/v1/admin/challenges/${challengeId.value}/missionFinishUpdate`, 
-      formData, 
+      formData,
       {
         headers: {
           'Content-Type': 'multipart/form-data'
@@ -134,20 +134,18 @@ const submit = async () => {
 
     console.log('서버 응답:', response.data)
 
-    // 임시 로컬 저장 (업로드됨을 표시하지만 아직 완료되지 않음)
     const uploadedChallenge = {
       challengeId: parseInt(challengeId.value),
       description: form.value.description,
       image: form.value.image ? previewUrl.value : null,
       uploadedAt: new Date().toISOString(),
-      is_success: false, // 아직 완료되지 않음
-      is_uploaded: true, // 업로드는 완료됨
-      serverData: response.data // 서버에서 받은 데이터 저장
+      is_success: false,
+      is_uploaded: true,
+      serverData: response.data
     }
 
     localStorage.setItem(`challenge_${challengeId.value}`, JSON.stringify(uploadedChallenge))
     showModal.value = true
-
   } catch (error) {
     console.error('업로드 오류:', error)
     alert('도전 인증 업로드 중 오류가 발생했습니다.')
@@ -160,7 +158,7 @@ const closeModal = () => showModal.value = false
 
 const goToChallenge = () => {
   showModal.value = false
-  router.push('/challenges')
+  router.push('/challenges') // query 파라미터 제거만
 }
 </script>
 
