@@ -1,6 +1,7 @@
 package S13P11A708.backend.websocket;
 
 import S13P11A708.backend.dto.webSocket.GameAnsSocketMessage;
+import S13P11A708.backend.dto.webSocket.GameHintSocketMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
@@ -17,7 +18,7 @@ public class GameBroadcaster {
     }
 
     // 특정 유저에게만 전송 (힌트)
-    public void sendToUser(Long userId, GameAnsSocketMessage message) {
+    public void sendToUser(Long userId, GameHintSocketMessage message) {
         messagingTemplate.convertAndSend("/queue/hint/"+userId, message);
     }
 }

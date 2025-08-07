@@ -1,10 +1,10 @@
 package S13P11A708.backend.service;
 
-import S13P11A708.backend.domain.GameRoom;
-import S13P11A708.backend.domain.TrotQuiz;
+import S13P11A708.backend.domain.*;
 import S13P11A708.backend.domain.enums.GameMessageType;
 import S13P11A708.backend.dto.redis.GameStatusRedis;
 import S13P11A708.backend.dto.redis.PlayerStatus;
+import S13P11A708.backend.repository.GameHistoryRepository;
 import S13P11A708.backend.repository.GameRoomRepository;
 import S13P11A708.backend.repository.TrotQuizRepository;
 import S13P11A708.backend.repository.UserRepository;
@@ -15,6 +15,7 @@ import S13P11A708.backend.dto.webSocket.GameAnsSocketMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -27,6 +28,8 @@ public class GameService {
     private final TrotQuizRepository trotQuizRepository;
     private final GameRoomRepository gameRoomRepository;
     private final GameMessageFactory messageFactory;
+    private final UserService userService;
+    private final GameHistoryRepository gameHistoryRepository;
 
     /**
      * 게임 시작하면, 각 유저의 개인 포인트를 db에서 가져와서
@@ -89,7 +92,7 @@ public class GameService {
         if(player == null) return;
 
         if(player.isAnswered()){
-            broadcaster.sendToUser(senderId,
+            broadcaster.broadcastToRoom(senderId,
                     messageFactory.createMessage(GameMessageType.ANSWER_REJECTED, roomId, "이미 정답을 맞추셨습니다."));
             return;
         }
@@ -102,7 +105,7 @@ public class GameService {
         GameMessageType resultType = isCorrect ? GameMessageType.ANSWER_RESULT : GameMessageType.ANSWER_REJECTED;
         String message = isCorrect ? "정답입니다." : "틀렸습니다.";
         broadcaster.broadcastToRoom(roomId,
-                messageFactory.createWithSender(resultType, roomId, senderId, message));
+                messageFactory.createMessage(resultType, roomId, message));
 
         if(!isCorrect) return;
 
@@ -141,7 +144,7 @@ public class GameService {
         //1. 이미 힌트 사용 가능한지(포인트, 사용여부)
         if(gameRedisService.canUseHint(roomId, userId)){
             broadcaster.sendToUser(userId,
-                    messageFactory.createMessage(GameMessageType.HINT_REJECTED, roomId, "힌트를 더 이상 사용할 수 없습니다."));
+                    messageFactory.createWithSender(GameMessageType.HINT_REJECTED, roomId, "힌트를 더 이상 사용할 수 없습니다."));
             return;
         }
 
@@ -149,7 +152,7 @@ public class GameService {
         boolean deducted = gameRedisService.deductPointForHint(roomId, userId);
         if(!deducted){
             broadcaster.sendToUser(userId,
-                    messageFactory.createMessage(GameMessageType.HINT_REJECTED, roomId, "포인트가 부족합니다."));
+                    messageFactory.createWithSender(GameMessageType.HINT_REJECTED, roomId, "포인트가 부족합니다."));
             return;
         }
 
@@ -161,15 +164,88 @@ public class GameService {
         String hint = answer.substring(0,1);
 
         broadcaster.sendToUser(userId,
-                messageFactory.createMessage(GameMessageType.HINT_RESPONSE, roomId, hint));
+                messageFactory.createWithSender(GameMessageType.HINT_RESPONSE, roomId, hint));
     }
 
     /**
      * 게임을 끝내기
      * db에 redis 정보 저장, 최종 승자 판단
      */
-    public void endGame(Long roomId, GameStatusRedis gameRoom){
+    public void endGame(Long roomId, GameStatusRedis game){
+        PlayerStatus user1 = game.getUser1();
+        PlayerStatus user2 = game.getUser2();
 
+        int count1 = user1.getCorrectCount();
+        int count2 = user2.getCorrectCount();
+
+        Long winnerId = null;
+        if(count1>count2) {
+            winnerId = user1.getUserId();
+        }else if(count1<count2){
+            winnerId = user2.getUserId();
+        }
+
+        //1. 포인트 부여 (무승부일 경우 생략)
+        if(winnerId != null){
+            userService.addWinPoint(winnerId);
+        }
+
+        //2. 엔티티 조회
+        GameRoom room = gameRoomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("게임방을 찾을 수 없습니다."));
+
+        User user1Entity = userRepository.getReferenceById(user1.getUserId());
+        User user2Entity = userRepository.getReferenceById(user2.getUserId());
+
+        User winnerEntity = (winnerId != null)
+                ? (winnerId.equals(user1) ? user1Entity : user2Entity)
+                : null;
+
+        //3-1. 게임 결과 기록 GameHistory
+        GameHistory history = GameHistory.of(
+                room,
+                winnerEntity,
+                game.getStartedAt(),
+                LocalDateTime.now(),
+                game.getTotalRound(),
+                room.getMusicEra(),
+                room.getCategory()
+        );
+
+        //3-2. 게임 결과 기록 GameHistoryUser
+        List<GameHistoryUser> historyUsers = List.of(
+                GameHistoryUser.of(
+                        history,
+                        user1Entity,
+                        user1Entity.getSeniorCenter(),
+                        user1.getCorrectCount(),
+                        user1.getHintUsedCount(), // PlayerStatus에서 가져와야 함
+                        winnerId != null && winnerId.equals(user1)
+                ),
+                GameHistoryUser.of(
+                        history,
+                        user2Entity,
+                        user2Entity.getSeniorCenter(),
+                        user2.getCorrectCount(),
+                        user2.getHintUsedCount(),
+                        winnerId != null && winnerId.equals(user2)
+                )
+        );
+        history.getHistoryUsers().addAll(historyUsers);
+
+        //3. 저장
+        gameHistoryRepository.save(history);
+
+        //4. webSocket 알림 전송
+        String resultMessage = (winnerEntity != null)
+                ? "승자는" + winnerEntity.getNickname() + " 님입니다"
+                : "무승부입니다";
+
+        broadcaster.broadcastToRoom(roomId,
+                messageFactory.createMessage(GameMessageType.GAME_END, roomId, resultMessage));
+
+        //5. redis 정리
+        gameRedisService.finishGame(roomId);
     }
 
     /**

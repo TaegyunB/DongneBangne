@@ -73,8 +73,8 @@ public class GameRedisService {
                 .currentAnswer(firstQuiz.getAnswer())
                 .currentUrl(firstQuiz.getUrl())
                 .status(GameStatus.PROGRESS)
-                .user1(new PlayerStatus(userId1, roomId, point1, 0, false, false))
-                .user2(new PlayerStatus(userId2, roomId, point2, 0, false, false))
+                .user1(new PlayerStatus(userId1, roomId, point1, 0, 0, false, false))
+                .user2(new PlayerStatus(userId2, roomId, point2, 0, 0, false, false))
                 .build();
 
         saveGameStatus(roomId, status);
@@ -116,6 +116,7 @@ public class GameRedisService {
 
         if(player != null && !player.isHintUsed()){
             player.updateHintUsed(true);
+            player.addHintUsedCount(player.getHintUsedCount()+1);
             saveGameStatus(roomId, status);
         }
     }
@@ -187,6 +188,9 @@ public class GameRedisService {
             status.updateStatus(GameStatus.FINISHED);
             saveGameStatus(roomId, status);
         }
+        //redis 정보 삭제
+        String key = getKey(roomId);
+        redisTemplate.delete(key);
     }
 
 
