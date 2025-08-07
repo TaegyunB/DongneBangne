@@ -2,6 +2,7 @@ package S13P11A708.backend.service;
 
 import S13P11A708.backend.domain.*;
 import S13P11A708.backend.domain.enums.GameMessageType;
+import S13P11A708.backend.domain.enums.GameStatus;
 import S13P11A708.backend.dto.redis.GameStatusRedis;
 import S13P11A708.backend.dto.redis.PlayerStatus;
 import S13P11A708.backend.repository.GameHistoryRepository;
@@ -142,7 +143,7 @@ public class GameService {
         if(game == null) throw new RuntimeException("게임 상태를 찾을 수 없습니다.");
 
         //1. 이미 힌트 사용 가능한지(포인트, 사용여부)
-        if(gameRedisService.canUseHint(roomId, userId)){
+        if(!gameRedisService.canUseHint(roomId, userId)){
             broadcaster.sendToUser(userId,
                     messageFactory.createWithSender(GameMessageType.HINT_REJECTED, roomId, "힌트를 더 이상 사용할 수 없습니다."));
             return;
@@ -198,7 +199,7 @@ public class GameService {
         User user2Entity = userRepository.getReferenceById(user2.getUserId());
 
         User winnerEntity = (winnerId != null)
-                ? (winnerId.equals(user1) ? user1Entity : user2Entity)
+                ? (winnerId.equals(user1.getUserId()) ? user1Entity : user2Entity)
                 : null;
 
         //3-1. 게임 결과 기록 GameHistory
@@ -235,6 +236,7 @@ public class GameService {
 
         //3. 저장
         gameHistoryRepository.save(history);
+        room.changeGameStatus(GameStatus.FINISHED);
 
         //4. webSocket 알림 전송
         String resultMessage = (winnerEntity != null)
