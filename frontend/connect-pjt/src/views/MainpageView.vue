@@ -41,7 +41,7 @@
         <div class="card-desc">이웃 경로당들과 소통하는 공간</div>
         <img src="@/assets/mainpage/community.png" alt="게시판 아이콘" class="card-icon" />
       </div>
-      <div class="main-card four" @click="goTo('/ranking')">
+      <div class="main-card four" @click="goTo('/rankings')">
         <div class="card-title">순위</div>
         <div class="card-desc">우리 경로당은 몇 등일까요?</div>
         <img src="@/assets/mainpage/ranking.png" alt="순위 아이콘" class="card-icon" />
