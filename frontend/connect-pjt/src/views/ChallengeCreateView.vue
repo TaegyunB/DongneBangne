@@ -48,6 +48,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+// import { useUserStore } from '@/stores/user' 
 import axios from 'axios'
 
 const title = ref('')
@@ -55,13 +56,12 @@ const place = ref('')
 const description = ref('')
 const showModal = ref(false)
 const router = useRouter()
+// const userStore = useUserStore()
 
 const isValid = computed(() => {
   return title.value.trim() && place.value.trim() && description.value.trim()
 })
 
-//-----------------------------------------
-//미션 생성 
 const handleSubmit = async () => {
   if (!isValid.value) {
     alert('모든 항목을 입력해주세요.')
@@ -77,13 +77,15 @@ const handleSubmit = async () => {
   console.log('axios로 보낼 데이터:', challengeData)
 
   try {
-    // === 백엔드 연동 시 아래 주석 해제 ===
-    const response = await axios.post('http://localhost:8080/api/v1/admin/challenges', challengeData)
+    const response = await axios.post('/api/v1/admin/challenges', challengeData, {
+      withCredentials: true,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
     console.log('서버 응답:', response.data)
 
-    // 생성 성공 시 응답 값을 사용해서 처리 (예: 목록에 추가)
-
-    // === 프론트 확인용 로컬 저장 ===
+    // 로컬스토리지 저장 
     const customChallenges = JSON.parse(localStorage.getItem('customChallenges') || '[]')
     const newChallenge = {
       title: challengeData.challengeTitle,
@@ -101,11 +103,10 @@ const handleSubmit = async () => {
     alert('도전 생성 중 오류가 발생했습니다.')
   }
 }
-//----------------------------------------------
 
 const goToList = () => {
   showModal.value = false
-  router.push('/challenges')
+  router.push('/challenges') 
 }
 </script>
 
