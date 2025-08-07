@@ -11,8 +11,7 @@ import S13P11A708.backend.repository.UserRepository;
 import S13P11A708.backend.service.redis.GameRedisService;
 import S13P11A708.backend.websocket.GameBroadcaster;
 import S13P11A708.backend.websocket.GameMessageFactory;
-import S13P11A708.backend.websocket.GameSocketMessage;
-import S13P11A708.backend.websocket.GameSocketService;
+import S13P11A708.backend.dto.webSocket.GameAnsSocketMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -67,8 +66,8 @@ public class GameService {
         gameRedisService.initGame(roomId, totalRounds, user1Id, point1, user2Id, point2, quizIdList, firstQuiz);
 
         // 6. WebSocket을 통해 참가자들에게 GAME_START 및 ROUND_QUESTION 메시지 전송
-        GameSocketMessage startMessage = messageFactory.createMessage(GameMessageType.GAME_START, roomId, "게임이 시작됩니다!");
-        GameSocketMessage questionMessage = messageFactory.createMessage(GameMessageType.ROUND_QUESTION, roomId, firstQuiz.getUrl());
+        GameAnsSocketMessage startMessage = messageFactory.createMessage(GameMessageType.GAME_START, roomId, "게임이 시작됩니다!");
+        GameAnsSocketMessage questionMessage = messageFactory.createMessage(GameMessageType.ROUND_QUESTION, roomId, firstQuiz.getUrl());
 
         broadcaster.broadcastToRoom(roomId, startMessage);
         broadcaster.broadcastToRoom(roomId, questionMessage);
@@ -134,7 +133,7 @@ public class GameService {
     /**
      * 힌트 사용 처리
      */
-    public void handleHint(GameSocketMessage message) {
+    public void handleHint(GameAnsSocketMessage message) {
         Long roomId = message.getRoomId();
         Long senderId = message.getSenderId();
 

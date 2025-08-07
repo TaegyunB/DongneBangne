@@ -1,4 +1,4 @@
-package S13P11A708.backend.websocket;
+package S13P11A708.backend.dto.webSocket;
 
 import S13P11A708.backend.domain.enums.GameMessageType;
 import lombok.AllArgsConstructor;
@@ -10,10 +10,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class GameSocketMessage {
+public class GameStartSocketMessage {
     private GameMessageType type;
     private Long roomId;
-    private Long senderId;
     private String payload;
-
+    private Long user1Id;
+    private Long user2Id;
 }

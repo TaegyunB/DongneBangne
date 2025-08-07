@@ -7,7 +7,7 @@ import lombok.*;
 @NoArgsConstructor
 public class PlayerStatus {
     private Long userId;
-    private Long rooomId; //소속된 방id
+    private Long roomId; //소속된 방id
     private Long point; //개인 포인트
     private int correctCount;
     private boolean answered;
@@ -15,7 +15,7 @@ public class PlayerStatus {
 
     public PlayerStatus(Long userId, Long roomId, Long point, int correctCount, boolean answered, boolean hintUsed) {
         this.userId = userId;
-        this.rooomId = rooomId;
+        this.roomId = roomId;
         this.point = point;
         this.correctCount = correctCount;
         this.answered = answered;
