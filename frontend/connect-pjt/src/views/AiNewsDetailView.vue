@@ -47,12 +47,20 @@
         <p>성공한 도전과제: {{ newsData.successChallengeCount }}개</p>
       </div>
 
-      <!-- PDF 저장 버튼 -->
+      <!-- PDF 관련 버튼들 -->
       <div v-if="newsData.successChallengeCount >= 1 && newsData.successChallengeCount <= 4" class="save-button">
         <button @click="saveAsPDF" :disabled="savingPdf">
           {{ savingPdf ? '📄 PDF 생성중...' : '📄 PDF로 저장하기' }}
         </button>
+        <button @click="generateAndUploadPDF" :disabled="uploadingPdf" class="upload-btn">
+          {{ uploadingPdf ? '📤 PDF 업로드중...' : '📤 PDF 업로드하기' }}
+        </button>
         <button @click="$router.push('/news')" class="back-btn">목록으로 돌아가기</button>
+      </div>
+
+      <!-- PDF URL이 있는 경우 다운로드 링크 표시 -->
+      <div v-if="newsData.pdfUrl" class="pdf-info">
+        <p>업로드된 PDF: <a :href="newsData.pdfUrl" target="_blank">다운로드</a></p>
       </div>
     </div>
   </div>
@@ -78,6 +86,7 @@ const error = ref('')
 const newsData = ref(null)
 const pdfComponent = ref(null)
 const savingPdf = ref(false)
+const uploadingPdf = ref(false)
 
 // 백엔드에서 AI 신문 생성 요청
 const generateAiNews = async (newsId) => {
@@ -237,6 +246,102 @@ const templateFourData = computed(() => {
   }
 })
 
+// PDF 생성 및 백엔드 업로드 함수
+const generateAndUploadPDF = async () => {
+  if (!pdfComponent.value) {
+    alert("PDF 컴포넌트가 준비되지 않았습니다!")
+    return
+  }
+
+  uploadingPdf.value = true
+  
+  try {
+    await nextTick()
+    const element = pdfComponent.value.pdfTarget
+
+    if (!element) {
+      alert("PDF 타겟이 아직 준비되지 않았어요!")
+      return
+    }
+
+    // PDF 생성 옵션
+    const opt = {
+      margin: [5, 5, 5, 5],
+      filename: `${newsData.value.seniorCenterName}_${newsData.value.year}_${String(newsData.value.month).padStart(2, '0')}_신문.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: {
+        scale: 1.5,
+        useCORS: true,
+        allowTaint: true,
+        scrollX: 0,
+        scrollY: 0
+      },
+      jsPDF: {
+        unit: 'mm',
+        format: 'a4',
+        orientation: 'portrait',
+        compress: true
+      }
+    }
+
+    // PDF 생성 (Blob으로)
+    const pdfBlob = await html2pdf().set(opt).from(element).outputPdf('blob')
+    
+    // PDF Blob을 URL로 변환하여 콘솔에 출력
+    const pdfUrl = URL.createObjectURL(pdfBlob)
+    console.log('생성된 PDF URL:', pdfUrl)
+    console.log('PDF Blob 정보:', {
+      size: pdfBlob.size,
+      type: pdfBlob.type,
+      url: pdfUrl
+    })
+    
+    // FormData 생성
+    const formData = new FormData()
+    const filename = `${newsData.value.seniorCenterName}_${newsData.value.year}_${String(newsData.value.month).padStart(2, '0')}_신문.pdf`
+    
+    formData.append('file', pdfBlob, filename)
+    formData.append('newsId', newsData.value.id)
+    formData.append('seniorCenterName', newsData.value.seniorCenterName)
+    formData.append('year', newsData.value.year)
+    formData.append('month', newsData.value.month)
+
+    // 백엔드로 PDF 업로드
+    const uploadResponse = await axios.post('/api/v1/admin/ai-news/upload-pdf', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+
+    console.log('PDF 업로드 성공:', uploadResponse.data)
+    
+    // 업로드 성공 시 newsData 업데이트 (pdfUrl 반영)
+    if (uploadResponse.data.pdfUrl) {
+      newsData.value.pdfUrl = uploadResponse.data.pdfUrl
+      alert('PDF가 성공적으로 업로드되었습니다!')
+    }
+    
+    // 사용이 끝난 URL 해제 (메모리 정리)
+    URL.revokeObjectURL(pdfUrl)
+    
+  } catch (error) {
+    console.error('PDF 업로드 실패:', error)
+    
+    if (error.response) {
+      // 서버에서 응답이 온 경우
+      alert(`PDF 업로드에 실패했습니다: ${error.response.data.message || '서버 오류'}`)
+    } else if (error.request) {
+      // 요청이 전송되었지만 응답을 받지 못한 경우
+      alert('PDF 업로드에 실패했습니다: 서버와 연결할 수 없습니다.')
+    } else {
+      // PDF 생성 자체에 문제가 있는 경우
+      alert('PDF 생성에 실패했습니다.')
+    }
+  } finally {
+    uploadingPdf.value = false
+  }
+}
+
 // PDF 저장 기능
 const saveAsPDF = async () => {
   if (!pdfComponent.value) {
@@ -362,5 +467,37 @@ onMounted(() => {
 
 .back-btn:hover {
   background-color: #7f8c8d !important;
+}
+
+.upload-btn {
+  background-color: #27ae60 !important;
+  color: white !important;
+}
+
+.upload-btn:hover:not(:disabled) {
+  background-color: #229954 !important;
+}
+
+.upload-btn:disabled {
+  background-color: #bdc3c7 !important;
+  cursor: not-allowed;
+}
+
+.pdf-info {
+  text-align: center;
+  margin: 20px 0;
+  padding: 15px;
+  background-color: #e8f5e8;
+  border-radius: 8px;
+}
+
+.pdf-info a {
+  color: #27ae60;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.pdf-info a:hover {
+  text-decoration: underline;
 }
 </style>
