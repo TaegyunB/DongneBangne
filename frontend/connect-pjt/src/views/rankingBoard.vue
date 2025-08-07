@@ -12,13 +12,14 @@
       />
     </div>
 
+    <!-- 테이블 -->
     <table class="ranking-table">
       <thead>
         <tr>
           <th class="text-center">순위</th>
           <th class="text-left">경로당 이름</th>
           <th class="text-center">도전 현황</th>
-          <th class="text-center">트로트 맞추기 포인트</th>
+          <th class="text-center">트로트 포인트</th>
           <th class="text-center">도전 포인트</th>
           <th class="text-blue text-center">월간 포인트</th>
         </tr>
@@ -32,11 +33,9 @@
           <td class="text-left">
             <div class="center-name">
               <img src="@/assets/logo.png" class="logo" />
-              <span>{{ center.name }}</span>
+              <span>{{ center.centerName }}</span>
             </div>
           </td>
-
-          <!-- 도전 현황 -->
           <td>
             <div class="status-box with-arrow">
               <span
@@ -46,13 +45,12 @@
               >
                 {{ status === 'success' ? '✓' : '✕' }}
               </span>
-              <div class="challenge-info-btn" @click="openModal(center)">
+              <div class="challenge-info-btn" @click="openModal(center.id)">
                 <span class="arrow">»</span>
                 <span class="describe-text">도전 미션 현황 보기</span>
               </div>
             </div>
           </td>
-
           <td class="text-center">{{ center.trotPoint.toLocaleString() }}</td>
           <td class="text-center">{{ center.missionPoint.toLocaleString() }}</td>
           <td class="text-blue text-center">{{ center.monthlyPoint.toLocaleString() }}</td>
@@ -60,7 +58,7 @@
       </tbody>
     </table>
 
-    <!-- Pagination -->
+    <!-- 페이지네이션 -->
     <div class="pagination">
       <button @click="goToPage(1)" :disabled="currentPage === 1">«</button>
       <button @click="goToPage(currentPage - 1)" :disabled="currentPage === 1">‹</button>
@@ -78,9 +76,50 @@
 
     <!-- 모달 -->
     <div class="modal-overlay" v-if="selectedCenter" @click.self="closeModal">
-      <div class="modal-content">
-        <h3>{{ selectedCenter.name }}</h3>
-        <p>이곳에 도전 미션 요약 정보가 들어갈 예정입니다.</p>
+      <div class="modal-content challenge-modal">
+        <h2>{{ selectedCenter.seniorCenterName }} 도전</h2>
+
+        <div class="challenge-grid">
+          <div 
+            v-for="challengeId in [1, 2, 3, 4]" 
+            :key="challengeId" 
+            class="challenge-card"
+          >
+            <template v-if="getChallengeById(challengeId)">
+              <div class="image-placeholder">
+                <img
+                  v-if="getChallengeById(challengeId).challengeImage"
+                  :src="getChallengeById(challengeId).challengeImage"
+                  class="challenge-img"
+                  alt="미션 이미지"
+                />
+              </div>
+              <div class="card-text">
+                <h3 class="card-title">
+                  {{ getChallengeById(challengeId).challengeTitle }}
+                  <span :class="getChallengeById(challengeId).isSuccess ? 'check-icon' : 'fail-icon'">
+                    {{ getChallengeById(challengeId).isSuccess ? '✅' : '❌' }}
+                  </span>
+                </h3>
+                <p class="card-description">
+                  {{ truncateText(getChallengeById(challengeId).description) }}
+                </p>
+                <p class="card-subtext">📍 {{ getChallengeById(challengeId).challengePlace }}</p>
+                <p class="card-point">💎 {{ getChallengeById(challengeId).point }}점</p>
+                <p class="more-info" @click="openDetailModal(challengeId)">더보기 →</p>
+              </div>
+            </template>
+            <template v-else>
+              <div class="image-placeholder">
+                <span style="color: #999">🕳</span>
+              </div>
+              <div class="card-text">
+                <h3 class="card-title">미션이 등록되지 않았습니다</h3>
+              </div>
+            </template>
+          </div>
+        </div>
+
         <button class="close-btn" @click="closeModal">닫기</button>
       </div>
     </div>
@@ -89,92 +128,125 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import api from '@/api/axios'
 
 const centers = ref([])
 const currentPage = ref(1)
 const pageSize = 10
 const totalPages = ref(1)
 const searchQuery = ref('')
+const selectedCenter = ref(null)
 
-// 검색된 센터만 반환
 const filteredCenters = computed(() => {
   if (!searchQuery.value.trim()) return centers.value
   return centers.value.filter((center) =>
-    center.name.toLowerCase().includes(searchQuery.value.toLowerCase())
+    center.centerName.toLowerCase().includes(searchQuery.value.toLowerCase())
   )
 })
 
-// 페이지네이션 적용된 센터 목록
 const paginatedCenters = computed(() => {
   const start = (currentPage.value - 1) * pageSize
   const end = start + pageSize
   return filteredCenters.value.slice(start, end)
 })
 
-// 페이지 버튼 목록
 const visiblePages = computed(() => {
   const pages = []
   const maxVisible = 5
   let start = Math.max(1, currentPage.value - Math.floor(maxVisible / 2))
   let end = start + maxVisible - 1
-
   if (end > totalPages.value) {
     end = totalPages.value
     start = Math.max(1, end - maxVisible + 1)
   }
-
-  for (let i = start; i <= end; i++) {
-    pages.push(i)
-  }
+  for (let i = start; i <= end; i++) pages.push(i)
   return pages
 })
 
-const selectedCenter = ref(null)
-
-const openModal = (center) => {
-  selectedCenter.value = center
-}
-
-const closeModal = () => {
-  selectedCenter.value = null
-}
-
-// 페이지 이동
 const goToPage = (page) => {
   if (page < 1 || page > totalPages.value) return
   currentPage.value = page
 }
 
-// 페이지 수 계산 (필터링 결과 기준)
+const normalizeChallenges = (challenges) => {
+  const result = []
+  for (let id = 1; id <= 4; id++) {
+    const found = challenges.find(c => c.id === id)
+    result.push(found || null)
+  }
+  return result
+}
+
+const openModal = async (centerId) => {
+  try {
+    const res = await api.get(`/api/v1/rankings/senior-center/${centerId}/challenges`)
+    const data = res.data
+    selectedCenter.value = {
+      ...data,
+      challenges: normalizeChallenges(data.challenges)
+    }
+  } catch (err) {
+    console.error('도전 미션 로딩 실패:', err)
+  }
+}
+
+
+const closeModal = () => {
+  selectedCenter.value = null
+}
+
 watch(filteredCenters, (filtered) => {
   totalPages.value = Math.ceil(filtered.length / pageSize)
   currentPage.value = 1
 })
 
-// JSON 불러오기 및 정제
 onMounted(async () => {
   try {
-    const response = await fetch('/dummy_centers.json')
-    if (!response.ok) throw new Error('JSON 파일을 불러올 수 없습니다.')
-
-    const data = await response.json()
-
+    const response = await api.get('/api/v1/rankings')
+    const data = response.data
     const normalized = data.map((center) => ({
-      ...center,
-      challengeStatuses: center.challengeStatuses.map((s) =>
-        s === 'yes' ? 'success' : 'fail'
+      id: center.seniorCenterId,
+      centerName: center.seniorCenterName,
+      trotPoint: center.trotPoint,
+      missionPoint: center.challengePoint,
+      monthlyPoint: center.totalPoint,
+      challenges: center.challenges,
+      challengeStatuses: center.challenges.slice(0, 4).map((c) =>
+        c.isSuccess ? 'success' : 'fail'
       )
     }))
-
     normalized.sort((a, b) => b.monthlyPoint - a.monthlyPoint)
-
     centers.value = normalized
   } catch (error) {
-    console.error('데이터 로드 실패:', error)
+    console.error('API 호출 실패:', error)
   }
 })
-</script>
 
+const getChallengeById = (id) => {
+  return selectedCenter.value?.challenges?.find(c => c.id === id)
+}
+
+const truncateText = (text, maxLength = 30) => {
+  if (!text) return ''
+  return text.length > maxLength ? text.slice(0, maxLength) + '...' : text
+}
+
+const openDetailModal = async (challengeId) => {
+  const centerId = selectedCenter.value?.seniorCenterId
+  if (!centerId) return
+
+  try {
+    const res = await api.get(`/api/v1/rankings/senior-center/${centerId}/challenges/${challengeId}`)
+    const challenge = res.data
+    // 모달 띄우는 로직 구현 위치
+    console.log('✅ 상세 미션:', challenge)
+    // 예: 상세 모달 상태로 따로 띄우거나, selectedChallenge.value = challenge;
+  } catch (err) {
+    console.error('상세 미션 불러오기 실패:', err)
+  }
+}
+
+</script>
 
 <style scoped>
 .container {
@@ -211,29 +283,19 @@ onMounted(async () => {
 .ranking-table thead {
   background-color: #f9fafb;
 }
-.ranking-table th {
+.ranking-table th,
+.ranking-table td {
   padding: 14px;
-  font-weight: 600;
   text-align: center;
   border-bottom: 1px solid #eee;
-}
-/* 테이블 내 여백을 균일하게 유지 */
-.ranking-table td {
-  padding: 12px 16px;
+  font-variant-numeric: tabular-nums;
 }
 .ranking-table tr:hover {
   background-color: #f8f9fa;
 }
-
-.ranking-table th.text-center,
-.ranking-table td.text-center {
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-/* 기존 스타일 수정 */
 .ranking-table td.text-blue {
   color: #007bff;
-  font-weight: normal;  /* bold 제거 */
+  font-weight: normal;
 }
 .ranking-table td:last-child {
   border-right: none;
@@ -331,10 +393,10 @@ onMounted(async () => {
 }
 .modal-content {
   background: #fff;
-  padding: 24px 32px;
+  padding: 20px 24px;
   border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  max-width: 400px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  max-width: 1000px;
   width: 100%;
   text-align: center;
 }
@@ -365,14 +427,67 @@ onMounted(async () => {
   font-size: 14px;
   color: inherit;
 }
-/* 스타일 일관성 위해 모든 숫자 열에 공통 적용 */
-.ranking-table td.text-right {
-  font-variant-numeric: tabular-nums; /* 폰트에서 숫자 폭 균등 */
-  padding-right: 14px;
+
+.challenge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); /* 반응형 대응 */
+  gap: 16px;
+  margin: 20px 0;
 }
-/* 월간 포인트 강조는 색상만 */
-.ranking-table td.text-blue {
-  color: #007bff;
-  /* font-weight: bold; ← 주석 처리 가능 */
+
+.challenge-card {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: left;
+}
+.image-placeholder {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #dfe3e6;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.challenge-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.card-title {
+  font-size: 18px;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.card-description {
+  font-size: 14px;
+  margin: 6px 0;
+  color: #444;
+}
+.card-subtext, .card-point {
+  font-size: 13px;
+  color: #666;
+  margin-top: 4px;
+}
+.check-icon {
+  color: green;
+}
+.fail-icon {
+  color: red;
+}
+.no-mission-text {
+  text-align: center;
+  color: #999;
+  font-size: 16px;
+  margin: 30px 0;
 }
 </style>
