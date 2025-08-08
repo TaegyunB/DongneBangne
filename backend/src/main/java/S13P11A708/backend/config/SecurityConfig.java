@@ -63,6 +63,8 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests((auth) -> auth
                         .requestMatchers("/", "/oauth2/**", "/login/**", "/api/v1/senior-centers", "/api/v1/senior-centers/**").permitAll() // "/api/v1/senior-centers" 추가 // 와일드 카드 추가
+                        .requestMatchers("/ws-game/**", "/ws-game", "/signal", "/signal/**").permitAll()
+                        .requestMatchers("/websocket/**", "/sockjs/**").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/**").authenticated()
                 );

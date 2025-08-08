@@ -1,9 +1,6 @@
 package S13P11A708.backend.domain;
 
-import S13P11A708.backend.domain.GameRoom;
-import S13P11A708.backend.domain.User;
 import S13P11A708.backend.domain.common.BaseEntity;
-import S13P11A708.backend.dto.redis.PlayerStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
