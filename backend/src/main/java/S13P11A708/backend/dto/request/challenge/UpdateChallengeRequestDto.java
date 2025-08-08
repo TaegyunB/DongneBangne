@@ -16,5 +16,4 @@ public class UpdateChallengeRequestDto {
 
     private String description;
 
-
 }
