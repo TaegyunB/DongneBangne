@@ -3,8 +3,8 @@ package S13P11A708.backend.service;
 import S13P11A708.backend.domain.*;
 import S13P11A708.backend.domain.enums.GameMessageType;
 import S13P11A708.backend.domain.enums.GameStatus;
-import S13P11A708.backend.dto.redis.GameStatusRedis;
-import S13P11A708.backend.dto.redis.PlayerStatus;
+import S13P11A708.backend.domain.game.GameStatusRedis;
+import S13P11A708.backend.domain.game.PlayerStatus;
 import S13P11A708.backend.dto.webSocket.GameInfoSocketMessage;
 import S13P11A708.backend.repository.GameHistoryRepository;
 import S13P11A708.backend.repository.GameRoomRepository;
@@ -13,7 +13,6 @@ import S13P11A708.backend.repository.UserRepository;
 import S13P11A708.backend.service.redis.GameRedisService;
 import S13P11A708.backend.websocket.GameBroadcaster;
 import S13P11A708.backend.websocket.GameMessageFactory;
-import S13P11A708.backend.dto.webSocket.GameAnsSocketMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

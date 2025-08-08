@@ -1,12 +1,18 @@
-package S13P11A708.backend.dto.redis;
+package S13P11A708.backend.domain.game;
 
 import lombok.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.redis.core.RedisHash;
 
+@RedisHash(value = "playerStatus", timeToLive = 60)
 @Getter
 @Builder
 @NoArgsConstructor
 public class PlayerStatus {
+
+    @Id
     private Long userId;
+
     private Long roomId; //소속된 방id
     private Long point; //개인 포인트
     private int correctCount;
