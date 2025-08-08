@@ -35,6 +35,19 @@ public class GameStatusRedis {
         throw new IllegalArgumentException("해당 userId는 게임방에 없습니다.");
     }
 
+    @Override
+    public String toString() {
+        return "GameStatusRedis{" +
+                "roomId=" + roomId +
+                ", round=" + round +
+                ", totalRound=" + totalRound +
+                ", currentQuizId=" + currentQuizId +
+                ", status=" + status +
+                ", user1=" + user1 +
+                ", user2=" + user2 +
+                '}';
+    }
+
     public boolean bothPlayerAnswered() {
         return user1.isAnswered() && user2.isAnswered();
     }

@@ -94,6 +94,8 @@ public class GameRedisService {
      */
     public void increaseCount(Long roomId, Long userId) {
         GameStatusRedis status = getGameStatusRedis(roomId);
+        if(status == null) return;
+
         if (status != null) {
             if (status.getUser1().getUserId().equals(userId)) {
                 status.getUser1().updateCorrectCount(status.getUser1().getCorrectCount() + 1);
@@ -113,6 +115,7 @@ public class GameRedisService {
         if(status == null) return;
 
         PlayerStatus player = findPlayer(status, userId);
+        if (player == null || player.isHintUsed()) return;
 
         if(player != null && !player.isHintUsed()){
             player.updateHintUsed(true);
@@ -143,7 +146,9 @@ public class GameRedisService {
         if(status == null) return false;
 
         PlayerStatus player = findPlayer(status, userId);
-        if(player == null || player.getPoint() < HINT_COST) return false;
+        if(player == null) return false;
+        if(player.isHintUsed()) return false;
+        if(player.getPoint() < HINT_COST) return false;
 
         player.updatePoint(player.getPoint() - HINT_COST); //힌트 포인트 차감
         saveGameStatus(roomId, status);

@@ -45,41 +45,58 @@ public class GameEndRedisTest {
         gameRedisService.initGame(
                 roomId, 2, u1, 100L, u2, 80L,
                 List.of(11L, 22L), quiz(11L, "정답1", "url1"));
+        System.out.println("게임 생성 완료");
 
         // sanity check: 시작 상태 저장되어 있음
         GameStatusRedis before = gameRedisService.getGameStatusRedis(roomId);
+        System.out.println("=== [2] 초기 Redis 상태 ===");
+        System.out.println(before.toString());
         assertNotNull(before);
+
         assertEquals(1, before.getRound());
         assertEquals(GameStatus.PROGRESS, before.getStatus());
 
         // when: 종료
+        System.out.println("=== [3] finishGame 호출 ===");
         gameRedisService.finishGame(roomId);
 
         // then: 키가 삭제되어 더 이상 조회되지 않음
         GameStatusRedis after = gameRedisService.getGameStatusRedis(roomId);
+        System.out.println("=== [4] 종료 후 Redis 상태 ===");
+        System.out.println(after);
         assertNull(after, "finishGame 후에는 Redis 키가 없어야 합니다");
 
         // and: 멱등성 — 여러 번 호출해도 문제 없어야 함
+        System.out.println("=== [5] finishGame 재호출 ===");
         gameRedisService.finishGame(roomId); // 두 번째 호출
+        System.out.println("=== [6] 재호출 후 상태 ===");
+        System.out.println(gameRedisService.getGameStatusRedis(roomId));
         assertNull(gameRedisService.getGameStatusRedis(roomId));
     }
 
     @Test
     void finishGame_blocksFurtherOperations_like_hint_or_count() {
         Long roomId = 9002L, u1 = 1L, u2 = 2L;
+        System.out.println("=== [1] 게임 초기화 ===");
         gameRedisService.initGame(
                 roomId, 1, u1, 50L, u2, 50L,
                 List.of(99L), quiz(99L, "끝", "url"));
+        System.out.println(gameRedisService.getGameStatusRedis(roomId));
 
         // 종료
+        System.out.println("=== [2] finishGame 호출 ===");
         gameRedisService.finishGame(roomId);
+        System.out.println("=== [3] 종료 후 상태 ===");
         assertNull(gameRedisService.getGameStatusRedis(roomId));
 
         // 이후 동작들이 효과 없어야 함(내부에서 null 처리)
+        System.out.println("=== [4] 종료 후 increaseCount 호출 ===");
         gameRedisService.increaseCount(roomId, u1);
         assertNull(gameRedisService.getGameStatusRedis(roomId));
 
         boolean canUse = gameRedisService.canUseHint(roomId, u1);
+        System.out.println("=== [5] 종료 후 힌트 사용 가능 여부 ===");
+        System.out.println("canUseHint = " + canUse);
         assertFalse(canUse, "키 삭제 후에는 힌트 사용 불가여야 함");
     }
 }
