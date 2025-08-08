@@ -2,8 +2,8 @@ package S13P11A708.backend.service.redis;
 
 import S13P11A708.backend.domain.TrotQuiz;
 import S13P11A708.backend.domain.enums.GameStatus;
-import S13P11A708.backend.dto.redis.GameStatusRedis;
-import S13P11A708.backend.dto.redis.PlayerStatus;
+import S13P11A708.backend.domain.game.GameStatusRedis;
+import S13P11A708.backend.domain.game.PlayerStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;

@@ -1,17 +1,22 @@
-package S13P11A708.backend.dto.redis;
+package S13P11A708.backend.domain.game;
 
 import S13P11A708.backend.domain.enums.GameStatus;
 import lombok.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.redis.core.RedisHash;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+@RedisHash(value="gameStatusRedis", timeToLive = 60)
 @Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class GameStatusRedis {
+    @Id
     private Long roomId;
+
     private int round;
     private int totalRound;
     private List<Long> quizIdList;
@@ -35,11 +40,11 @@ public class GameStatusRedis {
     }
 
     public void updateCurrentQuizId(Long quizId){
-        this.currentQuizId = currentQuizId;
+        this.currentQuizId = quizId;
     }
 
     public void updateCurrentAnswer(String answer){
-        this.currentAnswer = currentAnswer;
+        this.currentAnswer = answer;
     }
 
     public void updateCurrentUrl(String url){
