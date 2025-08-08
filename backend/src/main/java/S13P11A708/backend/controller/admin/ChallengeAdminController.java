@@ -168,7 +168,7 @@ public class ChallengeAdminController {
     /**
      * 챌린지 완료
      */
-    @PutMapping("/{challengeId}/complete")
+    @PostMapping("/{challengeId}/complete")
     public ResponseEntity<CompleteChallengeResponseDto> completeChallenge(
             @PathVariable("challengeId") Long challengeId,
             @AuthenticationPrincipal CustomOAuth2User customUser) {

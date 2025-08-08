@@ -21,6 +21,8 @@ public class UserService {
     private final SeniorCenterRepository seniorCenterRepository;
     private final JWTUtil jwtUtil;
 
+    private static final int WIN_POINT = 100;
+
     // userId 기준으로 유저 조회
     // 해당 유저가 경로당에 소속되어 있는지 확인
     @Transactional
@@ -97,6 +99,14 @@ public class UserService {
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
         return UserResponseDto.from(user);
+    }
+
+    @Transactional
+    public void addWinPoint(Long userId){
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+        Long currentPoint = user.getPersonalPoint();
+        user.addPoint(currentPoint + WIN_POINT);
     }
 
 

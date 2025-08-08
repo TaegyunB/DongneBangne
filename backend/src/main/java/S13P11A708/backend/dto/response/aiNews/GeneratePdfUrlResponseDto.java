@@ -13,19 +13,36 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class GeneratePdfResponseDto {
+public class GeneratePdfUrlResponseDto {
 
     private Long aiNewsId;
     private String pdfUrl;
+    private Boolean isGenerated;
     private LocalDateTime createdAt;
     private SeniorCenterDetailResponseDto seniorCenter;
 
-    public static GeneratePdfResponseDto from(AiNews aiNews) {
-        return GeneratePdfResponseDto.builder()
+    public static GeneratePdfUrlResponseDto from(AiNews aiNews) {
+        return GeneratePdfUrlResponseDto.builder()
                 .aiNewsId(aiNews.getId())
                 .pdfUrl(aiNews.getPdfUrl())
+                .isGenerated(aiNews.isGenerated())
                 .createdAt(aiNews.getCreatedAt())
                 .seniorCenter(SeniorCenterDetailResponseDto.from(aiNews.getSeniorCenter()))
                 .build();
     }
+
+    /**
+     * 에러 상태 응답용
+     */
+    public static GeneratePdfUrlResponseDto error(Long aiNewsId) {
+        return GeneratePdfUrlResponseDto.builder()
+                .aiNewsId(aiNewsId)
+                .pdfUrl(null)
+                .isGenerated(false)
+                .createdAt(null)
+                .seniorCenter(null)
+                .build();
+    }
+
+
 }

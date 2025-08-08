@@ -14,6 +14,8 @@ public class SeniorCenterService {
     private final SeniorCenterRepository seniorCenterRepository;
 
     public List<SeniorCenter> searchCenters(String type, String keyword) {
+        System.out.printf("📌 검색 요청: type=%s, keyword='%s'%n", type, keyword);
+
         if ("name".equalsIgnoreCase(type)) {
             return seniorCenterRepository.findByCenterNameContainingIgnoreCase(keyword);
         } else if ("address".equalsIgnoreCase(type)) {
