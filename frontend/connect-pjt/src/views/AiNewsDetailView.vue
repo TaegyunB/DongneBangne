@@ -26,7 +26,7 @@
       </div>
       
       <!-- PDF 뷰어 -->
-      <div class="pdf-viewer">
+      <!-- <div class="pdf-viewer">
         <iframe 
           :src="newsData.pdfUrl" 
           width="100%" 
@@ -35,6 +35,22 @@
         >
           <p>PDF를 표시할 수 없습니다. <a :href="newsData.pdfUrl" target="_blank">여기를 클릭하여 PDF를 다운로드하세요.</a></p>
         </iframe>
+      </div> -->
+      <div class="pdf-viewer">
+        <iframe 
+          v-if="pdfLoadSuccess"
+          :src="newsData.pdfUrl" 
+          frameborder="0">
+        </iframe>
+        
+        <!-- iframe 외부에 fallback 메시지 -->
+        <div v-else>
+          <p>PDF를 표시할 수 없습니다. 
+            <a :href="newsData.pdfUrl" target="_blank">
+              여기를 클릭하여 PDF를 다운로드하세요.
+            </a>
+          </p>
+        </div>
       </div>
     </div>
 
