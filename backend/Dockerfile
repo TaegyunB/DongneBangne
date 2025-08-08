@@ -8,7 +8,7 @@ LABEL description="경로단 간 커뮤니티 서비스 백엔드"
 WORKDIR /app
 
 # .env 파일 복사 (Jenkins에서 제공)
-COPY .env .env
+COPY .env.prod .env
 
 # JAR 파일 복사 (빌드 결과물)
 COPY build/libs/backend-0.0.1-SNAPSHOT.jar backend.jar
