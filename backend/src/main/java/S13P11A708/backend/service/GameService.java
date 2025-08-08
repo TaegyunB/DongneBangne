@@ -5,6 +5,7 @@ import S13P11A708.backend.domain.enums.GameMessageType;
 import S13P11A708.backend.domain.enums.GameStatus;
 import S13P11A708.backend.dto.redis.GameStatusRedis;
 import S13P11A708.backend.dto.redis.PlayerStatus;
+import S13P11A708.backend.dto.webSocket.GameInfoSocketMessage;
 import S13P11A708.backend.repository.GameHistoryRepository;
 import S13P11A708.backend.repository.GameRoomRepository;
 import S13P11A708.backend.repository.TrotQuizRepository;
@@ -70,8 +71,8 @@ public class GameService {
         gameRedisService.initGame(roomId, totalRounds, user1Id, point1, user2Id, point2, quizIdList, firstQuiz);
 
         // 6. WebSocket을 통해 참가자들에게 GAME_START 및 ROUND_QUESTION 메시지 전송
-        GameAnsSocketMessage startMessage = messageFactory.createMessage(GameMessageType.GAME_START, roomId, "게임이 시작됩니다!");
-        GameAnsSocketMessage questionMessage = messageFactory.createMessage(GameMessageType.ROUND_QUESTION, roomId, firstQuiz.getUrl());
+        GameInfoSocketMessage startMessage = messageFactory.createInfoMessage(GameMessageType.GAME_START, roomId, "게임이 시작됩니다!");
+        GameInfoSocketMessage questionMessage = messageFactory.createInfoMessage(GameMessageType.ROUND_QUESTION, roomId, firstQuiz.getUrl());
 
         broadcaster.broadcastToRoom(roomId, startMessage);
         broadcaster.broadcastToRoom(roomId, questionMessage);
@@ -94,7 +95,7 @@ public class GameService {
 
         if(player.isAnswered()){
             broadcaster.broadcastToRoom(senderId,
-                    messageFactory.createMessage(GameMessageType.ANSWER_REJECTED, roomId, "이미 정답을 맞추셨습니다."));
+                    messageFactory.createInfoMessage(GameMessageType.ANSWER_REJECTED, roomId, "이미 정답을 맞추셨습니다."));
             return;
         }
 
@@ -106,7 +107,7 @@ public class GameService {
         GameMessageType resultType = isCorrect ? GameMessageType.ANSWER_RESULT : GameMessageType.ANSWER_REJECTED;
         String message = isCorrect ? "정답입니다." : "틀렸습니다.";
         broadcaster.broadcastToRoom(roomId,
-                messageFactory.createMessage(resultType, roomId, message));
+                messageFactory.createInfoMessage(resultType, roomId, message));
 
         if(!isCorrect) return;
 
@@ -131,7 +132,7 @@ public class GameService {
 
         //9. 다음 문제 클라언트에 전송
         broadcaster.broadcastToRoom(roomId,
-                messageFactory.createMessage(GameMessageType.ROUND_QUESTION, roomId, nextQuiz.getUrl()));
+                messageFactory.createInfoMessage(GameMessageType.ROUND_QUESTION, roomId, nextQuiz.getUrl()));
     }
 
     /**
@@ -145,7 +146,7 @@ public class GameService {
         //1. 이미 힌트 사용 가능한지(포인트, 사용여부)
         if(!gameRedisService.canUseHint(roomId, userId)){
             broadcaster.sendToUser(userId,
-                    messageFactory.createWithSender(GameMessageType.HINT_REJECTED, roomId, "힌트를 더 이상 사용할 수 없습니다."));
+                    messageFactory.createHintMessage(GameMessageType.HINT_REJECTED, roomId, userId, "힌트를 더 이상 사용할 수 없습니다."));
             return;
         }
 
@@ -153,7 +154,7 @@ public class GameService {
         boolean deducted = gameRedisService.deductPointForHint(roomId, userId);
         if(!deducted){
             broadcaster.sendToUser(userId,
-                    messageFactory.createWithSender(GameMessageType.HINT_REJECTED, roomId, "포인트가 부족합니다."));
+                    messageFactory.createHintMessage(GameMessageType.HINT_REJECTED, roomId, userId, "포인트가 부족합니다."));
             return;
         }
 
@@ -165,7 +166,7 @@ public class GameService {
         String hint = answer.substring(0,1);
 
         broadcaster.sendToUser(userId,
-                messageFactory.createWithSender(GameMessageType.HINT_RESPONSE, roomId, hint));
+                messageFactory.createHintMessage(GameMessageType.HINT_RESPONSE, roomId, userId, hint));
     }
 
     /**
@@ -221,7 +222,8 @@ public class GameService {
                         user1Entity.getSeniorCenter(),
                         user1.getCorrectCount(),
                         user1.getHintUsedCount(), // PlayerStatus에서 가져와야 함
-                        winnerId != null && winnerId.equals(user1)
+                        winnerId != null && winnerId.equals(user1.getUserId()
+                        )
                 ),
                 GameHistoryUser.of(
                         history,
@@ -229,7 +231,7 @@ public class GameService {
                         user2Entity.getSeniorCenter(),
                         user2.getCorrectCount(),
                         user2.getHintUsedCount(),
-                        winnerId != null && winnerId.equals(user2)
+                        winnerId != null && winnerId.equals(user2.getUserId())
                 )
         );
         history.getHistoryUsers().addAll(historyUsers);
@@ -244,16 +246,10 @@ public class GameService {
                 : "무승부입니다";
 
         broadcaster.broadcastToRoom(roomId,
-                messageFactory.createMessage(GameMessageType.GAME_END, roomId, resultMessage));
+                messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, resultMessage));
 
         //5. redis 정리
         gameRedisService.finishGame(roomId);
     }
 
-    /**
-     * 시스템 메세지 전송
-     */
-//    public void sendSystemMessage(Long roomId, String content) {
-//        broadcaster.sendSystemMessage(roomId, content);
-//    }
 }

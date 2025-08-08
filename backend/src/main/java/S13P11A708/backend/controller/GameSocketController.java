@@ -36,6 +36,7 @@ public class GameSocketController {
     /**
      * 정답 제출, 인증 처리
      */
+    @MessageMapping("/games/answer")
     public void submitAnswer(GameAnsSocketMessage message, Principal principal) {
         Long userId = extractUserIdFromPrincipal(principal);
         Long roomId = message.getRoomId();
@@ -49,6 +50,7 @@ public class GameSocketController {
     /**
      * 힌트 요청, 힌트 보여주기 처리
      */
+    @MessageMapping("/games/hint")
     public void requestHint(GameHintSocketMessage message, Principal principal){
         Long userId = extractUserIdFromPrincipal(principal);
         Long roomId = message.getRoomId();

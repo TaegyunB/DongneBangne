@@ -10,9 +10,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class GameHintSocketMessage {
+public class GameInfoSocketMessage {
     private GameMessageType type;
     private Long roomId;
-    private Long userId;
     private String payload;
 }
