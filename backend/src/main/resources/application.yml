@@ -34,6 +34,8 @@ spring:
     name: backend
 
   # MySQL 설정
+  logging.level.org.springframework.boot.context.config: DEBUG
+
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
