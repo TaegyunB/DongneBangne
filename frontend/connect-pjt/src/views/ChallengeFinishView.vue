@@ -133,7 +133,7 @@ const submit = async () => {
     })
 
     const response = await axios.post(
-      `http://localhost:8080/api/v1/admin/challenges/${challengeId.value}/missionFinishUpdate`, 
+      `/api/v1/admin/challenges/${challengeId.value}/missionFinishUpdate`, 
       formData,
       {
         withCredentials: true,
