@@ -6,8 +6,8 @@ export const clearAccessToken = () => { accessToken = null }
 export const getAccessToken = () => accessToken
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080',
-  withCredentials: false,
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080',
+  withCredentials: true,
 })
 
 api.interceptors.response.use(
