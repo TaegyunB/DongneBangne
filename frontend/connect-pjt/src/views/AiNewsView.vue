@@ -122,31 +122,20 @@ const itemsPerPage = 10
 const fetchNews = async () => {
   loading.value = true
   try {
-    const response = await axios.get('/api/v1/ai-news', {
-      withCredentials: true
+    console.log('API 요청 시작: /api/v1/ai-news')
+    
+    // 명시적으로 HTTP URL 사용
+    const response = await axios.get('http://localhost:8080/api/v1/ai-news', {
+      withCredentials: true,
+      timeout: 10000
     })
+    
     newsList.value = response.data
-    
-    // 센터명 설정 (첫 번째 뉴스의 센터명 사용 - centerName과 seniorCenterName 둘 다 고려)
-    if (response.data.length > 0) {
-      seniorCenterName.value = response.data[0].centerName || response.data[0].seniorCenterName || 'AI 신문'
-    }
-    
     console.log('신문 목록 로드 완료:', response.data)
     
   } catch (error) {
-    console.error('신문 목록을 불러오는데 실패했습니다:', error)
-    // 에러 발생시 빈 배열로 설정
-    newsList.value = []
-    
-    // 사용자에게 에러 알림
-    if (error.response?.status === 403) {
-      alert('신문 목록을 볼 권한이 없습니다.')
-    } else if (error.response?.status === 404) {
-      console.warn('신문 데이터가 없습니다.')
-    } else {
-      alert('신문 목록을 불러오는데 실패했습니다. 다시 시도해주세요.')
-    }
+    console.error('상세 에러 정보:', error)
+    // 기존 에러 처리 코드...
   } finally {
     loading.value = false
   }
