@@ -3,6 +3,7 @@ package S13P11A708.backend.dto.redis;
 import S13P11A708.backend.domain.enums.GameStatus;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -20,6 +21,7 @@ public class GameStatusRedis {
     private GameStatus status;
     private PlayerStatus user1;
     private PlayerStatus user2;
+    private LocalDateTime startedAt;
 
     //PlayerStatus에서 사용자 정보 가져오기
     public PlayerStatus getPlayerStatus(Long userId) {
