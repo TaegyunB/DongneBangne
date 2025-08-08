@@ -133,7 +133,8 @@ const handleScroll = () => {
 }
 
 const handleKakaoLogin = () => {
-  window.location.href = 'http://localhost:8080/login/oauth2/authorization/kakao'
+  window.location.href = `${import.meta.env.VITE_API_BASE_URL}/login/oauth2/authorization/kakao`
+  console.log('카카오 로그인 URL:', url) 
 }
 
 
