@@ -1,8 +1,8 @@
 <template>
   <!-- 툴바 -->
-  <nav class="toolbar">
+  <nav v-if="!hideToolbar" class="toolbar">
     <div class="toolbar-container">
-      <img src="@/assets/logo.png" alt="로고" class="logo">
+      <img @click="router.push('/mainpage')" src="@/assets/logo.png" alt="로고" class="logo">
              
       <div v-if="ui.showMenu" class="nav-menu">
         <router-link to="/admin/game" class="nav-item">게임</router-link>
@@ -19,19 +19,27 @@
   </nav>
      
   <!-- 이 아래 부분에 이제 본문 위치 -->
-  <main class="">
+  <!--<main class="">
     <RouterView />
-  </main>
+  </main>-->
+
+  <main :style="{ marginTop: hideToolbar ? '0' : '60px', paddingTop: hideToolbar ? '0' : '20px' }">
+  <RouterView />
+</main>
 </template>
 
 <script setup>
-import { RouterView, useRouter  } from 'vue-router'
+import { RouterView, useRoute, useRouter } from 'vue-router'
 import { useUiStore } from '@/stores/useUiStore'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 
 const ui = useUiStore()
+const route = useRoute()
 const router = useRouter();
 const userRole = ref('')
+
+// 툴바 비제공
+const hideToolbar = computed(() => route.matched.some(r => r.meta?.hideToolbar))
 
 //userRole back에서 받아오기 
 const fetchUserInfo = async () => {
@@ -78,7 +86,6 @@ const navigateTo = (path) => {
 onMounted(() => {
   fetchUserInfo()
 })
-
 </script>
 
 <style>
