@@ -60,12 +60,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-// import { useUserStore } from '@/stores/user' // 필요시 주석 해제
 import axios from 'axios'
 
 const router = useRouter()
 const route = useRoute()
-// const userStore = useUserStore() // 필요시 주석 해제
 
 const form = ref({ description: '', image: null })
 const previewUrl = ref('')
@@ -76,9 +74,20 @@ const loading = ref(false)
 const isValid = computed(() => form.value.description.trim())
 
 const challengeId = ref(null)
+const challengeType = ref('system') // 'system' 또는 'admin'
 
 onMounted(() => {
   challengeId.value = route.params.challengeId
+  
+  // challengeId로 도전 타입 구분
+  // 우리가 제공하는 도전인지 ADMIN이 생성한 도전인지 확인
+  const adminChallenges = JSON.parse(localStorage.getItem('adminChallenges') || '[]')
+  const isAdminChallenge = adminChallenges.some(challenge => 
+    challenge.challengeId && challenge.challengeId.toString() === challengeId.value
+  )
+  
+  challengeType.value = isAdminChallenge ? 'admin' : 'system'
+  console.log('도전 타입:', challengeType.value, 'challengeId:', challengeId.value)
 })
 
 const triggerFileInput = () => fileInput.value?.click()
@@ -119,13 +128,15 @@ const submit = async () => {
     console.log('missionFinishUpdate API 호출:', {
       challengeId: challengeId.value,
       description: form.value.description,
-      image: form.value.image
+      image: form.value.image,
+      challengeType: challengeType.value
     })
 
     const response = await axios.post(
       `/api/v1/admin/challenges/${challengeId.value}/missionFinishUpdate`, 
       formData,
       {
+        withCredentials: true,
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -144,7 +155,15 @@ const submit = async () => {
       serverData: response.data
     }
 
-    localStorage.setItem(`challenge_${challengeId.value}`, JSON.stringify(uploadedChallenge))
+    // 도전 타입에 따라 다른 localStorage 키 사용
+    if (challengeType.value === 'admin') {
+      // ADMIN이 생성한 도전과제
+      localStorage.setItem(`admin_challenge_${challengeId.value}`, JSON.stringify(uploadedChallenge))
+    } else {
+      // 우리가 제공하는 도전과제 (기존 방식 유지)
+      localStorage.setItem(`challenge_${challengeId.value}`, JSON.stringify(uploadedChallenge))
+    }
+    
     showModal.value = true
   } catch (error) {
     console.error('업로드 오류:', error)
@@ -158,7 +177,7 @@ const closeModal = () => showModal.value = false
 
 const goToChallenge = () => {
   showModal.value = false
-  router.push('/challenges') // query 파라미터 제거만
+  router.push('/challenges')
 }
 </script>
 

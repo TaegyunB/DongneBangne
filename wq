@@ -1,0 +1,187 @@
+[33me7dceb4[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeat/challenge-test[m[33m, [m[1;31morigin/feat/challenge-test[m[33m)[m userRole 저장을 위해 prop대신 Store 도입 #63
+[33m36cd46b[m 프론트엔드 프록시에 백엔드 서버 주소 추가 #63
+[33m61e4c1c[m [Feat] 도전 부분 코드 최신 사항 반영 안된 것 반영 #63
+[33m3c192ba[m[33m ([m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmaster[m[33m)[m Merge branch 'frontend' into 'master'
+[33m183d8e1[m [Fix] application.yml 코드 삭제
+[33m7b1d514[m Merge branch 'backend' into 'master'
+[33m7bb2d5d[m Merge branch 'feature/games' into 'backend'
+[33ma467185[m Merge branch 'fix/loginCheck' into 'frontend'
+[33m9d6a60f[m [Fix] 로그인 이상 확인 및 불필요한 파일 삭제 #75
+[33m931fc99[m [Feat] 트로트게임 정답 처리 구현 #76
+[33mb7462f5[m[33m ([m[1;31morigin/frontend[m[33m, [m[1;32mfrontend[m[33m)[m Merge branch 'feat/challenge-finish-update' into 'frontend'
+[33m35de900[m[33m ([m[1;31morigin/feat/challenge-finish-update[m[33m, [m[1;32mfeat/challenge-finish-update[m[33m)[m [Feat] merge 충돌 해결
+[33md85e3f6[m ADMIN만 도전 완료 버튼 누를 수 있게 수정 #72
+[33m33f8fe7[m Merge branch 'feature/create-env-file' into 'backend'
+[33mce41b41[m [Feat] 로직 수정 구현 완료. 대기 상태 추가 #72
+[33me3217f9[m [Feat] .env 파일 적용 #73
+[33m01d3633[m Merge branch 'backend' into feature/games
+[33m48b3e8c[m [Feat] 트로트게임 시작 로직 구현 #74
+[33m9b96ebf[m Merge branch 'feat/rankingDemo' into 'frontend'
+[33m4f63358[m Merge branch 'frontend' into 'feat/rankingDemo'
+[33me45b948[m [Feat] Ranking 메인페이지 초안 완료 #65
+[33m0855f97[m Merge branch 'feature/challenge/check-success' into 'backend'
+[33m72da759[m [Feat] 미션 성공 변환 과정 수정 #71
+[33mc8f5f08[m [Feat] .json dummy data 생성 후 확인 #65
+[33mcedb79c[m Merge branch 'feature/ranking/send-challenge-info' into 'backend'
+[33mbd9af33[m  [Feat] 랭킹 조회할 때 각 경로당 도전 현황 전달 #70
+[33m02de7c6[m Merge branch 'feature/ai-newspaper/admin-controller' into 'backend'
+[33mdb338f3[m [Feat] AI 신문 admin controller로 분리 및 회원 검증 메서드 수정 #68
+[33m3ef83c6[m Merge branch 'feat/mainpage-userrole' into 'frontend'
+[33m8c0d79d[m[33m ([m[1;31morigin/feat/mainpage-userrole[m[33m, [m[1;32mfeat/mainpage-userrole[m[33m)[m [Feat] userRole별 도전 메인페이지 UI 버튼 숨기기 구현 완료 #69
+[33mb0ad81c[m [Feat] userRole을 MainPage, toolbar에서 받아오는 것 처리 완료 #69
+[33m392ba58[m [Feat] 랭킹 페이지 표로 랜더링 #65
+[33m1024d6e[m Merge branch 'feat/news-template' into 'frontend'
+[33m07e4fc7[m[33m ([m[1;31morigin/feat/news-template[m[33m, [m[1;32mfeat/news-template[m[33m)[m [Feat] template별 header, 뉴스 영역을 따로 컴포넌트로 구성 #58
+[33md586d9f[m Merge branch 'feat/news-template' into 'frontend'
+[33m83d8301[m Merge branch 'frontend' into 'feat/news-template'
+[33mfaf341f[m [Feat] 4개 완료 시 템플릿 완성 #58
+[33mcedbb31[m [Feat] 3개 완료 시 템플릿 생성 완료 #58
+[33m518b74b[m Merge branch 'feature/main/addUserRoleDto' into 'backend'
+[33mf82ed20[m [Feat] 메인페이지에서 유저 정보 조회 API #67
+[33m22cd668[m [Feat] 도전 2개 완료 템플릿 생성 완료 #58
+[33maf2c845[m Merge branch 'feat/challenge/mission-success' into 'backend'
+[33m0a77b95[m [Feat] 도전 완료 사진 및 설명 작성 시 미션 성공으로 변환 #66
+[33mafb0b5f[m [Feat] 도전 1개 완료 템플릿 생성 완료 #58
+[33m10d5097[m [Feat] rankingBoard 1차 구상 #65
+[33m829b7f5[m Merge branch 'feature/ai-newspaper/create' into 'backend'
+[33m248fc22[m [Feat] 각 미션당 AI 미션 요약 및 pdf 생성 API
+[33m96101c8[m Merge branch 'feat/communityFirst' into 'frontend'
+[33m1490913[m community 디자인 및 기능연결 #39
+[33m30b3197[m [Feat] webSocket Config 설정 #60
+[33mb658da8[m [Feat] MainPage에서 도전으로 userRole Prop 설정 완료 #63
+[33m99b4887[m [Feat] 각 게임방 참여자 수 표기 API #64
+[33m2b77417[m [Feat] MainPage Admin,User UI 통일 #63
+[33m0ec9722[m [Feat] 게임방 안에서 참가자 정보 불러오기 구현 #64
+[33m7b5c679[m [Feat] 트로트 게임 힌트 사용 포인트 차감 구현 #59
+[33m6e8dda3[m [Feat] frontend 업데이트 상황 Pull #39
+[33mfb470d6[m Merge branch 'fix/loginError' into 'frontend'
+[33m1cdc969[m [Fix] 로그인 오류 확인 및 수정 #62
+[33me23ed35[m [Fix] 로그인 오류 수정 완료
+[33ma8e0793[m Merge branch 'feat/frontend/game' into 'frontend'
+[33mce7c886[m [Merge] From 'feat/frontend/game' to 'frontend'
+[33md2bc3f6[m Merge branch 'frontend' into feat/frontend/game
+[33m823728d[m [Feat]: 빌드된 게임 웹으로 올리기#57
+[33m5b9abc6[m Merge branch 'feature/games' into 'backend'
+[33m0fff48c[m Merge branch 'backend' into feature/games
+[33m2abca7d[m [Feat] Redis Service 구현 #59
+[33md955e84[m [Feat] Redis Config 구현 #59
+[33m2b5e5ec[m Merge branch 'fix/loginFinal' into 'frontend'
+[33m8a9be0c[m [Fix] login Fin
+[33meaa195c[m [Fix] 로그인 연결 및 플로우 완료, 이후 수정사항 찾기하려함 #38
+[33md958e05[m [Fix] 경로당 데이터 연결완료 및 프로필 스킵 부분 수정필요 #38
+[33m8fb8280[m Merge branch 'feature/game-room' into 'backend'
+[33mc0ce719[m [Add] 게임방 준비 기능 response 추가
+[33mc206c5b[m Merge branch 'feat/challenge-update' into 'frontend'
+[33md62c8d8[m[33m ([m[1;31morigin/feat/challenge-update[m[33m, [m[1;32mfeat/challenge-update[m[33m)[m [Feat] backend API 연결 기능 구현 완료 #55
+[33m2e62bfc[m [Add] 게임방 참여 response 추가
+[33m3a22721[m [Feat] 인증 텍스트/이미지 수정 기능 구현 완료 #55
+[33m0f2bd4a[m [Fix] login 클릭 후 분기에 따른 리다이랙션 완료 #38
+[33m907dd18[m Merge branch 'feature/ranking/get-senior-center-challenges' into 'backend'
+[33mbd9be6e[m Merge branch 'feature/ranking/get-senior-center-challenges' of https://lab.ssafy.com/s13-webmobile1-sub1/S13P11A708 into feature/ranking/get-senior-center-challenges
+[33m555c79f[m [Feat] 해당 경로당 미션 목록 조회 API #54
+[33mb4e6d9e[m Merge branch 'master' of https://lab.ssafy.com/s13-webmobile1-sub1/S13P11A708 into fix/loginFinal
+[33ma578229[m [Feat]community edit board #39
+[33mb33061b[m [Fix] CI/CD
+[33me85820c[m Merge branch 'fix/infra/cicd' into 'master'
+[33m037f093[m [Fix] CICD 수정
+[33md0aab9e[m [Chore] 커밋 테스트2
+[33me049710[m Merge branch 'feature/game-room' into 'backend'
+[33md230f33[m [Chore] 커밋 테스트
+[33m587eb2a[m [Feat] 사용자 준비 상태 기능 #48
+[33m8d789ca[m Merge branch 'fix/infra/cicd' into 'master'
+[33m5acaf25[m [Fix] CI/CD 수정 #52
+[33mc2b646d[m Merge branch 'fix/infra/cicd' into 'master'
+[33m032bc4b[m [Fix] CI/CD test #52
+[33m2d37b02[m Merge branch 'frontend' into 'master'
+[33m23a012d[m [Feat] 20250803 프론트엔트 브랜치 마스터 머지
+[33m594e49d[m Merge branch 'backend' into 'master'
+[33mcc1f534[m Merge branch 'feature/ranking/descending-sort' into 'backend'
+[33m199b518[m [Feat] 경로당 랭킹 조회 API #51
+[33m03d3839[m Merge branch 'feature/game-room' into 'backend'
+[33m8806b45[m [Feat] 게임방 준비완료 시 진행중 상태로 변경 #48
+[33me069f02[m Merge remote-tracking branch 'origin/backend' into feature/game-room
+[33mec5a01e[m [Feat] 트로트 게임방 준비 상태 체크 #48
+[33m3c85ca4[m [Feat] 트로트 게임방 참가/퇴장 #47
+[33m4e98f87[m [Feat] 트로트 게임방 WAITING 조회 #46
+[33m11a2426[m [Feat] 트로트 게임방 생성 #41
+[33m86aa876[m Merge branch 'refactor/challenge/duplicate-code' into 'backend'
+[33m55d2e38[m [REFACTOR] 도전 중복 코드 수정 #50
+[33mee37359[m Merge branch 'feature/challenge/remove-image' into 'backend'
+[33mfe748cd[m [Feat] 업로드한 이미지 삭제 #49
+[33mb0a40ff[m Merge branch 'feature/challenge/check-success' into 'backend'
+[33meb015d3[m [Feat] 미션 완료 체크 API 및 미션 완료 취소 API #45
+[33mef2b040[m Merge branch 'refs/heads/backend' into feature/game-room
+[33mcf292f1[m Merge branch 'feature/challenge/delete' into 'backend'
+[33m44223f0[m [Feat] 미션 삭제 API #44
+[33m67784af[m Merge branch 'feature/challenge/update' into 'backend'
+[33m88a03c5[m [Feat] 도전 상세 조회 및 도전 수정 API #42
+[33m0c6c7ae[m [Feat] 트로트 게임 방 entity 설계 #41
+[33mfc2c2a0[m Merge branch 'feature/challenge/get' into 'backend'
+[33mbbaefa0[m [Feat] 도전 생성 API 및 S3 연동 #23
+[33ma4a495e[m Merge branch 'feat/mainpage-admin' into 'frontend'
+[33mdc02bad[m[33m ([m[1;31morigin/feat/mainpage-admin[m[33m, [m[1;32mfeat/mainpage-admin[m[33m)[m [Feat] Admin, User role별 UI 분기 완료 #37
+[33m2cd2e55[m [Feat] Admin 메인페이지 개발 완료
+[33md4f86dc[m [Feat] router 연결 및 게시판 메인페이지 생성 #39
+[33m185063e[m [Feat] 미션 조회 API
+[33ma282529[m [Feat] router 수정 #39
+[33m07211da[m Merge branch 'feat/communityFirst' of https://lab.ssafy.com/s13-webmobile1-sub1/S13P11A708 into feat/communityFirst
+[33mc69dd6a[m [Feat] 시작 전 불필요한 파일 삭제  #39
+[33m3622bcc[m Merge branch 'feature/challenge/create' into 'backend'
+[33m81e3483[m router 수정 및 압축파일 삭제 #38
+[33m5934a5a[m [Feat] Admin 도전 생성 #23
+[33mb0144a6[m Merge branch 'feat/onboarding_login' into 'frontend'
+[33m7f218e1[m Merge branch 'frontend' into 'feat/onboarding_login'
+[33mb6eb1bf[m Merge branch 'feat/challenge-finish' into 'frontend'
+[33mbcd7614[m [Feat] start페이지 추가 수정 #30
+[33m4e121ed[m[33m ([m[1;31morigin/feat/challenge-finish[m[33m, [m[1;32mfeat/challenge-finish[m[33m)[m [Feat] 사용자 역할에 따른 버튼 표시 개발 완료
+[33m263c5fd[m Merge remote-tracking branch 'origin' into feature/challenge/create
+[33m816bec0[m [Feat] 로그인 flow 백 연결 전까지 완료 #30
+[33m609d122[m [Feat] 글씨 사이즈 늘리기, 버튼 사이즈 확대
+[33m6ac9241[m Merge branch 'frontend' into 'master'
+[33mdbabc93[m Merge branch 'backend' into 'master'
+[33m66898bd[m Merge branch 'test/cicd' into 'frontend'
+[33m3784183[m [Test] 프론트엔트 CI/CD 테스트
+[33m3be7840[m Merge branch 'feat/mission-update' into 'master'
+[33m45f238e[m[33m ([m[1;31morigin/feat/mission-update[m[33m, [m[1;32mfeat/mission-update[m[33m)[m [Feat] 수정, 삭제 기능 구현 완료 #20
+[33m71d7319[m [Feat] 미션 수정, 삭제 버튼 생성 완료 #29
+[33m24a99a4[m [Feat] 기본/ 페이지 추가 및 /login 바로 이동 #30
+[33mb624c9b[m [Feat] Challenge Main page에 이미지 추가, 변수 명 challenge로 통일
+[33m56cbf3a[m [Feat] 로그인 위아래 버튼 및 카카오톡 로그인 진입성공 #30
+[33m535e95c[m [Feat] .gitignore 파일 생성
+[33m485fa9f[m Merge branch 'backend' of https://lab.ssafy.com/s13-webmobile1-sub1/S13P11A708 into backend
+[33md5a0560[m Merge branch 'feature/user' into 'backend'
+[33mffd8446[m [Feat] 회원정보 수정 기능 구현 #21
+[33mbdacad6[m Merge branch 'test/cicd' into 'frontend'
+[33m7376eb8[m [Test] 프론트엔드 배포 테스트
+[33m9889c2b[m Merge branch 'backend' of https://lab.ssafy.com/s13-webmobile1-sub1/S13P11A708 into backend
+[33m896edc5[m Merge branch 'feature/back/challenge/create' into 'backend'
+[33mc47f000[m [Chore] schema 및 경로당 데이터 추가 #21
+[33m193f5cb[m [Test] 백엔드 브랜치 테스트
+[33mb4b0a53[m Merge branch 'feature/back/challenge/create' into 'master'
+[33m733d65a[m [Test] 백엔드 브랜치 테스트
+[33me6ec512[m Merge branch 'feature/back/challenge/create' into 'backend'
+[33mcec7e72[m [Test] 백엔드 브랜치 테스트
+[33m17bb4d5[m [Fix] 툴바 레이아웃 및 모달 오버레이 개선 #29
+[33ma1e680c[m Merge branch 'backend' into 'master'
+[33m6e92610[m Merge branch 'frontend' into 'master'
+[33m811dbd2[m Merge branch 'fix/infra/frontend-cicd' into 'backend'
+[33macd9e48[m [Feat] 백엔드 CI / CD 테스트 #26
+[33mcff0ea7[m Merge branch 'test/cicd' into 'frontend'
+[33m5cdd084[m [Test] CI / CD 테스트 #28
+[33m4b993d9[m Merge branch 'feature/back/challenge/create' into 'master'
+[33m3ef2185[m Merge branch 'fix/infra/frontend-cicd' into 'master'
+[33m5244e6c[m [Fix] Frontend CI / CD 재설정 #26
+[33m5760199[m [Fix] Frontend CI / CD 재설정 #26
+[33mf9e2631[m Merge branch 'fix/infra/new-setting' into 'master'
+[33macccbbd[m [Fix] CI / CD 재설정 #24
+[33m06ce665[m Merge branch 'master' of https://lab.ssafy.com/s13-webmobile1-sub1/S13P11A708 into fix/infra/new-setting
+[33mdd8ddb0[m [Fix] CI / CD 재설정 #24
+[33mdb74c3a[m Merge branch 'feat/mission-create' into 'master'
+[33m5594f94[m [Feat] CI / CD test
+[33mbc8f354[m[33m ([m[1;31morigin/feat/mission-create[m[33m, [m[1;32mfeat/mission-create[m[33m)[m [Fix] router import 안불러온 것 수정
+[33m0326146[m Merge branch 'feature/user' into 'master'
+[33mdb2f533[m [Feat] 도전 미션 페이지 생성 완료 #22
+[33mb680854[m Merge branch 'master' into feature/user
+[33m42e6f9b[m [Feat] userRole 지정 후 token 재발급 #10
+[33m3389e02[m[33m ([m[1;31morigin/feature/back/challenge/create[m[33m)[m Merge branch 'feat/onboarding' into 'master'
+[33m82d6da1[m Merge branch 'master' into 'feat/onboarding'
