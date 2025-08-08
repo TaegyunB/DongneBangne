@@ -16,6 +16,15 @@ export default defineConfig({
     },
   },
   define: {
-    __VUE_PROD_DEVTOOLS__: false  // 👈 Devtools UI 비노출 (하단 Vue 아이콘 제거)
+    __VUE_PROD_DEVTOOLS__: false
+  },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        secure: false
+      }
+    }
   }
 })

@@ -2,8 +2,8 @@ package S13P11A708.backend.service.redis;
 
 import S13P11A708.backend.domain.TrotQuiz;
 import S13P11A708.backend.domain.enums.GameStatus;
-import S13P11A708.backend.dto.redis.GameStatusRedis;
-import S13P11A708.backend.dto.redis.PlayerStatus;
+import S13P11A708.backend.domain.game.GameStatusRedis;
+import S13P11A708.backend.domain.game.PlayerStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -73,8 +73,8 @@ public class GameRedisService {
                 .currentAnswer(firstQuiz.getAnswer())
                 .currentUrl(firstQuiz.getUrl())
                 .status(GameStatus.PROGRESS)
-                .user1(new PlayerStatus(userId1, roomId, point1, 0, false, false))
-                .user2(new PlayerStatus(userId2, roomId, point2, 0, false, false))
+                .user1(new PlayerStatus(userId1, roomId, point1, 0, 0, false, false))
+                .user2(new PlayerStatus(userId2, roomId, point2, 0, 0, false, false))
                 .build();
 
         saveGameStatus(roomId, status);
@@ -94,6 +94,8 @@ public class GameRedisService {
      */
     public void increaseCount(Long roomId, Long userId) {
         GameStatusRedis status = getGameStatusRedis(roomId);
+        if(status == null) return;
+
         if (status != null) {
             if (status.getUser1().getUserId().equals(userId)) {
                 status.getUser1().updateCorrectCount(status.getUser1().getCorrectCount() + 1);
@@ -105,16 +107,19 @@ public class GameRedisService {
     }
 
     /**
+     * 힌트 사용 기록
      * hint 사용한 유저는 사용했음을 게임상태 redis에 표시
      */
     public void markHintUsed(Long roomId, Long userId) {
         GameStatusRedis status = getGameStatusRedis(roomId);
-        if (status != null) {
-            if (status.getUser1().getUserId().equals(userId)) {
-                status.getUser1().updateHintUsed(true);
-            } else if (status.getUser2().getUserId().equals(userId)) {
-                status.getUser2().updateHintUsed(true);
-            }
+        if(status == null) return;
+
+        PlayerStatus player = findPlayer(status, userId);
+        if (player == null || player.isHintUsed()) return;
+
+        if(player != null && !player.isHintUsed()){
+            player.updateHintUsed(true);
+            player.addHintUsedCount(player.getHintUsedCount()+1);
             saveGameStatus(roomId, status);
         }
     }
@@ -128,22 +133,26 @@ public class GameRedisService {
         if(status == null) return false;
 
         PlayerStatus player = findPlayer(status, userId);
-        return player != null && player.getPoint() >= HINT_COST;
+        if(player == null) return false;
+
+        return !player.isHintUsed() && player.getPoint() >= HINT_COST;
     }
 
     /**
      * 힌트 사용시, player point 차감
      */
-    public void useHint(Long roomId, Long userId){
+    public boolean deductPointForHint(Long roomId, Long userId){
         GameStatusRedis status = getGameStatusRedis(roomId);
-        if(status == null) return;
+        if(status == null) return false;
 
         PlayerStatus player = findPlayer(status, userId);
-        if(player != null && canUseHint(roomId, userId)) {
-            player.updateHintUsed(true);
-            player.updatePoint(player.getPoint() - HINT_COST); //힌트 포인트 차감
-            saveGameStatus(roomId, status);
-        }
+        if(player == null) return false;
+        if(player.isHintUsed()) return false;
+        if(player.getPoint() < HINT_COST) return false;
+
+        player.updatePoint(player.getPoint() - HINT_COST); //힌트 포인트 차감
+        saveGameStatus(roomId, status);
+        return true;
     }
 
     /**
@@ -184,6 +193,10 @@ public class GameRedisService {
             status.updateStatus(GameStatus.FINISHED);
             saveGameStatus(roomId, status);
         }
+        //redis 정보 삭제
+        String key = getKey(roomId);
+        redisTemplate.delete(key);
     }
+
 
 }

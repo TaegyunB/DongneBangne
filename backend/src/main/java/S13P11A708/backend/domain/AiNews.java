@@ -35,6 +35,10 @@ public class AiNews extends BaseEntity {
     @Column(name = "pdf_url")
     private String pdfUrl;
 
+    @Column(name = "is_generated")
+    @Builder.Default
+    private boolean isGenerated = false;
+
     // 해당 월의 랭킹 정보들
     // @OneToMany(mappedBy = "aiNews", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     // private List<Ranking> rankings = new ArrayList<>();
@@ -50,10 +54,17 @@ public class AiNews extends BaseEntity {
 
     //== Setter 메서드 ==//
     /**
-     * AI 신문 내용 업데이트
+     * PDF URL 업데이트
      */
-    public void updateContent(String pdfUrl) {
+    public void updatePdfUrl(String pdfUrl) {
         this.pdfUrl = pdfUrl;
+    }
+
+    /**
+     * PDF 생성 여부 업데이트
+     */
+    public void updateGenerated(Boolean isGenerated) {
+        this.isGenerated = isGenerated;
     }
 
 
