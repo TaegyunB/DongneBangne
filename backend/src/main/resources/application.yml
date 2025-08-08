@@ -34,6 +34,8 @@ spring:
     name: backend
 
   # MySQL 설정
+  logging.level.org.springframework.boot.context.config: DEBUG
+
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
@@ -41,9 +43,10 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   # Redis 설정
-  redis:
-    host: localhost
-    port: 6379
+  data:
+    redis:
+      host: localhost
+      port: 6379
 
   # JPA 설정
   jpa:
