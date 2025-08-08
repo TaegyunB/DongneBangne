@@ -22,7 +22,7 @@ public class BackendApplication {
 //		// 시스테 프로퍼티로 설정
 //		dotenv.entries().forEach(entry ->
 //				System.setProperty(entry.getKey(), entry.getValue()));
-
+//
 
 		SpringApplication.run(BackendApplication.class, args);
 	}
