@@ -10,8 +10,7 @@
       <div class="table-header">
         <div class="col-month">발간 월</div>
         <div class="col-date">발간일자</div>
-        <div class="col-status">발간하기</div>
-        <div class="col-view">보기</div>
+        <div class="col-action">보기</div>
       </div>
       
       <div class="table-body">
@@ -30,28 +29,24 @@
           </div>
           
           <div class="col-date">
-            {{ news.year }} - {{ String(news.month).padStart(2, '0') }} - {{ getLastDay(news.year, news.month) }}
+            {{ news.year }}.{{ String(news.month).padStart(2, '0') }}.{{ getLastDay(news.year, news.month) }}
           </div>
           
-          <div class="col-status">
+          <div class="col-action">
             <button 
-              v-if="!news.pdfUrl"
-              @click="publishNews(news)"
-              :disabled="publishingIds.includes(news.id)"
-              class="publish-btn"
-            >
-              {{ publishingIds.includes(news.id) ? '발간중...' : '클릭' }}
-            </button>
-            <span v-else class="published">클릭</span>
-          </div>
-          
-          <div class="col-view">
-            <button 
+              v-if="news.pdfUrl"
               @click="viewNews(news.id)"
-              :disabled="!news.pdfUrl"
-              :class="['view-btn', { disabled: !news.pdfUrl }]"
+              class="action-btn view-btn"
             >
               보기
+            </button>
+            <button 
+              v-else
+              @click="publishNews(news)"
+              :disabled="publishingIds.includes(news.id)"
+              class="action-btn publish-btn"
+            >
+              {{ publishingIds.includes(news.id) ? '발간 중...' : '발간하기' }}
             </button>
           </div>
         </div>
@@ -312,7 +307,7 @@ const visiblePages = computed(() => {
 // 신문 설명 생성
 const getNewsDescription = (news) => {
   if (news.challenges && news.challenges.length > 0) {
-    return `${news.challenges.map(c => c.challengeTitle).join(', ')} 수업을 먹으며 하하호호 추억을 나누...`
+    return `${news.challenges.map(c => c.challengeTitle).join(', ')} 수업을 하며 하하호호 추억을 나누...`
   }
   return '다 같이 근처 계곡으로 놀러가..'
 }
@@ -408,25 +403,29 @@ onMounted(() => {
 }
 
 .news-table {
-  border: 1px solid #ddd;
-  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
   overflow: hidden;
   margin-bottom: 30px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .table-header {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
-  background-color: #f8f9fa;
+  grid-template-columns: 3fr 1.5fr 1fr;
+  background-color: #f9fafb;
   font-weight: 600;
   font-size: 14px;
-  color: #333;
+  color: #374151;
 }
 
 .table-header > div {
-  padding: 16px;
+  padding: 20px 16px;
   text-align: center;
-  border-right: 1px solid #eee;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .table-header > div:last-child {
@@ -435,13 +434,14 @@ onMounted(() => {
 
 .table-row {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
-  border-bottom: 1px solid #eee;
-  transition: background-color 0.2s;
+  grid-template-columns: 3fr 1.5fr 1fr;
+  border-bottom: 1px solid #f3f4f6;
+  transition: background-color 0.15s;
+  min-height: 80px;
 }
 
 .table-row:hover {
-  background-color: #f9f9f9;
+  background-color: #f8fafc;
 }
 
 .table-row:last-child {
@@ -449,11 +449,11 @@ onMounted(() => {
 }
 
 .table-row > div {
-  padding: 16px;
+  padding: 20px 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-right: 1px solid #eee;
+  border-right: 1px solid #f3f4f6;
 }
 
 .table-row > div:last-child {
@@ -464,71 +464,67 @@ onMounted(() => {
   flex-direction: column !important;
   align-items: flex-start !important;
   gap: 8px;
+  justify-content: center !important;
 }
 
 .month-label {
   font-weight: 600;
-  color: #333;
+  color: #1f2937;
+  font-size: 16px;
 }
 
 .news-description {
-  font-size: 12px;
-  color: #666;
+  font-size: 13px;
+  color: #6b7280;
   line-height: 1.4;
+  max-width: 100%;
 }
 
 .col-date {
   font-size: 14px;
-  color: #666;
+  color: #4b5563;
+  font-weight: 500;
 }
 
-.publish-btn {
-  background-color: #10b981;
-  color: white;
+.col-action {
+  justify-content: center !important;
+}
+
+.action-btn {
   border: none;
-  border-radius: 6px;
-  padding: 8px 16px;
+  border-radius: 8px;
+  padding: 10px 20px;
   font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.publish-btn:hover:not(:disabled) {
-  background-color: #059669;
-}
-
-.publish-btn:disabled {
-  background-color: #9ca3af;
-  cursor: not-allowed;
-}
-
-.published {
-  background-color: #10b981;
-  color: white;
-  border-radius: 6px;
-  padding: 8px 16px;
-  font-size: 14px;
+  transition: all 0.2s;
+  min-width: 80px;
 }
 
 .view-btn {
   background-color: #8b5cf6;
   color: white;
-  border: none;
-  border-radius: 6px;
-  padding: 8px 16px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background-color 0.2s;
 }
 
-.view-btn:hover:not(.disabled) {
+.view-btn:hover {
   background-color: #7c3aed;
+  transform: translateY(-1px);
 }
 
-.view-btn.disabled {
-  background-color: #d1d5db;
-  color: #9ca3af;
+.publish-btn {
+  background-color: #10b981;
+  color: white;
+}
+
+.publish-btn:hover:not(:disabled) {
+  background-color: #059669;
+  transform: translateY(-1px);
+}
+
+.publish-btn:disabled {
+  background-color: #9ca3af;
   cursor: not-allowed;
+  transform: none;
 }
 
 .pagination {
@@ -540,24 +536,30 @@ onMounted(() => {
 }
 
 .page-btn {
-  border: 1px solid #ddd;
+  border: 1px solid #e5e7eb;
   background-color: white;
-  color: #666;
-  padding: 8px 12px;
-  border-radius: 6px;
+  color: #6b7280;
+  padding: 10px 14px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
+  font-weight: 500;
   transition: all 0.2s;
+  min-width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .page-btn:hover:not(:disabled) {
   background-color: #f3f4f6;
+  border-color: #d1d5db;
 }
 
 .page-btn.active {
-  background-color: #333;
+  background-color: #1f2937;
   color: white;
-  border-color: #333;
+  border-color: #1f2937;
 }
 
 .page-btn:disabled {
@@ -573,7 +575,29 @@ onMounted(() => {
 
 .loading {
   text-align: center;
-  padding: 40px;
-  color: #666;
+  padding: 60px 20px;
+  color: #6b7280;
+  font-size: 16px;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 16px;
+  }
+  
+  .table-header,
+  .table-row {
+    grid-template-columns: 2fr 1fr 1fr;
+  }
+  
+  .news-description {
+    display: none;
+  }
+  
+  .action-btn {
+    padding: 8px 12px;
+    font-size: 12px;
+    min-width: 60px;
+  }
 }
 </style>
