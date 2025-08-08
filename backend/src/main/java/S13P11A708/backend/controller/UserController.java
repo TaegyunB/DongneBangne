@@ -78,6 +78,11 @@ public class UserController {
         return ResponseEntity.ok(userProfile);
     }
 
-
+//    @DeleteMapping("/logout")
+//    public ResponseEntity<Void> logout(HttpServletResponse response) {
+//        Cookie cookie = new Cookie("access_token", null);
+//        cookie.setHttpOnly(true);
+//        cookie.
+//    }
 
 }
