@@ -89,7 +89,7 @@ const handleSubmit = async () => {
     // localStorage에 ADMIN 도전과제로 저장 (challengeId 포함)
     const adminChallenges = JSON.parse(localStorage.getItem('adminChallenges') || '[]')
     const newChallenge = {
-      challengeId: response.data.challengeId,
+      challengeId: response.data.id,
       challengeTitle: response.data.challengeTitle,
       challengePlace: response.data.challengePlace,
       description: response.data.description,

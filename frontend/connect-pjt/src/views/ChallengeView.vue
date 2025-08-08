@@ -352,7 +352,12 @@ const toggleChallengeStatus = async (challenge) => {
     try {
       if (currentlyCompleted) {
         // 완료 → 미완료 (cancel API)
-        const response = await axios.put(`/api/v1/admin/challenges/${challengeId}/cancel`)
+        const response = await axios.put(`/api/v1/admin/challenges/${challengeId}/cancel`,{},{
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
         console.log('Cancel API 응답:', response.data)
         
         // 로컬 상태 업데이트
@@ -364,7 +369,12 @@ const toggleChallengeStatus = async (challenge) => {
         }
       } else {
         // 미완료(업로드됨) → 완료 (complete API)
-        const response = await axios.post(`/api/v1/admin/challenges/${challengeId}/complete`)
+        const response = await axios.post(`/api/v1/admin/challenges/${challengeId}/complete`, {}, {
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
         console.log('Complete API 응답:', response.data)
         
         // 로컬 상태 업데이트
@@ -396,7 +406,13 @@ const toggleChallengeStatus = async (challenge) => {
 
     try {
       if (currentlyCompleted) {
-        const response = await axios.put(`/api/v1/admin/challenges/${challengeId}/cancel`)
+        // Cancel API - withCredentials 추가!
+        const response = await axios.put(`/api/v1/admin/challenges/${challengeId}/cancel`, {}, {
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
         console.log('Cancel API 응답:', response.data)
         
         const data = localStorage.getItem(`admin_challenge_${challengeId}`)
@@ -411,7 +427,12 @@ const toggleChallengeStatus = async (challenge) => {
           message: `도전이 취소되었습니다.<br>${response.data.subtractedPoint}점이 차감되었습니다.` 
         }
       } else {
-        const response = await axios.post(`/api/v1/admin/challenges/${challengeId}/complete`)
+        const response = await axios.post(`/api/v1/admin/challenges/${challengeId}/complete`,{},{
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
         console.log('Complete API 응답:', response.data)
         
         const data = localStorage.getItem(`admin_challenge_${challengeId}`)
@@ -511,7 +532,7 @@ const saveEditChallenge = async () => {
     else if (challenge.challengeId) {
       const challengeId = challenge.challengeId
 
-      const response = await axios.post(`/api/v1/admin/challenges/${challengeId}`, {
+      const response = await axios.put(`/api/v1/admin/challenges/${challengeId}`, {
         challengeTitle: form.title.trim(),
         challengePlace: form.place.trim(),
         description: form.description.trim()
