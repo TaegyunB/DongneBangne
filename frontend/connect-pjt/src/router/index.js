@@ -107,8 +107,7 @@ const baseRoutes = [
     {
       path: '/challenges',
       name: 'challenge',
-      component: ChallengeView,
-      props:true //userRole 전달 
+      component: ChallengeView
     },
     {
       path: '/',

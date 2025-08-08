@@ -3,6 +3,7 @@ package S13P11A708.backend.domain;
 import S13P11A708.backend.domain.GameRoom;
 import S13P11A708.backend.domain.User;
 import S13P11A708.backend.domain.common.BaseEntity;
+import S13P11A708.backend.dto.redis.PlayerStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -56,5 +57,23 @@ public class GameHistory extends BaseEntity {
 
     @OneToMany(mappedBy = "gameHistory", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<GameHistoryUser> historyUsers = new ArrayList<>();
+
+    public static GameHistory of(GameRoom room,
+                                 User winner,
+                                 LocalDateTime startedAt,
+                                 LocalDateTime endedAt,
+                                 Integer round,
+                                 String era,
+                                 String category) {
+        return GameHistory.builder()
+                .gameRoomId(room)
+                .winnerUserId(winner)
+                .startedAt(startedAt)
+                .endedAt(endedAt)
+                .gameRound(round)
+                .musicEra(era)
+                .category(category)
+                .build();
+    }
 
 }

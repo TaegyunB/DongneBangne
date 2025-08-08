@@ -1,24 +1,36 @@
 package S13P11A708.backend.controller.admin;
 
-import S13P11A708.backend.dto.request.challenge.CreateChallengeRequestDto;
-import S13P11A708.backend.dto.request.challenge.UpdateChallengeRequestDto;
-import S13P11A708.backend.dto.response.challenge.*;
-import S13P11A708.backend.security.CustomOAuth2User;
-import S13P11A708.backend.service.ChallengeService;
-import S13P11A708.backend.service.S3Service;
-import com.amazonaws.Response;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+import S13P11A708.backend.dto.request.challenge.CreateChallengeRequestDto;
+import S13P11A708.backend.dto.request.challenge.UpdateChallengeRequestDto;
+import S13P11A708.backend.dto.response.challenge.CancelCompletedChallengeResponseDto;
+import S13P11A708.backend.dto.response.challenge.ChallengeResponseDto;
+import S13P11A708.backend.dto.response.challenge.CompleteChallengeResponseDto;
+import S13P11A708.backend.dto.response.challenge.CreateChallengeResponseDto;
+import S13P11A708.backend.dto.response.challenge.UpdateChallengeResponseDto;
+import S13P11A708.backend.security.CustomOAuth2User;
+import S13P11A708.backend.service.ChallengeService;
+import S13P11A708.backend.service.S3Service;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequiredArgsConstructor
@@ -168,12 +180,16 @@ public class ChallengeAdminController {
     /**
      * 챌린지 완료
      */
-    @PutMapping("/{challengeId}/complete")
+    @PostMapping("/{challengeId}/complete")
     public ResponseEntity<CompleteChallengeResponseDto> completeChallenge(
             @PathVariable("challengeId") Long challengeId,
             @AuthenticationPrincipal CustomOAuth2User customUser) {
 
         Long adminId = customUser.getUserId();
+
+        // 디버깅 로그 추가
+        System.out.println("=== completeChallenge 메서드 진입 ===");
+        System.out.println("challengeId: " + challengeId);
 
         CompleteChallengeResponseDto response = challengeService.completeChallenge(challengeId, adminId);
         return ResponseEntity.ok(response);

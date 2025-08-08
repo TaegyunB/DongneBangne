@@ -1,9 +1,11 @@
 package S13P11A708.backend.controller.admin;
 
+import S13P11A708.backend.dto.request.aiNews.SavedPdfRequestDto;
 import S13P11A708.backend.dto.response.aiNews.AiNewsResponseDto;
-import S13P11A708.backend.dto.response.aiNews.GeneratePdfResponseDto;
+import S13P11A708.backend.dto.response.aiNews.GeneratePdfUrlResponseDto;
 import S13P11A708.backend.security.CustomOAuth2User;
 import S13P11A708.backend.service.AiNewsService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -25,7 +27,7 @@ public class AiNewsAdminController {
     /**
      * 완료된 미션 당 AI가 내용 정리
      */
-    @PostMapping
+    @PostMapping("/create")
     public ResponseEntity<AiNewsResponseDto> createAiNews(
             @AuthenticationPrincipal CustomOAuth2User customUser) {
 
@@ -49,34 +51,31 @@ public class AiNewsAdminController {
     }
 
     /**
-     * AI 신문 PDF 생성
+     * 프론트에서 생성된 PDF URL을 받아서 S3에 저장
      */
-    @PostMapping("/{aiNewsId}/generate-pdf")
-    public ResponseEntity<GeneratePdfResponseDto> generateAiNewsPdf(
-            @PathVariable("aiNewsId") Long aiNewsId,
-            @RequestBody Map<String, String> request,
+    @PostMapping("/save-pdf")
+    public ResponseEntity<GeneratePdfUrlResponseDto> savePdfFromUrl(
+            @Valid @RequestBody SavedPdfRequestDto requestDto,
             @AuthenticationPrincipal CustomOAuth2User customUser) {
 
         try {
             Long userId = customUser.getUserId();
-            String newsPaper = request.get("newsPaper");
 
-            if (newsPaper == null || newsPaper.isEmpty()) {
-                return ResponseEntity.badRequest().build();
-            }
-
-            // PDF 생성 및 URL 반환
-            GeneratePdfResponseDto response = aiNewsService.generatePdf(aiNewsId, userId, newsPaper);
+            GeneratePdfUrlResponseDto response = aiNewsService.savePdfFromUrl(requestDto, userId);
 
             return ResponseEntity.ok(response);
 
         } catch (IllegalArgumentException e) {
-            log.warn("AI 신문 PDF 다운로드 권한 오류: newsId={}, error={}", aiNewsId, e.getMessage());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+
+            GeneratePdfUrlResponseDto errorResponse = GeneratePdfUrlResponseDto.error(requestDto.getNewsId());
+            return ResponseEntity.badRequest().body(errorResponse);
 
         } catch (Exception e) {
-            log.error("AI 신문 PDF 다운로드 중 오류: newsId={}", aiNewsId, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+
+            GeneratePdfUrlResponseDto errorResponse = GeneratePdfUrlResponseDto.error(
+                    requestDto != null ? requestDto.getNewsId() : null);
+
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }
 }
