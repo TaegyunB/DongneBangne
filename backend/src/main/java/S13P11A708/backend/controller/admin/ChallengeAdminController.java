@@ -46,7 +46,7 @@ public class ChallengeAdminController {
      * @param requestDto 도전 생성 요청 DTO
      * @param customUser JWT 토큰에서 추출한 관리자 ID
      */
-    @PostMapping
+    @PostMapping("/create")
     public ResponseEntity<CreateChallengeResponseDto> createChallenge(
             @Valid @RequestBody CreateChallengeRequestDto requestDto,
             @AuthenticationPrincipal CustomOAuth2User customUser) {

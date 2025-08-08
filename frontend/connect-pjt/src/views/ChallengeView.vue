@@ -286,7 +286,12 @@ const updateMessage = () => {
 // API에서 도전과제 목록 가져오기
 const fetchChallenges = async () => {
   try {
-    const response = await axios.get('http://localhost:8080/api/v1/challenges')
+    const response = await axios.get('http://localhost:8080/api/v1/challenges', {
+      withCredentials: true,  // 쿠키 포함하여 요청
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
     console.log('도전과제 목록 응답:', response.data)
     
     const apiChallenges = response.data || []
