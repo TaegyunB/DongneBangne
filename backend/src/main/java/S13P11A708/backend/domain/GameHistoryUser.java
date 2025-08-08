@@ -38,4 +38,19 @@ public class GameHistoryUser extends BaseEntity {
     @Column(name = "is_winner")
     private Boolean isWinner;
 
+    public static GameHistoryUser of(GameHistory history,
+                                     User user,
+                                     SeniorCenter seniorCenter,
+                                     int correctCount,
+                                     int hintUsed,
+                                     boolean isWinner) {
+        return GameHistoryUser.builder()
+                .gameHistory(history)
+                .user(user)
+                .seniorCenter(seniorCenter)
+                .correctCount(correctCount)
+                .hintUsed(hintUsed)
+                .isWinner(isWinner)
+                .build();
+    }
 }

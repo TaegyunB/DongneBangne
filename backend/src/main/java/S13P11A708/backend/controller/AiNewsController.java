@@ -1,19 +1,15 @@
 package S13P11A708.backend.controller;
 
 import S13P11A708.backend.dto.response.aiNews.AiNewsResponseDto;
-import S13P11A708.backend.dto.response.aiNews.GeneratePdfResponseDto;
 import S13P11A708.backend.security.CustomOAuth2User;
 import S13P11A708.backend.service.AiNewsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/api/v1/ai-news")

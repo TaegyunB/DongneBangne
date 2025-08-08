@@ -26,6 +26,7 @@ public class GameRoomService {
     private final GameRoomRepository gameRoomRepository;
     private final GameRoomUserRepository gameRoomUserRepository;
     private final UserRepository userRepository;
+    private final GameService gameService;
 
     /**
      * 게임방 생성
@@ -155,10 +156,13 @@ public class GameRoomService {
         if(allReady){
             room.changeGameStatus(GameStatus.PROGRESS); //방 상태를 게임 진행 상태로 변경
 
+            Long userId_1 = participants.get(0).getUserId().getId();
+            Long userId_2 = participants.get(1).getUserId().getId();
+
             /**
              * 여기서 websocket 알림 발송 //게임 시작
              */
-
+            gameService.startGame(roomId, userId_1, userId_2);
         }
 
         Long userId_1 = participants.size() > 0 ? participants.get(0).getUserId().getId() : null;
