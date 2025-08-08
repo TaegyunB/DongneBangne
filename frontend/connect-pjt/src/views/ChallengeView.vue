@@ -286,7 +286,7 @@ const updateMessage = () => {
 // API에서 도전과제 목록 가져오기
 const fetchChallenges = async () => {
   try {
-    const response = await axios.get('http://localhost:8080/api/v1/challenges', {
+    const response = await axios.get('/api/v1/challenges', {
       withCredentials: true,  // 쿠키 포함하여 요청
       headers: {
         'Content-Type': 'application/json'
@@ -328,7 +328,7 @@ const fetchChallenges = async () => {
 // 도전과제 상세 정보 가져오기
 const fetchChallengeDetail = async (challengeId) => {
   try {
-    const response = await axios.get(`http://localhost:8080/api/v1/challenges/${challengeId}`)
+    const response = await axios.get(`/api/v1/challenges/${challengeId}`)
     console.log('도전과제 상세 응답:', response.data)
     challengeDetails.value[challengeId] = response.data
     return response.data
@@ -357,7 +357,7 @@ const toggleChallengeStatus = async (challenge) => {
     try {
       if (currentlyCompleted) {
         // 완료 → 미완료 (cancel API)
-        const response = await axios.put(`http://localhost:8080/api/v1/admin/challenges/${challengeId}/cancel`,{},{
+        const response = await axios.put(`/api/v1/admin/challenges/${challengeId}/cancel`,{},{
           withCredentials: true,
           headers: {
             'Content-Type': 'application/json'
@@ -374,7 +374,7 @@ const toggleChallengeStatus = async (challenge) => {
         }
       } else {
         // 미완료(업로드됨) → 완료 (complete API)
-        const response = await axios.post(`http://localhost:8080/api/v1/admin/challenges/${challengeId}/complete`, {}, {
+        const response = await axios.post(`/api/v1/admin/challenges/${challengeId}/complete`, {}, {
           withCredentials: true,
           headers: {
             'Content-Type': 'application/json'
@@ -412,7 +412,7 @@ const toggleChallengeStatus = async (challenge) => {
     try {
       if (currentlyCompleted) {
         // Cancel API - withCredentials 추가!
-        const response = await axios.put(`http://localhost:8080/api/v1/admin/challenges/${challengeId}/cancel`, {}, {
+        const response = await axios.put(`/api/v1/admin/challenges/${challengeId}/cancel`, {}, {
           withCredentials: true,
           headers: {
             'Content-Type': 'application/json'
@@ -432,7 +432,7 @@ const toggleChallengeStatus = async (challenge) => {
           message: `도전이 취소되었습니다.<br>${response.data.subtractedPoint}점이 차감되었습니다.` 
         }
       } else {
-        const response = await axios.post(`http://localhost:8080/api/v1/admin/challenges/${challengeId}/complete`,{},{
+        const response = await axios.post(`/api/v1/admin/challenges/${challengeId}/complete`,{},{
           withCredentials: true,
           headers: {
             'Content-Type': 'application/json'
@@ -537,7 +537,7 @@ const saveEditChallenge = async () => {
     else if (challenge.challengeId) {
       const challengeId = challenge.challengeId
 
-      const response = await axios.put(`http://localhost:8080/api/v1/admin/challenges/${challengeId}`, {
+      const response = await axios.put(`/api/v1/admin/challenges/${challengeId}`, {
         challengeTitle: form.title.trim(),
         challengePlace: form.place.trim(),
         description: form.description.trim()
@@ -620,7 +620,7 @@ const confirmDelete = async () => {
       } 
       // ADMIN이 생성한 도전과제인 경우
       else if (challenge.challengeId) {
-        const response = await axios.delete(`http://localhost:8080/api/v1/admin/challenges/${challenge.challengeId}`, {
+        const response = await axios.delete(`/api/v1/admin/challenges/${challenge.challengeId}`, {
           withCredentials: true,
           headers: {
             'Content-Type': 'application/json'
