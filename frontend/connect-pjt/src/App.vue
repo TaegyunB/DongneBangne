@@ -3,21 +3,21 @@
   <nav class="toolbar">
     <div class="toolbar-container">
       <img src="@/assets/logo.png" alt="로고" class="logo">
-             
+      
       <div v-if="ui.showMenu" class="nav-menu">
         <router-link to="/admin/game" class="nav-item">게임</router-link>
-        <!-- userRole을 전달해야 하기 때문에 따로 처리  -->
+        <!-- userRole을 store에서 가져와서 전달 -->
         <a href="#" @click.prevent="navigateTo('/challenges')" class="nav-item">도전과제</a>
         <a href="#" class="nav-item">게시판</a>
         <a href="#" class="nav-item">순위</a>
         <a href="#" class="nav-item">AI 신문</a>
       </div>
-             
+      
       <div v-if="!ui.showProfile" class="welcome-message" v-html="ui.welcomeText"></div>
       <img v-else src="@/assets/profile.png" alt="프로필" class="profile">
     </div>
   </nav>
-     
+  
   <!-- 이 아래 부분에 이제 본문 위치 -->
   <main class="">
     <RouterView />
@@ -25,44 +25,21 @@
 </template>
 
 <script setup>
-import { RouterView, useRouter  } from 'vue-router'
+import { RouterView, useRouter } from 'vue-router'
 import { useUiStore } from '@/stores/useUiStore'
-import { ref, onMounted } from 'vue'
+import { useUserStore } from '@/stores/user.js'
+import { onMounted } from 'vue'
 
 const ui = useUiStore()
-const router = useRouter();
-const userRole = ref('')
+const user = useUserStore()
+const router = useRouter()
 
-//userRole back에서 받아오기 
-const fetchUserInfo = async () => {
-  try {
-    const response = await fetch('/api/v1/main/me', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      }
-    })
-    
-    if (response.ok) {
-      const data = await response.json()
-      userRole.value = data.userRole
-      console.log('Toolbar - User role:', userRole.value)
-    } else {
-      console.error('Failed to fetch user info')
-      userRole.value = 'MEMBER'
-    }
-  } catch (error) {
-    console.error('Error fetching user info:', error)
-    userRole.value = 'MEMBER'
-  }
-}
-
-// 네비게이션 함수 (userRole을 함께 전달)
+// 네비게이션 함수 (userRole을 store에서 가져와서 전달)
 const navigateTo = (path) => {
   if (path === '/challenges') {
-    router.push({ 
-      path: path, 
-      query: { userRole: userRole.value } 
+    router.push({
+      path: path,
+      query: { userRole: user.userRole }
     })
   } else {
     router.push(path)
@@ -75,8 +52,8 @@ const navigateTo = (path) => {
 // };
 
 // 컴포넌트 마운트 시 사용자 정보 가져오기
-onMounted(() => {
-  fetchUserInfo()
+onMounted(async () => {
+  await user.fetchUserRole()
 })
 
 </script>
