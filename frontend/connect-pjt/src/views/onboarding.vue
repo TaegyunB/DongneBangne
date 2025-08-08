@@ -88,11 +88,6 @@ import onboarding6 from '@/assets/onboarding/onboarding6.png'
 
 const ui = useUiStore()
 onMounted(async () => {
-  ui.showLogo = false
-  ui.showMenu = false
-  ui.showProfile = false
-  ui.welcomeText = '지금 동네방네를 <span class="start-word">시작</span>해보세요!'
-
   // code가 있으면 로그인 이후 리디렉션 상태 → 소속 경로당 확인
   const code = new URLSearchParams(window.location.search).get('code')
   console.log('카카오 로그인 콜백 code:', code) // 이 로그가 찍히는지 확인!
@@ -112,12 +107,6 @@ onMounted(async () => {
   }
 })
 
-onUnmounted(() => {
-  ui.showLogo = true
-  ui.showMenu = true
-  ui.showProfile = true
-  ui.welcomeText = ''
-})
 
 const sectionRefs = ref([])
 let currentIndex = 0

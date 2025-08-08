@@ -1,9 +1,9 @@
 <template>
   <!-- 툴바 -->
-  <nav class="toolbar">
+  <nav v-if="!hideToolbar" class="toolbar">
     <div class="toolbar-container">
       <img src="@/assets/logo.png" alt="로고" class="logo">
-      
+             
       <div v-if="ui.showMenu" class="nav-menu">
         <router-link to="/admin/game" class="nav-item">게임</router-link>
         <!-- userRole을 store에서 가져와서 전달 -->
@@ -19,20 +19,47 @@
   </nav>
   
   <!-- 이 아래 부분에 이제 본문 위치 -->
-  <main class="">
+  <!--<main class="">
     <RouterView />
-  </main>
+  </main>-->
+
+  <main :style="{ marginTop: hideToolbar ? '0' : '60px', paddingTop: hideToolbar ? '0' : '20px' }">
+  <RouterView />
+</main>
 </template>
 
 <script setup>
-import { RouterView, useRouter } from 'vue-router'
+import { RouterView, useRouter  } from 'vue-router'
 import { useUiStore } from '@/stores/useUiStore'
-import { useUserStore } from '@/stores/user.js'
-import { onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 
 const ui = useUiStore()
-const user = useUserStore()
-const router = useRouter()
+const router = useRouter();
+const userRole = ref('')
+
+//userRole back에서 받아오기 
+const fetchUserInfo = async () => {
+  try {
+    const response = await fetch('/api/v1/main/me', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      userRole.value = data.userRole
+      console.log('Toolbar - User role:', userRole.value)
+    } else {
+      console.error('Failed to fetch user info')
+      userRole.value = 'MEMBER'
+    }
+  } catch (error) {
+    console.error('Error fetching user info:', error)
+    userRole.value = 'MEMBER'
+  }
+}
 
 // 네비게이션 함수 (userRole을 store에서 가져와서 전달)
 const navigateTo = (path) => {
@@ -55,7 +82,6 @@ const navigateTo = (path) => {
 onMounted(async () => {
   await user.fetchUserRole()
 })
-
 </script>
 
 <style>

@@ -80,8 +80,7 @@ async function fetchCenters() {
     const res = await api.get('/api/v1/senior-centers', {
       params: { type: selectedType.value, keyword: keyword.value.trim() }
     })
-    console.log('백엔드 응답 데이터:', res.data, res.status)
-    console.log('파라미터:', selectedType.value, keyword.value.trim())
+    console.log('백엔드 응답 데이터:', res.data)
     searchResults.value = res.data
     searched.value = true
   } catch (e) {
@@ -134,6 +133,7 @@ async function confirmCenter() {
     showModal.value = false
   }
 }
+
 
 </script>
 
