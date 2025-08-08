@@ -8,8 +8,8 @@
         <router-link to="/admin/game" class="nav-item">게임</router-link>
         <!-- userRole을 store에서 가져와서 전달 -->
         <a href="#" @click.prevent="navigateTo('/challenges')" class="nav-item">도전과제</a>
-        <a href="#" class="nav-item">게시판</a>
-        <a href="#" class="nav-item">순위</a>
+        <a href="#" @click.prevent="navigateTo('/boards')" class="nav-item">게시판</a>
+        <a href="#" @click.prevent="navigateTo('/rankings')" class="nav-item">순위</a>
         <a href="#" class="nav-item">AI 신문</a>
       </div>
       

@@ -168,21 +168,42 @@ const goToPage = (page) => {
   currentPage.value = page
 }
 
+// const normalizeChallenges = (challenges) => {
+//   const result = []
+//   for (let id = 1; id <= 4; id++) {
+//     const found = challenges.find(c => c.id === id)
+//     result.push(found || null)
+//   }
+//   return result
+// }
+
 const normalizeChallenges = (challenges) => {
-  const result = []
-  for (let id = 1; id <= 4; id++) {
-    const found = challenges.find(c => c.id === id)
-    result.push(found || null)
-  }
-  return result
+  const list = Array.isArray(challenges) ? challenges : []
+  return list
+    .map(c => ({
+      id: c.id ?? c.challengeId ?? c.challenge_id ?? c.slot ?? null,
+      challengeImage: c.challengeImage ?? c.image ?? null,
+      challengeTitle: c.challengeTitle ?? c.title ?? '',
+      description: c.description ?? '',
+      challengePlace: c.challengePlace ?? c.place ?? '',
+      point: c.point ?? 0,
+      isSuccess: c.isSuccess ?? c.is_success ?? false
+    }))
+    .filter(c => c.id != null) // null 제거
 }
 
 const openModal = async (centerId) => {
   try {
     const res = await api.get(`/api/v1/rankings/senior-center/${centerId}/challenges`)
     const data = res.data
+    // selectedCenter.value = {
+    //   ...data,
+    //   challenges: normalizeChallenges(data.challenges)
+    // }
+    const centerInList = centers.value.find(c => c.id === centerId)
     selectedCenter.value = {
-      ...data,
+      seniorCenterId: data.seniorCenterId ?? centerId,
+      seniorCenterName: data.seniorCenterName ?? centerInList?.centerName ?? '',
       challenges: normalizeChallenges(data.challenges)
     }
   } catch (err) {
@@ -211,8 +232,8 @@ onMounted(async () => {
       missionPoint: center.challengePoint,
       monthlyPoint: center.totalPoint,
       challenges: center.challenges,
-      challengeStatuses: center.challenges.slice(0, 4).map((c) =>
-        c.isSuccess ? 'success' : 'fail'
+      challengeStatuses: (center.challenges ?? []).slice(0, 4).map((c) =>
+        (c.isSuccess ?? c.is_success) ? 'success' : 'fail'
       )
     }))
     normalized.sort((a, b) => b.monthlyPoint - a.monthlyPoint)
@@ -222,10 +243,14 @@ onMounted(async () => {
   }
 })
 
-const getChallengeById = (id) => {
-  return selectedCenter.value?.challenges?.find(c => c.id === id)
-}
+// const getChallengeById = (id) => {
+//   return selectedCenter.value?.challenges?.find(c => c.id === id)
+// }
 
+const getChallengeById = (id) => {
+  const arr = selectedCenter.value?.challenges || []
+  return arr.find(c => c && c.id === id) || null
+}
 const truncateText = (text, maxLength = 30) => {
   if (!text) return ''
   return text.length > maxLength ? text.slice(0, maxLength) + '...' : text
