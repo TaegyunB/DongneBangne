@@ -133,9 +133,10 @@ const submit = async () => {
     })
 
     const response = await axios.post(
-      `/api/v1/admin/challenges/${challengeId.value}/missionFinishUpdate`, 
+      `http://localhost:8080/api/v1/admin/challenges/${challengeId.value}/missionFinishUpdate`, 
       formData,
       {
+        withCredentials: true,
         headers: {
           'Content-Type': 'multipart/form-data'
         }

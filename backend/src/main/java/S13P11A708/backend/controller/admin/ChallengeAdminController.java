@@ -187,6 +187,10 @@ public class ChallengeAdminController {
 
         Long adminId = customUser.getUserId();
 
+        // 디버깅 로그 추가
+        System.out.println("=== completeChallenge 메서드 진입 ===");
+        System.out.println("challengeId: " + challengeId);
+
         CompleteChallengeResponseDto response = challengeService.completeChallenge(challengeId, adminId);
         return ResponseEntity.ok(response);
     }
