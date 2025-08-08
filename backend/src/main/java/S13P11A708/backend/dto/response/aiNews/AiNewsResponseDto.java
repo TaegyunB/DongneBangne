@@ -19,12 +19,13 @@ import java.util.stream.Collectors;
 public class AiNewsResponseDto {
 
     private Long id;
+    private String seniorCenterName;
     private String newsTitle;
     private String newsContent;
     private Integer year;
     private Integer month;
     private String pdfUrl;
-    private String seniorCenterName;
+    private Boolean isGenerated;
     private List<ChallengeResponseDto> challenges;
     private Long successChallengeCount;
     private LocalDateTime createdAt;
@@ -41,11 +42,12 @@ public class AiNewsResponseDto {
 
         return AiNewsResponseDto.builder()
                 .id(aiNews.getId())
+                .seniorCenterName(aiNews.getSeniorCenter().getCenterName())
                 .newsTitle(aiNews.getNewsTitle())
                 .year(aiNews.getYear())
                 .month(aiNews.getMonth())
                 .pdfUrl(aiNews.getPdfUrl())
-                .seniorCenterName(aiNews.getSeniorCenter().getCenterName())
+                .isGenerated(aiNews.isGenerated())
                 .challenges(challengeResponseDtos)
                 .successChallengeCount((long) challengeResponseDtos.size())
                 .createdAt(aiNews.getCreatedAt())
