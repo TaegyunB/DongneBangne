@@ -522,26 +522,7 @@ const saveEditChallenge = async () => {
 
   try {
     const challenge = challenges.value[editingIndex]
-    const challengeId = editingIndex // 1, 2, 3, 4로 설정
-
-    console.log('challenge:', challenge);
-    console.log('challengeId:', challenge?.challengeId);
-
     
-    // 절대 URL 제거하고 상대 URL 사용 
-    const response = await axios.put(`/api/v1/admin/challenges/${challengeId}`, {
-      challengeId: challengeId, // challengeId를 request body에 포함
-      challengeTitle: form.title.trim(),
-      challengePlace: form.place.trim(),
-      description: form.description.trim()
-    }, {
-      withCredentials: true, // 인증 정보 포함
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-
-  try {
     // API 도전과제인 경우 (우리가 제공하는 도전) - 수정 불가
     if (challenge.id) {
       alert('시스템 제공 도전과제는 수정할 수 없습니다.')
