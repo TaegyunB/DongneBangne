@@ -178,22 +178,10 @@ const baseRoutes = [
       props: true
     },
     {
-<<<<<<< HEAD
-      path: '/admin/game',
-      name: 'game',
-      component: GameView
-    },
-    {
-      path: '/news/:id',
-      name: 'newsDetail',
-      component: AiNewsDetailView
-    },
-=======
       path: '/admin/games',
       name: 'games',
       component: GameView,
     }
->>>>>>> 7e50b9f9eb17501cb1d4aa6a951fb9a243fb793e
   ]
 
 // 기본값(보임) + 오버라이드(숨김) 주입
