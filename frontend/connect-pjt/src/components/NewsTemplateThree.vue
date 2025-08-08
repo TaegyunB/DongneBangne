@@ -10,41 +10,41 @@
       />
       
       <!-- 메인 기사 (텍스트 왼쪽, 이미지 오른쪽) -->
-      <NewsArticle
-        :headline="headline1"
-        :content="content1"
-        :imageUrl="imageUrl1"
-        layout="horizontal"
-        imagePosition="right"
-        size="medium"
-      />
+      <div class="main-article">
+        <div class="main-text">
+          <h2>{{ headline1 }}</h2>
+          <p class="content">{{ content1 }}</p>
+        </div>
+        <div class="main-image">
+          <img :src="imageUrl1" alt="도전 이미지" />
+          <p class="caption">도전 체험을 하는 모습</p>
+        </div>
+      </div>
       
       <hr>
       
       <!-- 하단 두 기사 나란히 배치 -->
       <div class="bottom-articles">
-        <NewsArticle
-          :headline="headline2"
-          :content="content2"
-          :imageUrl="imageUrl2"
-          layout="vertical"
-          imagePosition="bottom"
-          size="medium"
-          class="bottom-article"
-        />
+        <div class="bottom-article">
+          <h3>{{ headline2 }}</h3>
+          <div class="bottom-image">
+            <img :src="imageUrl2" alt="도전 이미지" />
+            <p class="caption">도전 체험을 하는 모습</p>
+          </div>
+          <p class="bottom-content">{{ content2 }}</p>
+        </div>
         
         <!-- 세로 구분선 -->
         <div class="vertical-divider"></div>
         
-        <NewsArticle
-          :headline="headline3"
-          :content="content3"
-          :imageUrl="imageUrl3"
-          layout="vertical"
-          imagePosition="bottom"
-          size="medium"
-          class="bottom-article"
-        />
+        <div class="bottom-article">
+          <h3>{{ headline3 }}</h3>
+          <div class="bottom-image">
+            <img :src="imageUrl3" alt="도전 이미지" />
+            <p class="caption">도전 체험을 하는 모습</p>
+          </div>
+          <p class="bottom-content">{{ content3 }}</p>
+        </div>
       </div>
     </div>
   </div>
@@ -53,7 +53,6 @@
 <script setup>
 import { defineProps, ref, defineExpose } from 'vue'
 import NewsHeader from '@/components/NewsHeader.vue'
-import NewsArticle from '@/components/NewsArticle.vue'
 
 const props = defineProps({
   seniorCenterName: String,
@@ -92,23 +91,93 @@ defineExpose({ pdfTarget })
   position: relative;
 }
 
+/* 메인 기사 스타일 */
+.main-article {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8mm;
+  margin-bottom: 8mm;
+}
+
+.main-text {
+  width: 55%;
+}
+
+.main-text h2 {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 6mm;
+  line-height: 1.3;
+  color: #000;
+}
+
+.content {
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 4mm;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.main-image {
+  width: 40%;
+  text-align: center;
+}
+
+.main-image img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border: 1px solid #ccc;
+}
+
 hr {
   border: none;
   border-top: 1px solid #ccc;
   margin: 6mm 0;
 }
 
+/* 하단 기사들 */
 .bottom-articles {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 6mm;
-  margin-top: 8mm;
+  margin-top: 6mm;
 }
 
 .bottom-article {
   width: 45%;
   margin-bottom: 0;
+}
+
+.bottom-article h3 {
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 4mm;
+  line-height: 1.2;
+  color: #000;
+}
+
+.bottom-content {
+  font-size: 12px;
+  line-height: 1.3;
+  margin-bottom: 4mm;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.bottom-image {
+  text-align: center;
+  margin-top: 3mm;
+}
+
+.bottom-image img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border: 1px solid #ccc;
 }
 
 /* 세로 구분선 */
@@ -117,5 +186,11 @@ hr {
   background-color: #ccc;
   align-self: stretch;
   margin: 0 2mm;
+}
+
+.caption {
+  font-size: 10px;
+  color: #777;
+  margin-top: 3px;
 }
 </style>
