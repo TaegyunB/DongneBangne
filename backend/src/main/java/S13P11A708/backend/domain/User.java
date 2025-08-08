@@ -58,6 +58,10 @@ public class User extends BaseEntity {
 
 
     //==Setter 메서드==//
+    public Long addPoint(Long currentPoint){
+        return this.personalPoint = personalPoint;
+    }
+
 
     //==조회 메서드==//
     //public boolean isAdmin() {

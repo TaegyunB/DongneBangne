@@ -64,9 +64,10 @@ public class GameRoomController {
     /**
      * 참여한 게임방에서 사용자가 준비상태 전환하는 기능
      * response에서 두 참가자 id 모두 제공
+     * 두 참여자 모두 준비한 상태이면 redis로 정보 전송하고 게임 시작
      */
     @PutMapping("/{roomId}/ready")
-    public ResponseEntity<?> toggleReady(@PathVariable Long roomId,
+    public ResponseEntity<?> readyStart(@PathVariable Long roomId,
                                          @AuthenticationPrincipal CustomOAuth2User oAuth2User){
         ReadyGameRoomUserResponseDto response = gameRoomService.toggleReady(roomId, oAuth2User.getUserId());
         return ResponseEntity.ok(response);

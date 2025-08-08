@@ -64,6 +64,7 @@ import axios from 'axios'
 
 const router = useRouter()
 const route = useRoute()
+
 const form = ref({ description: '', image: null })
 const previewUrl = ref('')
 const fileInput = ref(null)
@@ -72,11 +73,21 @@ const loading = ref(false)
 
 const isValid = computed(() => form.value.description.trim())
 
-// URL 파라미터에서 challengeId 가져오기
 const challengeId = ref(null)
+const challengeType = ref('system') // 'system' 또는 'admin'
 
 onMounted(() => {
   challengeId.value = route.params.challengeId
+  
+  // challengeId로 도전 타입 구분
+  // 우리가 제공하는 도전인지 ADMIN이 생성한 도전인지 확인
+  const adminChallenges = JSON.parse(localStorage.getItem('adminChallenges') || '[]')
+  const isAdminChallenge = adminChallenges.some(challenge => 
+    challenge.challengeId && challenge.challengeId.toString() === challengeId.value
+  )
+  
+  challengeType.value = isAdminChallenge ? 'admin' : 'system'
+  console.log('도전 타입:', challengeType.value, 'challengeId:', challengeId.value)
 })
 
 const triggerFileInput = () => fileInput.value?.click()
@@ -108,7 +119,6 @@ const submit = async () => {
   loading.value = true
 
   try {
-    // FormData 구성
     const formData = new FormData()
     formData.append('imageDescription', form.value.description)
     if (form.value.image) {
@@ -118,14 +128,15 @@ const submit = async () => {
     console.log('missionFinishUpdate API 호출:', {
       challengeId: challengeId.value,
       description: form.value.description,
-      image: form.value.image
+      image: form.value.image,
+      challengeType: challengeType.value
     })
 
-    // 실제 API 호출
     const response = await axios.post(
-      `/api/v1/admin/challenges/${challengeId.value}/missionFinishUpdate`, 
-      formData, 
+      `http://localhost:8080/api/v1/admin/challenges/${challengeId.value}/missionFinishUpdate`, 
+      formData,
       {
+        withCredentials: true,
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -134,20 +145,26 @@ const submit = async () => {
 
     console.log('서버 응답:', response.data)
 
-    // 임시 로컬 저장 (업로드됨을 표시하지만 아직 완료되지 않음)
     const uploadedChallenge = {
       challengeId: parseInt(challengeId.value),
       description: form.value.description,
       image: form.value.image ? previewUrl.value : null,
       uploadedAt: new Date().toISOString(),
-      is_success: false, // 아직 완료되지 않음
-      is_uploaded: true, // 업로드는 완료됨
-      serverData: response.data // 서버에서 받은 데이터 저장
+      is_success: false,
+      is_uploaded: true,
+      serverData: response.data
     }
 
-    localStorage.setItem(`challenge_${challengeId.value}`, JSON.stringify(uploadedChallenge))
+    // 도전 타입에 따라 다른 localStorage 키 사용
+    if (challengeType.value === 'admin') {
+      // ADMIN이 생성한 도전과제
+      localStorage.setItem(`admin_challenge_${challengeId.value}`, JSON.stringify(uploadedChallenge))
+    } else {
+      // 우리가 제공하는 도전과제 (기존 방식 유지)
+      localStorage.setItem(`challenge_${challengeId.value}`, JSON.stringify(uploadedChallenge))
+    }
+    
     showModal.value = true
-
   } catch (error) {
     console.error('업로드 오류:', error)
     alert('도전 인증 업로드 중 오류가 발생했습니다.')

@@ -1,12 +1,23 @@
 package S13P11A708.backend.service;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
 import S13P11A708.backend.domain.Challenge;
 import S13P11A708.backend.domain.SeniorCenter;
 import S13P11A708.backend.domain.User;
 import S13P11A708.backend.domain.enums.UserRole;
 import S13P11A708.backend.dto.request.challenge.CreateChallengeRequestDto;
 import S13P11A708.backend.dto.request.challenge.UpdateChallengeRequestDto;
-import S13P11A708.backend.dto.response.challenge.*;
+import S13P11A708.backend.dto.response.challenge.CancelCompletedChallengeResponseDto;
+import S13P11A708.backend.dto.response.challenge.ChallengeResponseDto;
+import S13P11A708.backend.dto.response.challenge.CompleteChallengeResponseDto;
+import S13P11A708.backend.dto.response.challenge.CreateChallengeResponseDto;
+import S13P11A708.backend.dto.response.challenge.UpdateChallengeResponseDto;
 import S13P11A708.backend.dto.response.seniorCenter.SeniorCenterChallengeListResponseDto;
 import S13P11A708.backend.repository.ChallengeRepository;
 import S13P11A708.backend.repository.SeniorCenterRepository;
@@ -14,12 +25,6 @@ import S13P11A708.backend.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
