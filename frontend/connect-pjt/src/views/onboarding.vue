@@ -133,7 +133,7 @@ const handleScroll = () => {
 }
 
 const handleKakaoLogin = () => {
-  window.location.href = `${process.env.VITE_API_BASE_URL}/login/oauth2/authorization/kakao`
+  window.location.href = `${import.meta.env.VITE_API_BASE_URL}/login/oauth2/authorization/kakao`
 }
 
 
