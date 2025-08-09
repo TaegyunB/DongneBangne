@@ -46,16 +46,29 @@ const navigateTo = (path) => {
   }
 }
 
-// 로고 클릭 시 홈으로 이동
-// const goToHome = () => {
-//   router.push('/');
-// };
-
-// 컴포넌트 마운트 시 사용자 정보 가져오기
+// ✅ 수정된 마운트 로직
 onMounted(async () => {
-  await user.fetchUserRole()
+  // 공개 페이지들 정의
+  const publicRoutes = ['/', '/login', '/onboarding']
+  const currentPath = window.location.pathname
+  
+  console.log('App 시작, 현재 경로:', currentPath)
+  
+  // ✅ 공개 페이지가 아닌 경우에만 인증 확인
+  if (!publicRoutes.includes(currentPath)) {
+    try {
+      console.log('보호된 페이지 - 인증 확인 중...')
+      await user.fetchUserRole()
+      console.log('인증 확인 완료')
+    } catch (error) {
+      console.log('인증 실패, 로그인 페이지로 이동')
+      // CORS 에러나 401 에러 시 로그인 페이지로 리다이렉트
+      window.location.href = '/login'
+    }
+  } else {
+    console.log('공개 페이지 - 인증 확인 스킵')
+  }
 })
-
 </script>
 
 <style>
