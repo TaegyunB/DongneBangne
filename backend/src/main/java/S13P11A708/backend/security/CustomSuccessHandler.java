@@ -5,6 +5,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
@@ -18,6 +19,9 @@ import java.util.Iterator;
 public class CustomSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     private final JWTUtil jwtUtil;
+
+    @Value("${FRONTEND_URL}")
+    private String frontendUrl;
 
     public CustomSuccessHandler(JWTUtil jwtUtil){
         this.jwtUtil = jwtUtil;
@@ -43,7 +47,7 @@ public class CustomSuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         System.out.println("➡ JWT Token: " + token);
 
         response.addCookie(createCookie("access_token", token));
-        response.sendRedirect("http://localhost:5173/"); //프론트로 리다이렉트
+        response.sendRedirect(frontendUrl); //프론트로 리다이렉트
     }
 
     private Cookie createCookie(String key, String value) {
