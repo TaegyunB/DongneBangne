@@ -56,6 +56,16 @@ public class BoardService {
     }
 
     /**
+     * 게시글 상세 조회
+     */
+    public BoardDetailResponseDto getBoardDetail(Long boardId) {
+        Board board = boardRepository.findById(boardId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 게시글을 찾을 수 없습니다."));
+
+        return BoardDetailResponseDto.from(board);
+    }
+
+    /**
      * 게시글 작성
      */
     public BoardDetailResponseDto createBoard(Long userId, BoardCreateRequestDto requestDto, MultipartFile imageFile) {
@@ -87,7 +97,6 @@ public class BoardService {
 
 
     }
-
 
     //== 헬퍼 메서드 ==//
     /**

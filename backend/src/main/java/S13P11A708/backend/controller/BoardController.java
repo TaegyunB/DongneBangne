@@ -36,6 +36,16 @@ public class BoardController {
     }
 
     /**
+     * 게시글 상세 조회
+     */
+    @GetMapping("/{boardId}")
+    public ResponseEntity<BoardDetailResponseDto> getBoardDetail(@PathVariable("boardId") Long boardId) {
+
+        BoardDetailResponseDto boardDetail = boardService.getBoardDetail(boardId);
+        return ResponseEntity.ok(boardDetail);
+    }
+
+    /**
      * 게시글 작성
      */
     @PostMapping
