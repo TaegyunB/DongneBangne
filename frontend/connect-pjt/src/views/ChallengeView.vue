@@ -49,7 +49,7 @@
           <!-- ADMIN만 완료/미완료 버튼을 클릭할 수 있도록 수정 -->
           <button 
             class="challenge-complete-btn"
-            :class="{ 'completed': isCompleted(challenge), 'uploaded': isUploaded(challenge) && !isCompleted(challenge) }"
+            :class="{ 'completed': isCompleted(challenge) }"
             @click.stop="userRole === 'ADMIN' ? toggleChallengeStatus(challenge) : null"
             :disabled="userRole !== 'ADMIN'"
           >
@@ -83,14 +83,6 @@
           class="completed-message"
         >
           완료된 도전입니다
-        </div>
-
-        <!-- 업로드된 상태 표시 -->
-        <div 
-          v-if="!selectedChallenge.isEmpty && isUploaded(selectedChallenge) && !isCompleted(selectedChallenge)"
-          class="uploaded-message"
-        >
-          관리자 승인 대기 중입니다
         </div>
       </div>
     </div>
@@ -236,25 +228,9 @@ const isCompleted = (challenge) => {
   }
 }
 
-const isUploaded = (challenge) => {
-  if (challenge.id) {
-    // API에서 받은 도전과제 (우리가 제공하는 도전)
-    return challenge.imageDescription !== null && challenge.imageDescription !== undefined
-  } else if (challenge.challengeId) {
-    // ADMIN이 생성한 도전과제
-    const data = localStorage.getItem(`admin_challenge_${challenge.challengeId}`)
-    return data ? JSON.parse(data).is_uploaded === true : false
-  } else {
-    // 빈 칸
-    return false
-  }
-}
-
 const getButtonText = (challenge) => {
   if (isCompleted(challenge)) {
     return '완료'
-  } else if (isUploaded(challenge)) {
-    return '대기'
   } else {
     return '미완료'
   }
@@ -338,7 +314,7 @@ const fetchChallengeDetail = async (challengeId) => {
   }
 }
 
-// 도전과제 상태 토글 함수
+// 도전과제 상태 토글 함수 (완료/미완료만)
 const toggleChallengeStatus = async (challenge) => {
   if (userRole.value !== 'ADMIN') return
 
@@ -346,13 +322,6 @@ const toggleChallengeStatus = async (challenge) => {
   if (challenge.id) {
     const challengeId = challenge.id
     const currentlyCompleted = isCompleted(challenge)
-    const currentlyUploaded = isUploaded(challenge)
-
-    // 업로드되지 않은 상태에서는 토글 불가
-    if (!currentlyUploaded && !currentlyCompleted) {
-      alert('먼저 도전 인증을 업로드해주세요.')
-      return
-    }
 
     try {
       if (currentlyCompleted) {
@@ -373,7 +342,7 @@ const toggleChallengeStatus = async (challenge) => {
           message: `도전이 취소되었습니다.<br>${response.data.subtractedPoint}점이 차감되었습니다.` 
         }
       } else {
-        // 미완료(업로드됨) → 완료 (complete API)
+        // 미완료 → 완료 (complete API)
         const response = await axios.post(`/api/v1/admin/challenges/${challengeId}/complete`, {}, {
           withCredentials: true,
           headers: {
@@ -402,16 +371,10 @@ const toggleChallengeStatus = async (challenge) => {
   else if (challenge.challengeId) {
     const challengeId = challenge.challengeId
     const currentlyCompleted = isCompleted(challenge)
-    const currentlyUploaded = isUploaded(challenge)
-
-    if (!currentlyUploaded && !currentlyCompleted) {
-      alert('먼저 도전 인증을 업로드해주세요.')
-      return
-    }
 
     try {
       if (currentlyCompleted) {
-        // Cancel API - withCredentials 추가!
+        // Cancel API
         const response = await axios.put(`/api/v1/admin/challenges/${challengeId}/cancel`, {}, {
           withCredentials: true,
           headers: {
@@ -778,7 +741,6 @@ watch(() => router.currentRoute.value, async () => {
 }
 
 .challenge-complete-btn.completed { background-color: #3074FF; }
-.challenge-complete-btn.uploaded { background-color: #FFA500; }
 .challenge-complete-btn:disabled { 
   cursor: not-allowed; 
   opacity: 0.7;
@@ -831,11 +793,6 @@ watch(() => router.currentRoute.value, async () => {
 
 .completed-message {
   background-color: #e8f5e8; color: #2d5a2d; padding: 12px 24px;
-  border-radius: 10px; font-size: 20px; font-weight: 600;
-}
-
-.uploaded-message {
-  background-color: #fff3cd; color: #856404; padding: 12px 24px;
   border-radius: 10px; font-size: 20px; font-weight: 600;
 }
 

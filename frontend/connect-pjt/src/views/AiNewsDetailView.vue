@@ -56,76 +56,98 @@
 
     <!-- PDF가 없는 경우 신문 템플릿 렌더링 -->
     <div v-else-if="newsData">
-      <!-- 발간되지 않은 경우 발간하기 버튼 (관리자만) -->
-      <div v-if="!newsData.pdfUrl && userStore.isAdmin" class="generate-section">
-        <div class="generate-info">
-          <h3>{{ newsData.newsTitle }}</h3>
-          <p>이 신문이 아직 발간되지 않았습니다. AI 신문을 발간하시겠습니까?</p>
+      <!-- 도전과제 개수에 따른 템플릿 선택 -->
+      <div v-if="challengeCount >= 1 && challengeCount <= 4">
+        <!-- 디버깅 정보 표시 (개발 환경에서만 표시하려면 v-if="isDev" 추가) -->
+        <div class="debug-info" style="background: #f0f0f0; padding: 10px; margin: 10px; border-radius: 5px;">
+          <p><strong>디버깅 정보:</strong></p>
+          <p>도전과제 개수: {{ newsData.challenges?.length || 0 }}</p>
+          <p>뉴스 제목: {{ newsData.newsTitle }}</p>
+          <p>센터명: {{ newsData.seniorCenterName }}</p>
+          <p>Year/Month: {{ newsData.year }}/{{ newsData.month }}</p>
         </div>
-        <button 
-          @click="generateAiNews" 
-          :disabled="generatingNews"
-          class="generate-btn"
-        >
-          {{ generatingNews ? '🤖 AI 신문 발간중...' : '🤖 AI 신문 발간하기' }}
-        </button>
-        <button @click="$router.push('/news')" class="back-btn">목록으로 돌아가기</button>
+
+        <!-- Template 1: 도전과제 1개 -->
+        <NewsTemplateOne 
+          v-if="challengeCount === 1"
+          ref="pdfComponent"
+          v-bind="templateOneData"
+        />
+
+        <!-- Template 2: 도전과제 2개 -->
+        <NewsTemplateTwo 
+          v-else-if="challengeCount === 2"
+          ref="pdfComponent"
+          v-bind="templateTwoData"
+        />
+
+        <!-- Template 3: 도전과제 3개 -->
+        <NewsTemplateThree 
+          v-else-if="challengeCount === 3"
+          ref="pdfComponent"
+          v-bind="templateThreeData"
+        />
+
+        <!-- Template 4: 도전과제 4개 -->
+        <NewsTemplateFour 
+          v-else-if="challengeCount === 4"
+          ref="pdfComponent"
+          v-bind="templateFourData"
+        />
+
+        <!-- PDF 관련 버튼들 (관리자만) -->
+        <div v-if="userStore.isAdmin" class="save-button">
+          <button @click="saveAsPDF" :disabled="savingPdf">
+            {{ savingPdf ? '📄 PDF 생성중...' : '📄 PDF로 저장하기' }}
+          </button>
+          <button @click="generateAndUploadPDF" :disabled="uploadingPdf" class="upload-btn">
+            {{ uploadingPdf ? '📤 PDF 업로드중...' : '📤 PDF 업로드하기' }}
+          </button>
+          <button @click="$router.push('/news')" class="back-btn">목록으로 돌아가기</button>
+        </div>
+
+        <!-- 멤버인 경우 목록 버튼만 -->
+        <div v-else-if="userStore.isMember" class="member-actions">
+          <button @click="$router.push('/news')" class="back-btn">목록으로 돌아가기</button>
+        </div>
       </div>
-
-      <!-- 발간되지 않았고 멤버인 경우 -->
-      <div v-else-if="!newsData.pdfUrl && userStore.isMember" class="no-access">
-        <h3>{{ newsData.newsTitle }}</h3>
-        <p>이 신문이 아직 발간되지 않았습니다.</p>
-        <button @click="$router.push('/news')" class="back-btn">목록으로 돌아가기</button>
-      </div>
-
-      <!-- Template 1: 도전과제 1개 -->
-      <NewsTemplateOne 
-        v-else-if="newsData.challenges.length === 1"
-        ref="pdfComponent"
-        v-bind="templateOneData"
-      />
-
-      <!-- Template 2: 도전과제 2개 -->
-      <NewsTemplateTwo 
-        v-else-if="newsData.challenges.length === 2"
-        ref="pdfComponent"
-        v-bind="templateTwoData"
-      />
-
-      <!-- Template 3: 도전과제 3개 -->
-      <NewsTemplateThree 
-        v-else-if="newsData.challenges.length === 3"
-        ref="pdfComponent"
-        v-bind="templateThreeData"
-      />
-
-      <!-- Template 4: 도전과제 4개 -->
-      <NewsTemplateFour 
-        v-else-if="newsData.challenges.length === 4"
-        ref="pdfComponent"
-        v-bind="templateFourData"
-      />
 
       <!-- 도전과제가 0개이거나 4개 초과인 경우 -->
       <div v-else class="no-template">
-        <p>이번달에 도전과제를 수행하지 않았군요. 다음달엔 도전해보세요!</p>
-        <p>성공한 도전과제: {{ newsData.challenges.length }}개</p>
-      </div>
-
-      <!-- PDF 관련 버튼들 (관리자만) -->
-      <div v-if="newsData.challenges.length >= 1 && newsData.challenges.length <= 4 && userStore.isAdmin" class="save-button">
-        <button @click="saveAsPDF" :disabled="savingPdf">
-          {{ savingPdf ? '📄 PDF 생성중...' : '📄 PDF로 저장하기' }}
-        </button>
-        <button @click="generateAndUploadPDF" :disabled="uploadingPdf" class="upload-btn">
-          {{ uploadingPdf ? '📤 PDF 업로드중...' : '📤 PDF 업로드하기' }}
-        </button>
-        <button @click="$router.push('/news')" class="back-btn">목록으로 돌아가기</button>
-      </div>
-
-      <!-- 멤버인 경우 목록 버튼만 -->
-      <div v-else-if="newsData.challenges.length >= 1 && newsData.challenges.length <= 4 && userStore.isMember" class="member-actions">
+        <h3>{{ newsData.newsTitle }}</h3>
+        <p>이번달에 도전과제가 {{ challengeCount }}개입니다.</p>
+        
+        <div v-if="challengeCount === 0" class="no-challenges">
+          <p>도전과제가 없어 신문을 생성할 수 없습니다.</p>
+          <p>다음달에는 도전과제를 완료해보세요! 💪</p>
+        </div>
+        
+        <div v-else-if="challengeCount > 4" class="too-many-challenges">
+          <p>너무 많은 도전과제를 수행하셨네요! 🎉</p>
+          <p>현재는 최대 4개까지만 신문에 표시되며, 처음 4개의 도전과제가 선택됩니다.</p>
+          
+          <!-- 선택된 도전과제와 제외된 도전과제 표시 -->
+          <div class="challenge-selection">
+            <div class="selected-challenges">
+              <h4>신문에 포함될 도전과제 (처음 4개):</h4>
+              <ul>
+                <li v-for="challenge in getSuccessfulChallenges().slice(0, 4)" :key="challenge.id">
+                  {{ challenge.challengeTitle }}
+                </li>
+              </ul>
+            </div>
+            
+            <div v-if="getSuccessfulChallenges().length > 4" class="excluded-challenges">
+              <h4>신문에서 제외되는 도전과제:</h4>
+              <ul>
+                <li v-for="challenge in getSuccessfulChallenges().slice(4)" :key="challenge.id">
+                  {{ challenge.challengeTitle }}
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        
         <button @click="$router.push('/news')" class="back-btn">목록으로 돌아가기</button>
       </div>
     </div>
@@ -155,7 +177,21 @@ const newsData = ref(null)
 const pdfComponent = ref(null)
 const savingPdf = ref(false)
 const uploadingPdf = ref(false)
-const generatingNews = ref(false)
+
+// 성공한 도전과제 가져오기 (모든 도전과제가 성공한 것으로 가정)
+const getSuccessfulChallenges = () => {
+  if (!newsData.value || !newsData.value.challenges) {
+    return []
+  }
+  
+  // isSuccess가 false인 데이터는 오지 않으므로 전체 도전과제 반환
+  return newsData.value.challenges
+}
+
+// 도전과제 개수 계산
+const challengeCount = computed(() => {
+  return getSuccessfulChallenges().length
+})
 
 // 신문 데이터 가져오기
 const fetchNewsData = async (aiNewsId) => {
@@ -163,53 +199,46 @@ const fetchNewsData = async (aiNewsId) => {
   error.value = ''
   
   try {
-    const response = await axios.get(`/api/v1/news/${aiNewsId}`)
+    console.log('신문 데이터 요청 중:', aiNewsId)
+    const response = await axios.get(`/api/v1/ai-news/${aiNewsId}`, {
+      withCredentials: true
+    })
+    
     newsData.value = response.data
     console.log('신문 데이터 로드 완료:', response.data)
+    console.log('도전과제 배열:', response.data.challenges)
+    console.log('도전과제 개수:', response.data.challenges ? response.data.challenges.length : 0)
+    
+    // 데이터 검증
+    if (!response.data.challenges) {
+      console.warn('도전과제 데이터가 없습니다. 빈 배열로 설정합니다.')
+      newsData.value.challenges = []
+    }
     
   } catch (err) {
     console.error('신문 데이터 로드 실패:', err)
-    error.value = '신문을 불러오는데 실패했습니다. 다시 시도해주세요.'
+    
+    if (err.response?.status === 404) {
+      error.value = '해당 신문을 찾을 수 없습니다.'
+    } else if (err.response?.status === 403) {
+      error.value = '이 신문을 볼 권한이 없습니다.'
+    } else {
+      error.value = '신문을 불러오는데 실패했습니다. 다시 시도해주세요.'
+    }
   } finally {
     loading.value = false
   }
 }
 
-// AI 신문 발간하기
-const generateAiNews = async () => {
-  generatingNews.value = true
-  
-  try {
-    const response = await axios.post('/api/v1/admin/ai-news/create')
-    console.log('AI 신문 발간 완료:', response.data)
-    
-    // 성공시 newsData 업데이트
-    if (response.data) {
-      newsData.value = { ...newsData.value, ...response.data }
-    }
-    
-    alert('AI 신문이 성공적으로 발간되었습니다!')
-    
-  } catch (error) {
-    console.error('AI 신문 발간 실패:', error)
-    
-    if (error.response) {
-      alert(`AI 신문 발간에 실패했습니다: ${error.response.data.message || '서버 오류'}`)
-    } else if (error.request) {
-      alert('AI 신문 발간에 실패했습니다: 서버와 연결할 수 없습니다.')
-    } else {
-      alert('AI 신문 발간에 실패했습니다.')
-    }
-  } finally {
-    generatingNews.value = false
-  }
-}
-
 // Template One 데이터 (도전과제 1개)
 const templateOneData = computed(() => {
-  if (!newsData.value || newsData.value.challenges.length !== 1) return {}
+  if (!newsData.value || challengeCount.value !== 1) return {}
   
-  const challenge = newsData.value.challenges[0]
+  const successfulChallenges = getSuccessfulChallenges()
+  const challenge = successfulChallenges[0]
+  
+  if (!challenge) return {}
+  
   return {
     seniorCenterName: newsData.value.seniorCenterName,
     month: String(newsData.value.month).padStart(2, '0'),
@@ -222,64 +251,73 @@ const templateOneData = computed(() => {
 
 // Template Two 데이터 (도전과제 2개)
 const templateTwoData = computed(() => {
-  if (!newsData.value || newsData.value.challenges.length !== 2) return {}
+  if (!newsData.value || challengeCount.value !== 2) return {}
   
-  const challenges = newsData.value.challenges.slice(0, 2)
+  const successfulChallenges = getSuccessfulChallenges().slice(0, 2)
+  
+  if (successfulChallenges.length < 2) return {}
+  
   return {
     seniorCenterName: newsData.value.seniorCenterName,
     month: String(newsData.value.month).padStart(2, '0'),
     ranking: 1,
-    headline1: challenges[0].challengeTitle,
-    content1: challenges[0].aiDescription,
-    imageUrl1: challenges[0].challengeImage,
-    headline2: challenges[1].challengeTitle,
-    content2: challenges[1].aiDescription,
-    imageUrl2: challenges[1].challengeImage
+    headline1: successfulChallenges[0].challengeTitle,
+    content1: successfulChallenges[0].aiDescription,
+    imageUrl1: successfulChallenges[0].challengeImage,
+    headline2: successfulChallenges[1].challengeTitle,
+    content2: successfulChallenges[1].aiDescription,
+    imageUrl2: successfulChallenges[1].challengeImage
   }
 })
 
 // Template Three 데이터 (도전과제 3개)
 const templateThreeData = computed(() => {
-  if (!newsData.value || newsData.value.challenges.length !== 3) return {}
+  if (!newsData.value || challengeCount.value !== 3) return {}
   
-  const challenges = newsData.value.challenges.slice(0, 3)
+  const successfulChallenges = getSuccessfulChallenges().slice(0, 3)
+  
+  if (successfulChallenges.length < 3) return {}
+  
   return {
     seniorCenterName: newsData.value.seniorCenterName,
     month: String(newsData.value.month).padStart(2, '0'),
     ranking: 1,
-    headline1: challenges[0].challengeTitle,
-    content1: challenges[0].aiDescription,
-    imageUrl1: challenges[0].challengeImage,
-    headline2: challenges[1].challengeTitle,
-    content2: challenges[1].aiDescription,
-    imageUrl2: challenges[1].challengeImage,
-    headline3: challenges[2].challengeTitle,
-    content3: challenges[2].aiDescription,
-    imageUrl3: challenges[2].challengeImage
+    headline1: successfulChallenges[0].challengeTitle,
+    content1: successfulChallenges[0].aiDescription,
+    imageUrl1: successfulChallenges[0].challengeImage,
+    headline2: successfulChallenges[1].challengeTitle,
+    content2: successfulChallenges[1].aiDescription,
+    imageUrl2: successfulChallenges[1].challengeImage,
+    headline3: successfulChallenges[2].challengeTitle,
+    content3: successfulChallenges[2].aiDescription,
+    imageUrl3: successfulChallenges[2].challengeImage
   }
 })
 
 // Template Four 데이터 (도전과제 4개)
 const templateFourData = computed(() => {
-  if (!newsData.value || newsData.value.challenges.length !== 4) return {}
+  if (!newsData.value || challengeCount.value !== 4) return {}
   
-  const challenges = newsData.value.challenges.slice(0, 4)
+  const successfulChallenges = getSuccessfulChallenges().slice(0, 4)
+  
+  if (successfulChallenges.length < 4) return {}
+  
   return {
     seniorCenterName: newsData.value.seniorCenterName,
     month: String(newsData.value.month).padStart(2, '0'),
     ranking: 1,
-    headline1: challenges[0].challengeTitle,
-    content1: challenges[0].aiDescription,
-    imageUrl1: challenges[0].challengeImage,
-    headline2: challenges[1].challengeTitle,
-    content2: challenges[1].aiDescription,
-    imageUrl2: challenges[1].challengeImage,
-    headline3: challenges[2].challengeTitle,
-    content3: challenges[2].aiDescription,
-    imageUrl3: challenges[2].challengeImage,
-    headline4: challenges[3].challengeTitle,
-    content4: challenges[3].aiDescription,
-    imageUrl4: challenges[3].challengeImage
+    headline1: successfulChallenges[0].challengeTitle,
+    content1: successfulChallenges[0].aiDescription,
+    imageUrl1: successfulChallenges[0].challengeImage,
+    headline2: successfulChallenges[1].challengeTitle,
+    content2: successfulChallenges[1].aiDescription,
+    imageUrl2: successfulChallenges[1].challengeImage,
+    headline3: successfulChallenges[2].challengeTitle,
+    content3: successfulChallenges[2].aiDescription,
+    imageUrl3: successfulChallenges[2].challengeImage,
+    headline4: successfulChallenges[3].challengeTitle,
+    content4: successfulChallenges[3].aiDescription,
+    imageUrl4: successfulChallenges[3].challengeImage
   }
 })
 
@@ -336,6 +374,7 @@ const generateAndUploadPDF = async () => {
 
     // 백엔드로 PDF 업로드
     const uploadResponse = await axios.post('/api/v1/admin/ai-news/upload-pdf', formData, {
+      withCredentials: true,
       headers: {
         'Content-Type': 'multipart/form-data'
       }
@@ -352,13 +391,26 @@ const generateAndUploadPDF = async () => {
   } catch (error) {
     console.error('PDF 업로드 실패:', error)
     
+    let errorMessage = 'PDF 업로드에 실패했습니다.'
+    
     if (error.response) {
-      alert(`PDF 업로드에 실패했습니다: ${error.response.data.message || '서버 오류'}`)
+      const status = error.response.status
+      const message = error.response.data?.message || '서버 오류'
+      
+      if (status === 413) {
+        errorMessage = 'PDF 파일이 너무 큽니다. 다시 시도해주세요.'
+      } else if (status === 415) {
+        errorMessage = '지원하지 않는 파일 형식입니다.'
+      } else {
+        errorMessage = `PDF 업로드에 실패했습니다: ${message}`
+      }
     } else if (error.request) {
-      alert('PDF 업로드에 실패했습니다: 서버와 연결할 수 없습니다.')
+      errorMessage = 'PDF 업로드에 실패했습니다: 서버와 연결할 수 없습니다.'
     } else {
-      alert('PDF 생성에 실패했습니다.')
+      errorMessage = 'PDF 생성에 실패했습니다.'
     }
+    
+    alert(errorMessage)
   } finally {
     uploadingPdf.value = false
   }
@@ -401,43 +453,23 @@ const saveAsPDF = async () => {
       }
     }
 
-    // PDF 생성하고 Blob으로 변환
-    const pdfBlob = await html2pdf().set(opt).from(element).outputPdf('blob')
-    
-    // Blob을 URL로 변환
-    const pdfUrl = URL.createObjectURL(pdfBlob)
-    
-    // 백엔드에 PDF URL 저장 요청
-    const response = await axios.post(`/api/v1/admin/ai-news/${newsData.value.id}/save-pdf`, {
-      newsId: newsData.value.id,
-      pdfUrl: pdfUrl
-    })
-    
-    console.log('PDF 저장 성공:', response.data)
-    
-    // 성공시 newsData 업데이트
-    if (response.data.pdfUrl) {
-      newsData.value.pdfUrl = response.data.pdfUrl
-    }
-    
-    alert('PDF가 성공적으로 저장되었습니다!')
-    
-    // 로컬 다운로드도 실행
+    // PDF 생성하고 다운로드
     await html2pdf().set(opt).from(element).save()
     
-    // 사용이 끝난 URL 해제
-    URL.revokeObjectURL(pdfUrl)
+    alert('PDF가 성공적으로 다운로드되었습니다!')
     
   } catch (error) {
     console.error('PDF 저장 실패:', error)
     
-    if (error.response) {
-      alert(`PDF 저장에 실패했습니다: ${error.response.data.message || '서버 오류'}`)
-    } else if (error.request) {
-      alert('PDF 저장에 실패했습니다: 서버와 연결할 수 없습니다.')
-    } else {
-      alert('PDF 생성에 실패했습니다.')
+    let errorMessage = 'PDF 생성에 실패했습니다.'
+    
+    if (error.name === 'QuotaExceededError') {
+      errorMessage = '브라우저 저장 공간이 부족합니다. 캐시를 정리하고 다시 시도해주세요.'
+    } else if (error.message?.includes('Canvas')) {
+      errorMessage = 'PDF 생성 중 화면 캡처에 실패했습니다. 이미지 로딩을 확인해주세요.'
     }
+    
+    alert(errorMessage)
   } finally {
     savingPdf.value = false
   }
@@ -482,6 +514,57 @@ onMounted(async () => {
   padding: 60px 20px;
   color: #666;
   font-size: 16px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin: 20px auto;
+  max-width: 700px;
+}
+
+.no-template h3 {
+  color: #333;
+  margin-bottom: 20px;
+  font-size: 24px;
+}
+
+.no-challenges, .too-many-challenges {
+  margin: 30px 0;
+  text-align: left;
+}
+
+.challenge-selection {
+  margin-top: 30px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  text-align: left;
+}
+
+.challenge-selection h4 {
+  color: #495057;
+  margin-bottom: 15px;
+  font-size: 16px;
+}
+
+.challenge-selection ul {
+  list-style: none;
+  padding: 0;
+}
+
+.selected-challenges ul li, .excluded-challenges ul li {
+  padding: 5px 0;
+  color: #495057;
+}
+
+.excluded-challenges {
+  opacity: 0.7;
+  margin-top: 15px;
+}
+
+.debug-info {
+  font-family: monospace;
+  font-size: 12px;
+  color: #333;
 }
 
 .pdf-container {
@@ -556,6 +639,7 @@ onMounted(async () => {
   display: flex;
   justify-content: center;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .save-button button {
@@ -565,6 +649,7 @@ onMounted(async () => {
   border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.2s;
+  white-space: nowrap;
 }
 
 .save-button button:first-child {
@@ -604,76 +689,44 @@ onMounted(async () => {
   cursor: not-allowed;
 }
 
-.generate-section {
-  text-align: center;
-  padding: 60px 20px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  margin: 20px auto;
-  max-width: 600px;
-}
-
-.generate-info h3 {
-  color: #333;
-  margin-bottom: 15px;
-  font-size: 20px;
-}
-
-.generate-info p {
-  color: #666;
-  margin-bottom: 30px;
-  line-height: 1.6;
-}
-
-.generate-btn {
-  background-color: #10b981 !important;
-  color: white !important;
-  padding: 15px 30px !important;
-  font-size: 16px !important;
-  border: none !important;
-  border-radius: 8px !important;
-  cursor: pointer !important;
-  margin-right: 15px !important;
-  transition: all 0.2s !important;
-}
-
-.generate-btn:hover:not(:disabled) {
-  background-color: #059669 !important;
-  transform: translateY(-1px);
-}
-
-.generate-btn:disabled {
-  background-color: #9ca3af !important;
-  cursor: not-allowed !important;
-  transform: none !important;
-}
-
-.no-access {
-  text-align: center;
-  padding: 60px 20px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  margin: 20px auto;
-  max-width: 600px;
-}
-
-.no-access h3 {
-  color: #333;
-  margin-bottom: 15px;
-  font-size: 20px;
-}
-
-.no-access p {
-  color: #666;
-  margin-bottom: 30px;
-  line-height: 1.6;
-}
-
 .member-actions {
   text-align: center;
   margin: 40px 0;
   padding: 20px;
+}
+
+@media (max-width: 768px) {
+  .detail-container {
+    padding: 10px;
+  }
+  
+  .pdf-header {
+    padding: 15px 20px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .pdf-actions {
+    justify-content: center;
+  }
+  
+  .save-button {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .save-button button {
+    width: 100%;
+    max-width: 300px;
+  }
+  
+  .no-template {
+    margin: 10px;
+    padding: 30px 20px;
+  }
+  
+  .challenge-selection {
+    padding: 15px;
+  }
 }
 </style>
