@@ -3,7 +3,10 @@ package S13P11A708.backend.controller;
         import S13P11A708.backend.domain.enums.BoardCategory;
         import S13P11A708.backend.dto.request.board.BoardCreateRequestDto;
         import S13P11A708.backend.dto.response.board.BoardDetailResponseDto;
+        import S13P11A708.backend.dto.response.boardLike.BoardLikeResponseDto;
+        import S13P11A708.backend.repository.BoardLikeRepository;
         import S13P11A708.backend.security.CustomOAuth2User;
+        import S13P11A708.backend.service.BoardLikeService;
         import S13P11A708.backend.service.BoardService;
         import jakarta.validation.Valid;
         import lombok.RequiredArgsConstructor;
@@ -20,6 +23,7 @@ package S13P11A708.backend.controller;
 public class BoardController {
 
     private final BoardService boardService;
+    private final BoardLikeService boardLikeService;
 
     /**
      * 카테고리별 게시글 조회
@@ -69,6 +73,19 @@ public class BoardController {
 
     }
 
+    /**
+     * 게시글 좋아요 토글
+     */
+    @PostMapping("/{boardId}/like")
+    public ResponseEntity<BoardLikeResponseDto> toggleBoardLike(
+            @PathVariable("boardId") Long boardId,
+            @AuthenticationPrincipal CustomOAuth2User customUser) {
+
+        Long userId = customUser.getUserId();
+        BoardLikeResponseDto response = boardLikeService.toggleBoardLike(userId, boardId);
+
+        return ResponseEntity.ok(response);
+    }
 
 
 
