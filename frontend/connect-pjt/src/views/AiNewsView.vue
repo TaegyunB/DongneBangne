@@ -43,18 +43,24 @@
             <button 
               v-else
               @click="publishNews(news)"
-              :disabled="publishingIds.includes(news.id)"
+              :disabled="publishingIds.includes(news.id) || !canPublishNews(news)"
               class="action-btn publish-btn"
+              :title="getPublishButtonTooltip(news)"
             >
-              {{ publishingIds.includes(news.id) ? '발간 중...' : '발간하기' }}
+              {{ getPublishButtonText(news) }}
             </button>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- 데이터가 없는 경우 -->
+    <div v-if="!loading && newsList.length === 0" class="no-data">
+      <p>아직 생성된 신문이 없습니다.</p>
+    </div>
+
     <!-- 페이지네이션 -->
-    <div class="pagination">
+    <div v-if="totalPages > 1" class="pagination">
       <button 
         @click="changePage(currentPage - 1)"
         :disabled="currentPage === 1"
@@ -107,153 +113,29 @@ const router = useRouter()
 
 const loading = ref(false)
 const newsList = ref([])
-const seniorCenterName = ref('싸피 경로당')
+const seniorCenterName = ref('AI 신문')
 const publishingIds = ref([])
 const currentPage = ref(1)
 const itemsPerPage = 10
 
-// 더미 데이터 로드
+// 신문 목록 조회
 const fetchNews = async () => {
   loading.value = true
   try {
-    // 더미 데이터
-    const dummyData = [
-      {
-        id: 7,
-        newsTitle: "강일리버파크2단지, 무더위를 이기는 어르신들의 활기찬 7월 이야기",
-        newsContent: null,
-        year: 2025,
-        month: 7,
-        pdfUrl: "https://s13p11a708.s3.us-east-2.amazonaws.com/ai-news/강일리버파크2단지_2025_7_1.pdf",
-        seniorCenterName: "강일리버파크2단지",
-        challenges: [],
-        createdAt: "2025-07-31T14:20:00"
-      },
-      {
-        id: 6,
-        newsTitle: "강일리버파크2단지, 초여름을 맞이한 어르신들의 활동 현황",
-        newsContent: null,
-        year: 2025,
-        month: 6,
-        pdfUrl: "https://s13p11a708.s3.us-east-2.amazonaws.com/ai-news/강일리버파크2단지_2025_6_1.pdf",
-        seniorCenterName: "강일리버파크2단지",
-        challenges: [],
-        createdAt: "2025-06-30T13:30:45"
-      },
-      {
-        id: 5,
-        newsTitle: "강일리버파크2단지, 봄의 마지막을 장식한 어르신들의 5월 이야기",
-        newsContent: null,
-        year: 2025,
-        month: 5,
-        pdfUrl: "https://s13p11a708.s3.us-east-2.amazonaws.com/ai-news/강일리버파크2단지_2025_5_1.pdf",
-        seniorCenterName: "강일리버파크2단지",
-        challenges: [],
-        createdAt: "2025-05-31T17:10:22"
-      },
-      {
-        id: 4,
-        newsTitle: "강일리버파크2단지, 어르신들과 함께한 행복한 여름의 추억",
-        newsContent: null,
-        year: 2025,
-        month: 4,
-        pdfUrl: null, // 발간 안됨
-        seniorCenterName: "강일리버파크2단지",
-        challenges: [
-          {id: 1, challengeTitle: "백숙먹기", challengePlace: "경로당", description: "다같이 백숙먹기"},
-          {id: 2, challengeTitle: "산책하기", challengePlace: "경로당", description: "다같이 산책하기"},
-          {id: 3, challengeTitle: "책 읽기", challengePlace: "경로당", description: "더운데 다같이 모여서 책 읽기"}
-        ],
-        createdAt: "2025-04-30T16:28:02"
-      },
-      {
-        id: 3,
-        newsTitle: "강일리버파크2단지, 봄의 새싹과 함께한 3월 이야기",
-        newsContent: null,
-        year: 2025,
-        month: 3,
-        pdfUrl: null, // 발간 안됨
-        seniorCenterName: "강일리버파크2단지",
-        challenges: [],
-        createdAt: "2025-03-31T16:22:33"
-      },
-      {
-        id: 2,
-        newsTitle: "강일리버파크2단지, 무더위를 이기는 어르신들의 활기찬 7월 이야기",
-        newsContent: null,
-        year: 2025,
-        month: 7,
-        pdfUrl: "https://s13p11a708.s3.us-east-2.amazonaws.com/ai-news/강일리버파크2단지_2025_7_1.pdf",
-        seniorCenterName: "강일리버파크2단지",
-        challenges: [],
-        createdAt: "2025-07-31T14:20:00"
-      },
-      {
-        id: 1,
-        newsTitle: "강일리버파크2단지, 초여름을 맞이한 어르신들의 활동 현황",
-        newsContent: null,
-        year: 2025,
-        month: 6,
-        pdfUrl: "https://s13p11a708.s3.us-east-2.amazonaws.com/ai-news/강일리버파크2단지_2025_6_1.pdf",
-        seniorCenterName: "강일리버파크2단지",
-        challenges: [],
-        createdAt: "2025-06-30T13:30:45"
-      },
-      {
-        id: 8,
-        newsTitle: "강일리버파크2단지, 봄의 마지막을 장식한 어르신들의 5월 이야기",
-        newsContent: null,
-        year: 2025,
-        month: 5,
-        pdfUrl: "https://s13p11a708.s3.us-east-2.amazonaws.com/ai-news/강일리버파크2단지_2025_5_1.pdf",
-        seniorCenterName: "강일리버파크2단지",
-        challenges: [],
-        createdAt: "2025-05-31T17:10:22"
-      },
-      {
-        id: 9,
-        newsTitle: "강일리버파크2단지, 어르신들과 함께한 행복한 여름의 추억",
-        newsContent: null,
-        year: 2025,
-        month: 4,
-        pdfUrl: null, // 발간 안됨
-        seniorCenterName: "강일리버파크2단지",
-        challenges: [
-          {id: 1, challengeTitle: "백숙먹기", challengePlace: "경로당", description: "다같이 백숙먹기"},
-          {id: 2, challengeTitle: "산책하기", challengePlace: "경로당", description: "다같이 산책하기"},
-          {id: 3, challengeTitle: "책 읽기", challengePlace: "경로당", description: "더운데 다같이 모여서 책 읽기"}
-        ],
-        createdAt: "2025-04-30T16:28:02"
-      },
-      {
-        id: 10,
-        newsTitle: "강일리버파크2단지, 봄의 새싹과 함께한 3월 이야기",
-        newsContent: null,
-        year: 2025,
-        month: 3,
-        pdfUrl: null, // 발간 안됨
-        seniorCenterName: "강일리버파크2단지",
-        challenges: [],
-        createdAt: "2025-03-31T16:22:33"
-      },
-      {
-        id: 11,
-        newsTitle: "강일리버파크2단지, 봄의 새싹과 함께한 3월 이야기",
-        newsContent: null,
-        year: 2025,
-        month: 3,
-        pdfUrl: null, // 발간 안됨
-        seniorCenterName: "강일리버파크2단지",
-        challenges: [],
-        createdAt: "2025-03-31T16:22:33"
-      }
-    ]
+    console.log('API 요청 시작: /api/v1/ai-news')
     
-    newsList.value = dummyData
-    seniorCenterName.value = dummyData[0].seniorCenterName
+    // 명시적으로 HTTP URL 사용
+    const response = await axios.get('http://localhost:8080/api/v1/ai-news', {
+      withCredentials: true,
+      timeout: 10000
+    })
+    
+    newsList.value = response.data
+    console.log('신문 목록 로드 완료:', response.data)
     
   } catch (error) {
-    console.error('신문 목록을 불러오는데 실패했습니다:', error)
+    console.error('상세 에러 정보:', error)
+    // 기존 에러 처리 코드...
   } finally {
     loading.value = false
   }
@@ -304,10 +186,13 @@ const visiblePages = computed(() => {
   return pages
 })
 
-// 신문 설명 생성
+// 신문 설명 생성 (challengeName과 challengeTitle 둘 다 지원)
 const getNewsDescription = (news) => {
   if (news.challenges && news.challenges.length > 0) {
-    return `${news.challenges.map(c => c.challengeTitle).join(', ')} 수업을 하며 하하호호 추억을 나누...`
+    const challengeNames = news.challenges.map(c => 
+      c.challengeName || c.challengeTitle || '활동'
+    ).join(', ')
+    return `${challengeNames} 활동을 하며 하하호호 추억을 나누...`
   }
   return '다 같이 근처 계곡으로 놀러가..'
 }
@@ -317,44 +202,93 @@ const getLastDay = (year, month) => {
   return new Date(year, month, 0).getDate()
 }
 
-// 신문 발간하기
+// 신문 발간 가능 여부 확인
+const canPublishNews = (news) => {
+  // 이미 발간된 경우 false
+  if (news.pdfUrl) return false
+  
+  // 도전과제가 없으면 발간 불가
+  if (!news.challenges || news.challenges.length === 0) return false
+  
+  // 도전과제가 있으면 발간 가능 (isSuccess는 항상 true인 데이터만 온다고 가정)
+  return true
+}
+
+// 발간하기 버튼 텍스트
+const getPublishButtonText = (news) => {
+  if (publishingIds.value.includes(news.id)) {
+    return 'AI 신문 발간중...'
+  }
+  
+  if (!canPublishNews(news)) {
+    return '도전과제 없음'
+  }
+  
+  return 'AI 신문 발간하기'
+}
+
+// 발간하기 버튼 툴팁
+const getPublishButtonTooltip = (news) => {
+  if (!canPublishNews(news)) {
+    return '이번 달에 수행된 도전과제가 없어 신문을 발간할 수 없습니다.'
+  }
+  return ''
+}
+
+// 신문 발간하기 (현재 달의 신문 생성)
 const publishNews = async (news) => {
+  // 발간 가능 여부 재확인
+  if (!canPublishNews(news)) {
+    alert('이 신문을 발간할 수 없습니다. 도전과제가 필요합니다.')
+    return
+  }
+
   publishingIds.value.push(news.id)
   
   try {
-    // API 호출
-    const response = await axios.post('/api/v1/admin/ai-news', {
-      newsId: news.id,
+    console.log(`${news.year}년 ${news.month}월 AI 신문 발간 시작`)
+    
+    // 현재는 전체 센터의 최신 신문을 생성하는 API를 호출
+    // 향후 특정 월의 신문 발간 API가 필요할 수 있음
+    const response = await axios.post('/api/v1/admin/ai-news/create', {
       year: news.year,
       month: news.month
+    }, {
+      withCredentials: true
     })
     
-    // 성공시 pdfUrl 업데이트
-    const newsIndex = newsList.value.findIndex(n => n.id === news.id)
-    if (newsIndex !== -1) {
-      newsList.value[newsIndex] = {
-        ...newsList.value[newsIndex],
-        ...response.data
-      }
-    }
+    // 성공시 뉴스 목록 새로고침
+    await fetchNews()
     
-    console.log('신문 발간 완료:', response.data)
+    console.log('AI 신문 발간 완료:', response.data)
+    alert(`${news.year}년 ${news.month}월 AI 신문이 성공적으로 발간되었습니다!`)
     
   } catch (error) {
-    console.error('신문 발간에 실패했습니다:', error)
+    console.error('AI 신문 발간 실패:', error)
     
-    // 에러 발생시 임시로 성공 처리 (개발용)
-    setTimeout(() => {
-      const newsIndex = newsList.value.findIndex(n => n.id === news.id)
-      if (newsIndex !== -1) {
-        newsList.value[newsIndex].pdfUrl = `https://s13p11a708.s3.us-east-2.amazonaws.com/ai-news/강일리버파크2단지_${news.year}_${news.month}.pdf`
+    let errorMessage = 'AI 신문 발간에 실패했습니다.'
+    
+    if (error.response) {
+      const status = error.response.status
+      const message = error.response.data?.message || '서버 오류'
+      
+      if (status === 400) {
+        errorMessage = `발간 조건이 맞지 않습니다: ${message}`
+      } else if (status === 403) {
+        errorMessage = 'AI 신문을 발간할 권한이 없습니다.'
+      } else if (status === 409) {
+        errorMessage = '이미 발간된 신문이거나 중복된 요청입니다.'
+      } else {
+        errorMessage = `AI 신문 발간에 실패했습니다: ${message}`
       }
-    }, 2000)
+    } else if (error.request) {
+      errorMessage = 'AI 신문 발간에 실패했습니다: 서버와 연결할 수 없습니다.'
+    }
     
+    alert(errorMessage)
   } finally {
-    setTimeout(() => {
-      publishingIds.value = publishingIds.value.filter(id => id !== news.id)
-    }, 2000)
+    // 발간 중 상태 제거
+    publishingIds.value = publishingIds.value.filter(id => id !== news.id)
   }
 }
 
@@ -499,6 +433,7 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.2s;
   min-width: 80px;
+  white-space: nowrap;
 }
 
 .view-btn {
@@ -525,6 +460,16 @@ onMounted(() => {
   background-color: #9ca3af;
   cursor: not-allowed;
   transform: none;
+}
+
+.no-data {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6b7280;
+  font-size: 16px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .pagination {
