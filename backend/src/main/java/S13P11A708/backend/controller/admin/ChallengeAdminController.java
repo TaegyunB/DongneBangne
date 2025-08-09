@@ -1,9 +1,13 @@
 package S13P11A708.backend.controller.admin;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
+import S13P11A708.backend.dto.response.challenge.*;
+import S13P11A708.backend.service.MonthlyChallengeService;
+import com.amazonaws.Response;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,11 +24,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import S13P11A708.backend.dto.request.challenge.CreateChallengeRequestDto;
 import S13P11A708.backend.dto.request.challenge.UpdateChallengeRequestDto;
-import S13P11A708.backend.dto.response.challenge.CancelCompletedChallengeResponseDto;
-import S13P11A708.backend.dto.response.challenge.ChallengeResponseDto;
-import S13P11A708.backend.dto.response.challenge.CompleteChallengeResponseDto;
-import S13P11A708.backend.dto.response.challenge.CreateChallengeResponseDto;
-import S13P11A708.backend.dto.response.challenge.UpdateChallengeResponseDto;
 import S13P11A708.backend.security.CustomOAuth2User;
 import S13P11A708.backend.service.ChallengeService;
 import S13P11A708.backend.service.S3Service;
@@ -39,6 +38,7 @@ import lombok.extern.slf4j.Slf4j;
 public class ChallengeAdminController {
 
     private final ChallengeService challengeService;
+    private final MonthlyChallengeService monthlyChallengeService;
     private final S3Service s3Service;
 
     /**
@@ -208,4 +208,6 @@ public class ChallengeAdminController {
         CancelCompletedChallengeResponseDto response = challengeService.cancelChallengeCompletion(challengeId, adminId);
         return ResponseEntity.ok(response);
     }
+
+
 }
