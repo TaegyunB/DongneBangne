@@ -103,7 +103,7 @@ public class MonthlyChallengeService {
     /**
      * 매월 11일 오전 1시 자동 실행 - 서비스 제공 미션만 생성
      */
-    @Scheduled(cron = "0 20 12 11 * ?")  // 매월 11일 오전 1시 (테스트용)
+    @Scheduled(cron = "0 32 12 11 * ?")  // 매월 11일 오전 1시 (테스트용)
     public void createServiceChallengesForAllSeniorCenters() {
         LocalDateTime now = LocalDateTime.now();
         int currentMonth = now.getMonthValue();
