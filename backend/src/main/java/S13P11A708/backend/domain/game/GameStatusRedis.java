@@ -10,6 +10,7 @@ import java.util.List;
 
 @RedisHash(value="gameStatusRedis", timeToLive = 60)
 @Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
