@@ -175,7 +175,7 @@ const currentMessage = ref('')
 const challenges = ref([])
 const challengeDetails = ref({}) // 도전 상세 정보 캐시
 
-// 모달 상태 (status 관련 제거됨)
+// 모달 상태
 const modals = ref({
   detail: { show: false, selectedChallenge: { challengeTitle: '', description: '', challengePlace: '' }, selectedChallengeId: null },
   edit: { show: false, form: { title: '', description: '', place: '' }, editingIndex: null, showSuccess: false },
@@ -183,11 +183,14 @@ const modals = ref({
 })
 
 // 계산된 속성
-const shouldShowCreateButton = computed(() => 
-  JSON.parse(localStorage.getItem('adminChallenges') || '[]').length < 2
-)
+const shouldShowCreateButton = computed(() => {
+  const customChallengeCount = challenges.value.filter((challenge, index) => 
+    index >= 2 && challenge.challengeType === 'CUSTOM' && !challenge.isEmpty
+  ).length
+  return customChallengeCount < 2
+})
 
-// 모달 상태 단축 접근 (status 관련 제거됨)
+// 모달 상태 단축 접근
 const showModal = computed(() => modals.value.detail.show)
 const selectedChallenge = computed(() => modals.value.detail.selectedChallenge)
 const selectedChallengeId = computed(() => modals.value.detail.selectedChallengeId)
@@ -200,12 +203,8 @@ const showFinalDeleteModal = computed(() => modals.value.delete.showFinal)
 // 핵심 기능 함수들 
 const isCompleted = (challenge) => {
   if (challenge.id) {
-    // API에서 받은 도전과제 (우리가 제공하는 도전)
+    // API에서 받은 도전과제 (서비스 제공 또는 커스텀)
     return challenge.isSuccess === true
-  } else if (challenge.challengeId) {
-    // ADMIN이 생성한 도전과제
-    const data = localStorage.getItem(`admin_challenge_${challenge.challengeId}`)
-    return data ? JSON.parse(data).is_success === true : false
   } else {
     // 빈 칸
     return false
@@ -222,12 +221,8 @@ const getButtonText = (challenge) => {
 
 const getChallengeImage = (challenge) => {
   if (challenge.id && challenge.challengeImage) {
-    // API에서 받은 도전과제 (우리가 제공하는 도전)
+    // API에서 받은 도전과제의 이미지
     return challenge.challengeImage
-  } else if (challenge.challengeId) {
-    // ADMIN이 생성한 도전과제
-    const data = localStorage.getItem(`admin_challenge_${challenge.challengeId}`)
-    return data && JSON.parse(data).image ? JSON.parse(data).image : '/src/assets/default_image.png'
   }
   return '/src/assets/default_image.png'
 }
@@ -254,29 +249,39 @@ const fetchChallenges = async () => {
     })
     console.log('도전과제 목록 응답:', response.data)
     
-    const apiChallenges = response.data || []
-    const customChallenges = JSON.parse(localStorage.getItem('adminChallenges') || '[]')
+    const data = response.data
     
+    // 현재 월 업데이트
+    if (data.month) {
+      currentMonth.value = data.month
+    }
+    
+    // 서비스 제공 도전과제
+    const serviceChallenges = data.serviceChallenges || []
+    
+    // 커스텀 도전과제
+    const customChallenges = data.customChallenges || []
+    
+    // 4개의 슬롯에 배치
     challenges.value = [
-      apiChallenges[0] || { challengeTitle: '준비 중입니다.', description: '', isEmpty: true },
-      apiChallenges[1] || { challengeTitle: '준비 중입니다.', description: '', isEmpty: true },
+      // 첫 번째, 두 번째는 서비스 제공 도전과제
+      serviceChallenges[0] || { challengeTitle: '준비 중입니다.', description: '', isEmpty: true },
+      serviceChallenges[1] || { challengeTitle: '준비 중입니다.', description: '', isEmpty: true },
+      
+      // 세 번째, 네 번째는 커스텀 도전과제
       customChallenges[0] || { title: '도전과제를 생성해주세요', description: '', isEmpty: true, index: 3 },
       customChallenges[1] || { title: '도전과제를 생성해주세요', description: '', isEmpty: true, index: 4 }
     ]
     
-    if (apiChallenges.length > 0 && apiChallenges[0].month) {
-      currentMonth.value = apiChallenges[0].month
-    }
-    
     updateCompletedCount()
   } catch (error) {
     console.error('도전과제 목록 불러오기 실패:', error)
-    const customChallenges = JSON.parse(localStorage.getItem('adminChallenges') || '[]')
+    // 에러 시 기본값 설정
     challenges.value = [
       { challengeTitle: '준비 중입니다.', description: '', isEmpty: true },
       { challengeTitle: '준비 중입니다.', description: '', isEmpty: true },
-      customChallenges[0] || { title: '도전과제를 생성해주세요', description: '', isEmpty: true, index: 3 },
-      customChallenges[1] || { title: '도전과제를 생성해주세요', description: '', isEmpty: true, index: 4 }
+      { title: '도전과제를 생성해주세요', description: '', isEmpty: true, index: 3 },
+      { title: '도전과제를 생성해주세요', description: '', isEmpty: true, index: 4 }
     ]
   }
 }
@@ -284,7 +289,12 @@ const fetchChallenges = async () => {
 // 도전과제 상세 정보 가져오기
 const fetchChallengeDetail = async (challengeId) => {
   try {
-    const response = await axios.get(`/api/v1/challenges/${challengeId}`)
+    const response = await axios.get(`/api/v1/challenges/${challengeId}`, {
+      withCredentials: true,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
     console.log('도전과제 상세 응답:', response.data)
     challengeDetails.value[challengeId] = response.data
     return response.data
@@ -311,7 +321,7 @@ const openModal = async (challenge, index) => {
     modals.value.detail = { 
       show: true, 
       selectedChallenge: challenge, 
-      selectedChallengeId: challenge.challengeId 
+      selectedChallengeId: challenge.id 
     }
   }
 }
@@ -352,12 +362,12 @@ const saveEditChallenge = async () => {
   try {
     const challenge = challenges.value[editingIndex]
     
-    if (challenge.id) {
-      alert('시스템 제공 도전과제는 수정할 수 없습니다.')
+    if (challenge.challengeType === 'SERVICE') {
+      alert('서비스 제공 도전과제는 수정할 수 없습니다.')
       return
     } 
-    else if (challenge.challengeId) {
-      const challengeId = challenge.challengeId
+    else if (challenge.challengeType === 'CUSTOM' && challenge.id) {
+      const challengeId = challenge.id
 
       const response = await axios.put(`/api/v1/admin/challenges/${challengeId}`, {
         challengeTitle: form.title.trim(),
@@ -370,24 +380,13 @@ const saveEditChallenge = async () => {
         }
       })
 
+      // 성공 시 로컬 상태 업데이트
       challenges.value[editingIndex] = {
         ...challenges.value[editingIndex],
         challengeTitle: response.data.challengeTitle,
         challengePlace: response.data.challengePlace,
         description: response.data.description
       }
-
-      const adminChallenges = JSON.parse(localStorage.getItem('adminChallenges') || '[]')
-      const adminIndex = editingIndex - 2
-      
-      adminChallenges[adminIndex] = {
-        ...adminChallenges[adminIndex],
-        challengeTitle: response.data.challengeTitle,
-        challengePlace: response.data.challengePlace,
-        description: response.data.description
-      }
-      
-      localStorage.setItem('adminChallenges', JSON.stringify(adminChallenges))
     }
 
     modals.value.edit.show = false
@@ -433,25 +432,21 @@ const confirmDelete = async () => {
     const challenge = challenges.value[selectedIndex]
     
     try {
-      if (challenge.id) {
-        alert('시스템 제공 도전과제는 삭제할 수 없습니다.')
+      if (challenge.challengeType === 'SERVICE') {
+        alert('서비스 제공 도전과제는 삭제할 수 없습니다.')
         return
       } 
-      else if (challenge.challengeId) {
-        const response = await axios.delete(`/api/v1/admin/challenges/${challenge.challengeId}`, {
+      else if (challenge.challengeType === 'CUSTOM' && challenge.id) {
+        const response = await axios.delete(`/api/v1/admin/challenges/${challenge.id}`, {
           withCredentials: true,
           headers: {
             'Content-Type': 'application/json'
           }
         })
         console.log(response.data.message)
-
-        const adminChallenges = JSON.parse(localStorage.getItem('adminChallenges') || '[]')
-        const adminIndex = selectedIndex - 2
-        adminChallenges.splice(adminIndex, 1)
-        localStorage.setItem('adminChallenges', JSON.stringify(adminChallenges))
       }
       
+      // 삭제 후 목록 다시 불러오기
       await fetchChallenges()
 
     } catch (error) {
@@ -483,7 +478,7 @@ const loadMessages = async () => {
 const moveToCreate = () => router.push({ name: 'challengeCreate' })
 
 const moveToFinish = () => {
-  const challengeId = selectedChallenge.value.id || selectedChallenge.value.challengeId || selectedChallengeId.value
+  const challengeId = selectedChallenge.value.id || selectedChallengeId.value
   router.push(`/admin/challenges/${challengeId}/complete`)
 }
 
