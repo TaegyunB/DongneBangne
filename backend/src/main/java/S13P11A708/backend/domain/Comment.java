@@ -30,6 +30,13 @@ public class Comment extends BaseEntity {
 
     private String content;
 
+    //== setter 메서드 ==//
+    /**
+     * 댓글 수정
+     */
+    public void updateContent(String content) {
+        this.content = content;
+    }
 
 
 
