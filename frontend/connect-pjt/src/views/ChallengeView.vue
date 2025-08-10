@@ -159,6 +159,8 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user' 
 import axios from 'axios'
 
+import defaultImage from '@/assets/default_image.png'
+
 const router = useRouter()
 const userStore = useUserStore()
 
@@ -227,9 +229,9 @@ const getChallengeImage = (challenge) => {
   } else if (challenge.challengeId) {
     // ADMIN이 생성한 도전과제
     const data = localStorage.getItem(`admin_challenge_${challenge.challengeId}`)
-    return data && JSON.parse(data).image ? JSON.parse(data).image : '/src/assets/default_image.png'
+    return data && JSON.parse(data).image ? JSON.parse(data).image : defaultImage
   }
-  return '/src/assets/default_image.png'
+  return defaultImage
 }
 
 const updateCompletedCount = () => {
