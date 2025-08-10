@@ -11,7 +11,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -57,4 +59,41 @@ public class CommentController {
         Long count = commentService.getCommentCount(boardId);
         return ResponseEntity.ok(count);
     }
+
+    /**
+     * 댓글 수정
+     */
+    @PutMapping("/{commentId}")
+    public ResponseEntity<CommentResponseDto> updateComment(
+            @PathVariable("boardId") Long boardId,
+            @PathVariable("commentId") Long commentId,
+            @AuthenticationPrincipal CustomOAuth2User customeUser,
+            @Valid @RequestBody CommentCreateRequestDto requestDto) {
+
+        Long userId = customeUser.getUserId();
+        CommentResponseDto response = commentService.updateComment(userId, commentId, requestDto);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 댓글 삭제
+     */
+    @DeleteMapping("/{commentId}")
+    public ResponseEntity<Map<String, String>> deleteComment(
+            @PathVariable("boardId") Long boardId,
+            @PathVariable("commentId") Long commentId,
+            @AuthenticationPrincipal CustomOAuth2User customUser) {
+
+        Long userId = customUser.getUserId();
+        commentService.deleteComment(userId, commentId);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "댓글이 삭제되었습니다.");
+        response.put("commentId", commentId.toString());
+
+        return ResponseEntity.ok(response);
+    }
+
+
 }
