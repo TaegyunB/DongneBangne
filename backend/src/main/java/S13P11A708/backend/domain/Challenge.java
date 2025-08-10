@@ -1,6 +1,7 @@
 package S13P11A708.backend.domain;
 
 import S13P11A708.backend.domain.common.BaseEntity;
+import S13P11A708.backend.domain.enums.ChallengeType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -50,6 +51,11 @@ public class Challenge extends BaseEntity {
     @Builder.Default
     @Column(name = "is_success")
     private Boolean isSuccess = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "challenge_type")
+    @Builder.Default
+    private ChallengeType challengeType = ChallengeType.CUSTOM;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "senior_center_id")
