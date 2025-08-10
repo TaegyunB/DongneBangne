@@ -167,6 +167,7 @@ const confirmSubmit = async () => {
       challengeType: challengeType.value
     })
 
+    // 첫 번째 API 호출: missionFinishUpdate
     const response = await axios.post(
       `/api/v1/admin/challenges/${challengeId.value}/missionFinishUpdate`, 
       formData,
@@ -178,7 +179,25 @@ const confirmSubmit = async () => {
       }
     )
 
-    console.log('서버 응답:', response.data)
+    console.log('missionFinishUpdate 서버 응답:', response.data)
+
+    // 두 번째 API 호출: complete
+    console.log('complete API 호출:', {
+      challengeId: challengeId.value
+    })
+
+    const completeResponse = await axios.post(
+      `/api/v1/admin/challenges/${challengeId.value}/complete`,
+      {}, // 빈 객체 (request body 필요없음)
+      {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    )
+
+    console.log('complete API 서버 응답:', completeResponse.data)
 
     // 바로 완료 상태로 localStorage 업데이트
     const completedChallenge = {
@@ -188,7 +207,8 @@ const confirmSubmit = async () => {
       completedAt: new Date().toISOString(),
       is_success: true, // 바로 완료 상태
       is_uploaded: true,
-      serverData: response.data
+      serverData: response.data,
+      completeData: completeResponse.data // complete API 응답도 저장
     }
 
     // 도전 타입에 따라 다른 localStorage 키 사용
