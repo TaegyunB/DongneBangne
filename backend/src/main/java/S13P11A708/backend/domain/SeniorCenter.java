@@ -92,6 +92,10 @@ public class SeniorCenter extends BaseEntity {
      */
     public void addChallengePoint(Integer point) {
         if (point != null && point > 0) {
+
+            if (this.challengePoint == null) {
+                this.challengePoint = 0L;
+            }
             this.challengePoint += point;
             updateTotalPoint();
         }
@@ -102,6 +106,10 @@ public class SeniorCenter extends BaseEntity {
      */
     public void subtractChallengePoint(Integer point) {
         if (point != null && point > 0) {
+
+            if (this.challengePoint == null) {
+                this.challengePoint = 0L;
+            }
             this.challengePoint -= point;
             updateTotalPoint();
         }
@@ -111,6 +119,9 @@ public class SeniorCenter extends BaseEntity {
      * 총 포인트 재계산
      */
     private void updateTotalPoint() {
-        this.totalPoint = this.trotPoint + this.challengePoint;
+
+        Long trot = this.trotPoint != null ? this.trotPoint : 0L;
+        Long challenge = this.challengePoint != null ? this.challengePoint : 0L;
+        this.totalPoint = trot + challenge;
     }
 }
