@@ -12,40 +12,37 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useUiStore } from '@/stores/useUiStore'
 import api from '@/api/axios'
 
 const router = useRouter()
 const showText = ref(false)
-const ui = useUiStore()
 
 onMounted(async () => {
+  // 카카오가 루트('/')로 code를 보낸 경우 → /login으로 code를 전달하며 이동
+  const urlCode = new URLSearchParams(window.location.search).get('code')
+  if (urlCode) {
+    router.replace({ path: '/login', query: { code: urlCode } })
+    return
+  }
+
   document.body.classList.add('hide-toolbar')
-  ui.showMenu = false
-  ui.showProfile = false
-  ui.showLogo = false
 
   setTimeout(() => {
     showText.value = true
   }, 300)
 
-  // ✅ 로그인 된 상태면 바로 분기!
   try {
     const res = await api.get('/api/v1/users/senior-center')
+    document.body.classList.remove('hide-toolbar')
+
     if (res.data?.hasCenter) {
       router.push('/mainpage')
-      return
     } else {
       router.push('/senior-center')
-      return
     }
   } catch (err) {
-    // 인증 안 된 경우만 애니메이션 후 로그인 페이지로 이동
     setTimeout(() => {
       document.body.classList.remove('hide-toolbar')
-      ui.showMenu = true
-      ui.showProfile = true
-      ui.showLogo = true
       router.push('/login')
     }, 2500)
   }
