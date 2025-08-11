@@ -22,10 +22,12 @@
     </div>
   </nav>
 
-
   <main>
     <RouterView />
   </main>
+
+  <!-- 간단한 돋보기 컴포넌트 -->
+  <Magnifier />
 </template>
 
 <script setup>
@@ -33,6 +35,7 @@ import { RouterView, useRouter, useRoute } from 'vue-router'
 import { onMounted, onBeforeUnmount, ref, computed, watch } from 'vue'
 import { useUserStore } from '@/stores/user.js'
 import api from '@/api/axios'
+import Magnifier from '@/components/Magnifier.vue'
 
 const user = useUserStore()
 const router = useRouter()
@@ -116,6 +119,11 @@ onMounted(async () => {
 /* 전역 리셋 */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body, #app { width: 100%; height: 100%; }
+
+/* 돋보기 효과가 적용될 때 부드러운 전환 효과 */
+* {
+  transition: font-size 0.3s ease, line-height 0.3s ease;
+}
 </style>
 
 <style scoped>
