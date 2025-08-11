@@ -19,13 +19,14 @@
                 />
             </div>
             
-            <!-- 이미지 업로드 (선택사항) -->
+            <!-- 이미지 업로드 (필수) -->
             <div class="section">
-                <h3>이미지 업로드 (선택사항)</h3>
+                <h3>이미지 업로드 <span class="required">*필수</span></h3>
                 <div class="upload-area" @click="triggerFileInput">
                     <div v-if="!form.image" class="upload-placeholder">
                         <div class="upload-icon">📁</div>
                         <button type="button" class="upload-btn">파일 선택</button>
+                        <p>도전 인증을 위한 이미지를<br>업로드해주세요</p>
                     </div>
                     <div v-else class="preview">
                         <img :src="previewUrl" alt="preview" />
@@ -53,7 +54,7 @@
                         <label>도전 상세:</label>
                         <p class="content-text">{{ form.description }}</p>
                     </div>
-                    <div v-if="form.image" class="form-group">
+                    <div class="form-group">
                         <label>업로드 이미지:</label>
                         <div class="confirm-image">
                             <img :src="previewUrl" alt="확인 이미지" />
@@ -98,7 +99,8 @@ const showSuccessModal = ref(false)
 const loading = ref(false)
 const confirming = ref(false)
 
-const isValid = computed(() => form.value.description.trim())
+// 이미지 업로드도 필수로 변경
+const isValid = computed(() => form.value.description.trim() && form.value.image)
 
 const challengeId = ref(null)
 const challengeType = ref('system') // 'system' 또는 'admin'
@@ -138,8 +140,13 @@ const removeImage = () => {
 const cancel = () => router.go(-1)
 
 const submit = () => {
-  if (!isValid.value) {
+  if (!form.value.description.trim()) {
     alert('도전 상세 내용을 입력해주세요.')
+    return
+  }
+  
+  if (!form.value.image) {
+    alert('도전 인증을 위한 이미지를 업로드해주세요.')
     return
   }
   
@@ -150,15 +157,15 @@ const closeConfirmModal = () => {
   showConfirmModal.value = false
 }
 
+const token = localStorage.getItem('accessToken');
+
 const confirmSubmit = async () => {
   confirming.value = true
 
   try {
     const formData = new FormData()
     formData.append('imageDescription', form.value.description)
-    if (form.value.image) {
-      formData.append('imageFile', form.value.image)
-    }
+    formData.append('imageFile', form.value.image)
 
     console.log('missionFinishUpdate API 호출:', {
       challengeId: challengeId.value,
@@ -174,6 +181,7 @@ const confirmSubmit = async () => {
       {
         withCredentials: true,
         headers: {
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
         }
       }
@@ -192,6 +200,7 @@ const confirmSubmit = async () => {
       {
         withCredentials: true,
         headers: {
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       }
@@ -203,7 +212,7 @@ const confirmSubmit = async () => {
     const completedChallenge = {
       challengeId: parseInt(challengeId.value),
       description: form.value.description,
-      image: form.value.image ? previewUrl.value : null,
+      image: previewUrl.value,
       completedAt: new Date().toISOString(),
       is_success: true, // 바로 완료 상태
       is_uploaded: true,
@@ -223,8 +232,26 @@ const confirmSubmit = async () => {
     showConfirmModal.value = false
     showSuccessModal.value = true
   } catch (error) {
-    console.error('업로드 오류:', error)
-    alert('도전 인증 업로드 중 오류가 발생했습니다.')
+    console.error('❌ API 호출 에러:', error)
+    
+    // 상세 에러 정보 출력
+    if (error.response) {
+      console.error('응답 상태:', error.response.status)
+      console.error('응답 데이터:', error.response.data)
+      console.error('응답 헤더:', error.response.headers)
+      
+      // 백엔드 에러 메시지 표시
+      const errorMessage = error.response.data?.message || 
+                          error.response.data?.error || 
+                          `서버 오류 (${error.response.status})`
+      alert(`도전 인증 실패: ${errorMessage}`)
+    } else if (error.request) {
+      console.error('요청이 전송되지 않음:', error.request)
+      alert('서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.')
+    } else {
+      console.error('요청 설정 오류:', error.message)
+      alert('요청 처리 중 오류가 발생했습니다.')
+    }
   } finally {
     confirming.value = false
   }
@@ -254,6 +281,13 @@ const goToChallenge = () => {
 .content { display: flex; gap: 40px; margin-bottom: 40px; }
 .section { flex: 1; }
 .section h3 { font-size: 20px; font-weight: bold; margin-bottom: 15px; }
+
+.required {
+    color: #FF4444;
+    font-size: 16px;
+    font-weight: normal;
+    margin-left: 8px;
+}
 
 .textarea {
     width: 100%; height: 200px; padding: 15px; border: 2px solid #e0e0e0;
