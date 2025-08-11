@@ -1,6 +1,6 @@
 //userRole을 저장하기 위한 Store
 import { defineStore } from 'pinia'
-import axios from 'axios'
+import api from '@/api/axios'
 
 export const useUserStore = defineStore('user', {
   state: () => ({
@@ -16,39 +16,24 @@ export const useUserStore = defineStore('user', {
 
   actions: {
     async fetchUserRole() {
-      // 이미 있으면 재사용
-      if (this.userRole) {
-        console.log('UserRole already exists:', this.userRole)
-        return this.userRole
-      }
+      if (this.userRole) return this.userRole
 
       this.isLoading = true
       this.error = null
 
       try {
-        console.log('Fetching user role from API...')
-        const response = await axios.get('/api/v1/main/me', {
-          withCredentials: true,
-          headers: { 'Content-Type': 'application/json' }
-        })
-        
+        const response = await api.get('/api/v1/main/me')
         this.userRole = response.data.userRole
-        console.log('User role fetched from API:', this.userRole)
+        console.log("UserRole:", this.userRole)
         return this.userRole
-        
       } catch (error) {
         console.error('Error fetching user info:', error)
         this.error = error
-        this.userRole = 'MEMBER' // 기본값
+        this.userRole = error.response?.status === 401 ? null : 'MEMBER'
         return this.userRole
       } finally {
         this.isLoading = false
       }
-    },
-
-    setUserRole(role) {
-      console.log('Setting user role:', role)
-      this.userRole = role
     },
 
     clearUser() {

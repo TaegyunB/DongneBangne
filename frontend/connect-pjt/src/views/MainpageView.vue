@@ -36,12 +36,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useUserStore } from '@/stores/user'
+import { useUserStore } from '@/stores/user.js'
 
 const router = useRouter()
 const userStore = useUserStore()
+
+console.log("UserStore 정보:", userStore)
 
 // userRole을 백에서 가져오기
 const fetchUserInfo = async () => {
