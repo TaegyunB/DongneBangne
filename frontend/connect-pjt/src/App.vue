@@ -41,7 +41,7 @@ const route = useRoute()
 // 라우트 메타로 툴바 자체 숨김 제어
 const hideToolbar = computed(() => route.meta?.hideToolbar === true)
 
-// ▼ 스크롤 방향 감지로 자동 숨김
+// 스크롤 방향 감지로 자동 숨김
 const headerHidden = ref(false)
 const lastY = ref(0)
 const SCROLL_DELTA = 8 // 민감도
