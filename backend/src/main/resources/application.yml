@@ -51,7 +51,7 @@ spring:
   # JPA 설정
   jpa:
     hibernate:
-      ddl-auto: create  # 변경된 부분만 반영, 기존 데이터 유지 #
+      ddl-auto: update  # 변경된 부분만 반영, 기존 데이터 유지 #
     show-sql: true
     properties:
       hibernate:
