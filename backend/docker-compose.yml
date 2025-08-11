@@ -23,9 +23,8 @@ services:
       - SPRING_JPA_SHOW_SQL=true
 
       # Redis 설정
-      - SPRING_DATA_REDIS_HOST=dongnae-redis
+      - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=6379
-      - SPRING_DATA_REDIS_PASSWORD=dongnaeredis
       - SPRING_CACHE_TYPE=redis
 
     depends_on:
@@ -61,12 +60,11 @@ services:
   # Redis 캐시 서버
   redis:
     image: redis:7-alpine
-    container_name: dongnae-redis
+    container_name: redis
     ports:
-      - "6380:6379"
+      - "6379:6379"
     command: >
       redis-server
-      --requirepass dongnaeredis
       --maxmemory 256mb
       --maxmemory-policy allkeys-lru
       --save 900 1
@@ -81,7 +79,7 @@ services:
       - dongnae-network
     restart: always
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "dongnaeredis", "ping"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 30s
       timeout: 10s
       retries: 5
