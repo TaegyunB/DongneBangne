@@ -53,6 +53,7 @@ public class GameHistory extends BaseEntity {
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "gameHistory", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<GameHistoryUser> historyUsers = new ArrayList<>();
 
     public static GameHistory of(GameRoom room,

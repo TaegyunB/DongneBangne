@@ -51,7 +51,7 @@ spring:
   # JPA 설정
   jpa:
     hibernate:
-      ddl-auto: update  # 변경된 부분만 반영, 기존 데이터 유지
+      ddl-auto: create  # 변경된 부분만 반영, 기존 데이터 유지 #
     show-sql: true
     properties:
       hibernate:
@@ -113,3 +113,6 @@ openai:
 logging:
   level:
     org.hibernate.SQL: debug  # Hibernate가 실행하는 SQL 쿼리문을 로그에 출력
+    org.springframework.web.socket: DEBUG
+    org.springframework.messaging.simp.stomp: DEBUG
+    org.springframework.messaging.simp.broker: DEBUG

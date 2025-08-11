@@ -7,6 +7,8 @@ import ChallengeFinishView from '@/views/ChallengeFinishView.vue'
 import SeniorCenter from '@/views/seniorCenter.vue'
 import SeniorCenterProfile from '@/views/seniorCenterProfile.vue'
 import MainPage from '@/views/MainpageView.vue'
+import CommunityBoards from '@/views/communityBoards.vue'
+import RankingBoard from '@/views/rankingBoard.vue'
 import GameView from '@/views/GameView.vue'
 import WebRTCTestView from '@/views/WebRTCTestView.vue'
 
@@ -43,6 +45,17 @@ const router = createRouter({
       name: 'mainPage',
       component: MainPage,
     },
+    { 
+      path: '/rankings',
+      name: 'rankings',
+      component: RankingBoard,
+    },
+    { 
+      path: '/boards',
+      name: 'boards',
+      component: CommunityBoards,
+    },
+    
     {
       path: '/admin/challenges',
       name: 'challengeCreate',
