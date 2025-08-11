@@ -19,7 +19,7 @@ public class GameBroadcaster {
     }
 
     public void broadcastAns(Long roomId, GameAnsSocketMessage message) {
-        messagingTemplate.convertAndSend("/pub/game/" + roomId, message);
+        messagingTemplate.convertAndSend("/sub/game/" + roomId, message);
     }
 
     // 특정 유저에게만 전송 (힌트)

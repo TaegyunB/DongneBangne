@@ -31,6 +31,13 @@ public class GameRoomUser extends BaseEntity {
     @Column(name = "ready", nullable = false)
     private boolean ready = false;
 
+    @Builder
+    private GameRoomUser(GameRoom gameRoom, User user, boolean ready) {
+        this.gameRoomId = gameRoom;
+        this.userId = user;
+        this.ready = ready;
+    }
+
     /**
      * 유저 준비 상태 수정 Setter
      */

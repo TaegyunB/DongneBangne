@@ -30,6 +30,10 @@ public class PlayerStatus {
         this.hintUsed = hintUsed;
     }
 
+    public static PlayerStatus simple(Long userId, Long roomId, boolean answered) {
+        return new PlayerStatus(userId, roomId, 0L, 0, 0, answered, false);
+    }
+
     public void updateHintUsed(boolean hintUsed){
         this.hintUsed = hintUsed;
     }
