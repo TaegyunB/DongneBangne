@@ -29,7 +29,7 @@
         <div class="card-desc">함께라서 더 의미있는 도전<br />매달 다양한 도전을 해보세요!</div>
         <img src="@/assets/mainpage/assignment.png" alt="도전 아이콘" class="card-icon" />
       </div>
-      <div class="main-card two" @click="goTo('/admin/games')">
+      <div class="main-card two" @click="goTo('/games')">
         <div class="card-title">게임</div>
         <div class="card-desc">다른 경로당과 다양한 게임을<br />즐겨보세요!</div>
         <img src="@/assets/mainpage/joystick.png" alt="게임 아이콘" class="card-icon" />
