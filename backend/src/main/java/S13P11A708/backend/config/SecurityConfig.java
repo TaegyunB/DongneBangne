@@ -5,6 +5,7 @@ import S13P11A708.backend.jwt.JWTUtil;
 import S13P11A708.backend.security.CustomOAuth2UserService;
 import S13P11A708.backend.security.CustomSuccessHandler;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -39,35 +40,13 @@ public class SecurityConfig {
         http
                 .cors(Customizer.withDefaults()); // 한 줄로 커스텀
 
-//                .cors(corsCustomizer -> corsCustomizer.configurationSource(new CorsConfigurationSource() {
-//
-//                    @Override
-//                    public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
-//
-//                        CorsConfiguration configuration = new CorsConfiguration();
-//
-//                        configuration.setAllowedOrigins(Collections.singletonList("http://localhost:5173"));
-//                        configuration.setAllowedMethods(Collections.singletonList("*"));
-//                        configuration.setAllowCredentials(true);
-//                        configuration.setAllowedHeaders(Collections.singletonList("*"));
-//                        configuration.setMaxAge(3600L);
-//
-//                        configuration.setExposedHeaders(Collections.singletonList("Set-Cookie"));
-//                        configuration.setExposedHeaders(Collections.singletonList("Authorization"));
-//
-//                        return configuration;
-//                    }
-//                }));
-
         http
                 .csrf(csrf -> csrf.disable());
         http
-//                .formLogin(form -> form
-//                        .loginPage("/login")
-//                        .permitAll());
                 .formLogin(form -> form.disable());
         http
                 .httpBasic((basic) -> basic.disable());
+
         //JWTFillter 추가
         http
                 .addFilterBefore(new JWTFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class);
@@ -83,14 +62,15 @@ public class SecurityConfig {
         // 권한 설정
         http
                 .authorizeHttpRequests((auth) -> auth
-                        .requestMatchers("/", "/oauth2/**", "/login/**", "/api/v1/senior-centers").permitAll() // "/api/v1/senior-centers" 추가
+                        .requestMatchers("/", "/oauth2/**", "/login/**", "/api/v1/senior-centers", "/api/v1/senior-centers/**").permitAll() // "/api/v1/senior-centers" 추가 // 와일드 카드 추가
+                        .requestMatchers("/ws-game/**", "/ws-game", "/signal", "/signal/**").permitAll()
+                        .requestMatchers("/websocket/**", "/sockjs/**").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/**").authenticated()
                 );
         http
                 .sessionManagement((session) -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS));
-
         return http.build();
     }
 
@@ -98,7 +78,10 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        config.setAllowedOrigins(List.of("http://localhost:5173")); // Vue 개발 서버 주소, 배포 시 실제 주소로 전환할 것
+        config.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "https://i13a708.p.ssafy.io"
+        )); // Vue 개발 서버 주소, 배포 시 실제 주소로 전환할 것
 //        config.setAllowedMethods(List.of("*"));
 //        config.setAllowedHeaders(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")); // *금지

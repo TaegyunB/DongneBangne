@@ -1,40 +1,52 @@
 package S13P11A708.backend.controller.admin;
 
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+
+import S13P11A708.backend.dto.response.challenge.*;
+import S13P11A708.backend.service.MonthlyChallengeService;
+import com.amazonaws.Response;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
 import S13P11A708.backend.dto.request.challenge.CreateChallengeRequestDto;
 import S13P11A708.backend.dto.request.challenge.UpdateChallengeRequestDto;
-import S13P11A708.backend.dto.response.challenge.CancelCompletedChallengeResponseDto;
-import S13P11A708.backend.dto.response.challenge.CompleteChallengeResponseDto;
-import S13P11A708.backend.dto.response.challenge.CreateChallengeResponseDto;
-import S13P11A708.backend.dto.response.challenge.UpdateChallengeResponseDto;
 import S13P11A708.backend.security.CustomOAuth2User;
 import S13P11A708.backend.service.ChallengeService;
 import S13P11A708.backend.service.S3Service;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/admin/challenges")
+@Slf4j
 public class ChallengeAdminController {
 
     private final ChallengeService challengeService;
+    private final MonthlyChallengeService monthlyChallengeService;
     private final S3Service s3Service;
 
     /**
-     * 도전 생성
+     * 챌린지 생성
      * @param requestDto 도전 생성 요청 DTO
      * @param customUser JWT 토큰에서 추출한 관리자 ID
      */
-    @PostMapping
+    @PostMapping("/create")
     public ResponseEntity<CreateChallengeResponseDto> createChallenge(
             @Valid @RequestBody CreateChallengeRequestDto requestDto,
             @AuthenticationPrincipal CustomOAuth2User customUser) {
@@ -46,7 +58,7 @@ public class ChallengeAdminController {
     }
 
     /**
-     * 도전 수정
+     * 챌린지 수정
      */
     @PutMapping("/{challengeId}")
     public ResponseEntity<UpdateChallengeResponseDto> updateChallenge(
@@ -61,7 +73,7 @@ public class ChallengeAdminController {
     }
 
     /**
-     * 도전 삭제
+     * 챌린지 삭제
      */
     @DeleteMapping("/{challengeId}")
     public ResponseEntity<Map<String, String>> deleteChallenge(
@@ -77,6 +89,31 @@ public class ChallengeAdminController {
         response.put("deletedChallengeId", challengeId.toString());
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 챌린지 이미지 및 설명 업로드
+     */
+    @PostMapping("/{challengeId}/missionFinishUpdate")
+    public ResponseEntity<ChallengeResponseDto> uploadChallengeImageWithDescription(
+            @PathVariable("challengeId") Long challengeId,
+            @RequestPart("imageFile") MultipartFile imageFile,
+            @RequestPart("imageDescription") String imageDescription,
+            @AuthenticationPrincipal CustomOAuth2User customUser) {
+
+        try {
+            Long userId =  customUser.getUserId();
+            ChallengeResponseDto response = challengeService.uploadChallengeImageWithDescription(challengeId, imageFile, imageDescription, userId);
+
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalArgumentException e) {
+            throw e;
+
+        } catch (Exception e) {
+            throw new RuntimeException("이미지 업로드 중 오류가 발생했습니다.", e);
+
+        }
     }
 
     /**
@@ -107,7 +144,7 @@ public class ChallengeAdminController {
         }
 
         // S3에 업로드
-        String fileUrl = s3Service.uploadFile(file, "images");
+        String fileUrl = s3Service.uploadMultipartFile(file, "images");
 
         // DB에 이미지URL 업데이트
         challengeService.updateChallengeImage(challengeId, fileUrl, adminId);
@@ -141,24 +178,28 @@ public class ChallengeAdminController {
     }
 
     /**
-     * 도전 완료 처리
+     * 챌린지 완료
      */
-    @PutMapping("/{challengeId}/complete")
+    @PostMapping("/{challengeId}/complete")
     public ResponseEntity<CompleteChallengeResponseDto> completeChallenge(
             @PathVariable("challengeId") Long challengeId,
             @AuthenticationPrincipal CustomOAuth2User customUser) {
 
         Long adminId = customUser.getUserId();
 
+        // 디버깅 로그 추가
+        System.out.println("=== completeChallenge 메서드 진입 ===");
+        System.out.println("challengeId: " + challengeId);
+
         CompleteChallengeResponseDto response = challengeService.completeChallenge(challengeId, adminId);
         return ResponseEntity.ok(response);
     }
 
     /**
-     * 도전 완료 취소 (Admin 전용)
+     * 챌린지 완료 취소
      */
     @PutMapping("/{challengeId}/cancel")
-    public ResponseEntity<CancelCompletedChallengeResponseDto> cancelCompletedChallengne(
+    public ResponseEntity<CancelCompletedChallengeResponseDto> cancelCompletedChallenge(
             @PathVariable("challengeId") Long challengeId,
             @AuthenticationPrincipal CustomOAuth2User customUser) {
 
@@ -167,4 +208,6 @@ public class ChallengeAdminController {
         CancelCompletedChallengeResponseDto response = challengeService.cancelChallengeCompletion(challengeId, adminId);
         return ResponseEntity.ok(response);
     }
+
+
 }

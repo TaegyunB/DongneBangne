@@ -1,6 +1,7 @@
 package S13P11A708.backend.repository;
 
 import S13P11A708.backend.domain.Challenge;
+import S13P11A708.backend.domain.enums.ChallengeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -25,7 +26,7 @@ public interface ChallengeRepository extends JpaRepository<Challenge, Long> {
      */
     @Query("SELECT COUNT(c) FROM Challenge c WHERE c.seniorCenter.id = :seniorCenterId " +
             "AND c.year = :year AND c.month = :month AND c.isSuccess = true")
-    Long countSuccessChallenge(
+    Long countSuccessChallengeByYearAndMonth(
             @Param("seniorCenterId") Long seniorCenterId,
             @Param("year") Integer year,
             @Param("month") Integer month);
@@ -37,5 +38,26 @@ public interface ChallengeRepository extends JpaRepository<Challenge, Long> {
     Challenge findChallengeByIdAndSeniorCenterId(@Param("challengeId") Long challengeId,
                                                  @Param("seniorCenterId") Long seniorCenterId);
 
+    /**
+     * 특정 경로당의 특정 년월 완료된 도전 목록 조회 (AI 신문 생성용)
+     */
+    @Query("SELECT c FROM Challenge c WHERE c.seniorCenter.id = :seniorCenterId " +
+            "AND c.year = :year AND c.month = :month AND c.isSuccess = true " +
+            "ORDER BY c.createdAt ASC")
+    List<Challenge> findCompletedChallengesByYearAndMonth(
+            @Param("seniorCenterId") Long seniorCenterId,
+            @Param("year") Integer year,
+            @Param("month") Integer month);
 
+
+    /**
+     * 특정 경로당의 특정 년월 특정 타입 챌린지 개수 조회
+     */
+    @Query("SELECT COUNT(c) FROM Challenge c WHERE c.seniorCenter.id = :seniorCenterId " +
+    "AND c.year = :year AND c.month = :month AND c.challengeType = :challengeType")
+    Long countChallengesByYearAndMonthAndType(
+            @Param("seniorCenterId") Long seniorCenterId,
+            @Param("year") Integer year,
+            @Param("month") Integer month,
+            @Param("challengeType") ChallengeType challengeType);
 }

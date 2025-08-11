@@ -11,6 +11,9 @@ public class CorsMvcConfig implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry corsRegistry) {
         corsRegistry.addMapping("/**")
                 .exposedHeaders("Set-Cookie")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS") // method 설정 
+                .allowedHeaders("*")
+                .allowCredentials(true) // withCredentials 대응 후 CORS 차단 방지
                 .allowedOrigins("http://localhost:5173");
     }
 }

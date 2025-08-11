@@ -1,13 +1,17 @@
 spring:
+  # .env import
+  config:
+    import: optional:file:.env[.properties]
+
   #OAuth, Spring Security 설정
   security:
     oauth2:
       client:
         registration:
           kakao:
-            client-id: 7da23c4aa31380826af4bd76184b7099
-            client-secret: lR4mTWe0Tc3uyrCzCwBhcLlRxqFmHX1n
-            redirect-uri: http://localhost:8080/login/oauth2/code/kakao
+            client-id: ${KAKAO_CLIENT_ID}
+            client-secret: ${KAKAO_CLIENT_SECRET}
+            redirect-uri: ${KAKAO_REDIRECT_URI}
             client-authentication-method: client_secret_post
             authorization-grant-type: authorization_code
             scope:
@@ -23,23 +27,26 @@ spring:
             user-name-attribute: id
   # jwt
   jwt:
-    secret: vmfhaltmskdlstkfkdgodyroqkfwkdbalroqkfwkdbalaaaaaaaaaaaaaaaabbbbb
+    secret: ${JWT_SECRET}
 
   # 애플리케이션 이름
   application:
     name: backend
 
   # MySQL 설정
+  logging.level.org.springframework.boot.context.config: DEBUG
+
   datasource:
-    url: jdbc:mysql://localhost:3306/dongnae
-    username: root
-    password: root
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
-  # # sql 자동 실행
-  # sql:
-  #   init:
-  #     mode: always
+  # Redis 설정
+  data:
+    redis:
+      host: localhost
+      port: 6379
 
   # JPA 설정
   jpa:
@@ -68,18 +75,40 @@ spring:
       diskspace:
         enabled: true  # 디스크 공간 헬스체크 활성화
 
+  # 비동기 처리 설정
+  task:
+    execution:
+      pool:
+        core-size: 5
+        max-size: 10
+        queue-capacity: 100
+      thread-name-prefix: "ai-news-"
+
+  # 파일 업로드 크기 제한
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
 # AWS S3 - IAM 역할 사용
 cloud:
   aws:
     credentials:
-      access-key: AKIA4CBSYPKQXKN4UMET
-      secret-key: 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
+      access-key: ${AWS_ACCESS_KEY_ID}
+      secret-key: ${AWS_SECRET_ACCESS_KEY}
     s3:
-      bucket: s13p11a708
+      bucket: ${AWS_S3_BUCKET_NAME}
     region:
-      static: us-east-2
+      static: ${AWS_REGION}
     stack:
       auto: false
+
+# OpenAI
+openai:
+  api:
+    key: ${OPENAI_API_KEY}
+    url: ${OPENAI_API_URL}
+    enabled: true
 
 logging:
   level:

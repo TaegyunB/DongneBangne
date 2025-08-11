@@ -1,0 +1,254 @@
+package S13P11A708.backend.service;
+
+import S13P11A708.backend.domain.*;
+import S13P11A708.backend.domain.enums.GameMessageType;
+import S13P11A708.backend.domain.enums.GameStatus;
+import S13P11A708.backend.domain.game.GameStatusRedis;
+import S13P11A708.backend.domain.game.PlayerStatus;
+import S13P11A708.backend.dto.webSocket.GameInfoSocketMessage;
+import S13P11A708.backend.repository.GameHistoryRepository;
+import S13P11A708.backend.repository.GameRoomRepository;
+import S13P11A708.backend.repository.TrotQuizRepository;
+import S13P11A708.backend.repository.UserRepository;
+import S13P11A708.backend.service.redis.GameRedisService;
+import S13P11A708.backend.websocket.GameBroadcaster;
+import S13P11A708.backend.websocket.GameMessageFactory;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class GameService {
+
+    private final UserRepository userRepository;
+    private final GameRedisService gameRedisService;
+    private final GameBroadcaster broadcaster;
+    private final TrotQuizRepository trotQuizRepository;
+    private final GameRoomRepository gameRoomRepository;
+    private final GameMessageFactory messageFactory;
+    private final UserService userService;
+    private final GameHistoryRepository gameHistoryRepository;
+
+    /**
+     * 게임 시작하면, 각 유저의 개인 포인트를 db에서 가져와서
+     * redis 방정보 초기화
+     * 게임 참가자 정보 초기화
+     * 게임 시작 처리 -> 웹소켓으로 정보 전달
+     */
+    public void startGame(Long roomId, Long user1Id, Long user2Id) {
+        // 1. 게임방 정보 조회
+        GameRoom room = gameRoomRepository.findById(roomId)
+                .orElseThrow(()-> new RuntimeException("게임방이 존재하지 않습니다."));
+
+        int totalRounds = room.getGameRound();
+        String musicEra = room.getMusicEra();
+        String category = room.getCategory();
+
+        //2. 각 참가자 포인트 조회
+        Long point1 = userRepository.findPointByUserId(user1Id);
+        Long point2 = userRepository.findPointByUserId(user2Id);
+
+        //3. 방설정 조건 기반 trotQuiz 추출
+        List<TrotQuiz> quizList = trotQuizRepository.findRandomQuestionsByCondition(
+                musicEra, category, totalRounds
+        );
+        if(quizList.size() < totalRounds){
+            throw new RuntimeException("조건에 맞는 트로트 퀴즈가 부족합니다.");
+        }
+
+        //4. 퀴즈 ID 리스트 + 첫번째 문제 정보 구성
+        List<Long> quizIdList = quizList.stream()
+                .map(TrotQuiz::getId)
+                .toList();
+
+        TrotQuiz firstQuiz = quizList.get(0);
+
+        // 5. Redis에 게임 상태, playe1/2 상태 보내기
+        gameRedisService.initGame(roomId, totalRounds, user1Id, point1, user2Id, point2, quizIdList, firstQuiz);
+
+        // 6. WebSocket을 통해 참가자들에게 GAME_START 및 ROUND_QUESTION 메시지 전송
+        GameInfoSocketMessage startMessage = messageFactory.createInfoMessage(GameMessageType.GAME_START, roomId, "게임이 시작됩니다!");
+        GameInfoSocketMessage questionMessage = messageFactory.createInfoMessage(GameMessageType.ROUND_QUESTION, roomId, firstQuiz.getUrl());
+
+        broadcaster.broadcastToRoom(roomId, startMessage);
+        broadcaster.broadcastToRoom(roomId, questionMessage);
+
+    }
+
+    /**
+     * 정답 인증 처리
+     * 방 id, 보낸 사람 id, 보낸 answer
+     */
+    public void handleAnswer(Long roomId, Long senderId, String answer) {//방 id, 보낸 사람id, 보낸 answer
+
+        //1. 현재 게임상태 불러오기
+        GameStatusRedis game = gameRedisService.getGameStatusRedis(roomId);
+        if(game == null) throw new RuntimeException("게임 상태를 찾을 수 없습니다.");
+
+        //2. 이미 정답을 맞춘 사람인지
+        PlayerStatus player = gameRedisService.getPlayer(roomId, senderId);
+        if(player == null) return;
+
+        if(player.isAnswered()){
+            broadcaster.broadcastToRoom(senderId,
+                    messageFactory.createInfoMessage(GameMessageType.ANSWER_REJECTED, roomId, "이미 정답을 맞추셨습니다."));
+            return;
+        }
+
+        //3. 정답 여부 판별
+        String correctAnswer = game.getCurrentAnswer();
+        boolean isCorrect = correctAnswer.equalsIgnoreCase(answer.trim()); //입력받은 string 앞뒤 공백 지우기
+
+        //4. 정답 결과 broadcast
+        GameMessageType resultType = isCorrect ? GameMessageType.ANSWER_RESULT : GameMessageType.ANSWER_REJECTED;
+        String message = isCorrect ? "정답입니다." : "틀렸습니다.";
+        broadcaster.broadcastToRoom(roomId,
+                messageFactory.createInfoMessage(resultType, roomId, message));
+
+        if(!isCorrect) return;
+
+        //5. 정답 처리: 정답이면 카운트 올리기
+        gameRedisService.increaseCount(roomId, senderId);
+
+        //6. 다음 라운드 진행
+        int nextRound = game.getRound() + 1;
+        if(nextRound > game.getTotalRound()) {
+            gameRedisService.finishGame(roomId);
+            endGame(roomId, game); // db 저장, 최종 승자 판단
+            return;
+        }
+
+        //7. 다음 문제 준비
+        List<Long> quizIdList = game.getQuizIdList();
+        Long nextQuizId = quizIdList.get(nextRound - 1);
+        TrotQuiz nextQuiz = trotQuizRepository.findById(nextQuizId)
+                .orElseThrow(() -> new RuntimeException("다음 문제를 찾을 수 없습니다."));
+        //8.redis 방 상태 업데이트
+        gameRedisService.advanceRound(roomId, nextQuiz);
+
+        //9. 다음 문제 클라언트에 전송
+        broadcaster.broadcastToRoom(roomId,
+                messageFactory.createInfoMessage(GameMessageType.ROUND_QUESTION, roomId, nextQuiz.getUrl()));
+    }
+
+    /**
+     * 힌트 사용 처리
+     */
+    public void handleHint(Long roomId, Long userId) {
+        //레디스에서 게임정보 가져오기
+        GameStatusRedis game = gameRedisService.getGameStatusRedis(roomId);
+        if(game == null) throw new RuntimeException("게임 상태를 찾을 수 없습니다.");
+
+        //1. 이미 힌트 사용 가능한지(포인트, 사용여부)
+        if(!gameRedisService.canUseHint(roomId, userId)){
+            broadcaster.sendToUser(userId,
+                    messageFactory.createHintMessage(GameMessageType.HINT_REJECTED, roomId, userId, "힌트를 더 이상 사용할 수 없습니다."));
+            return;
+        }
+
+        //2. 포인트 차감 시도
+        boolean deducted = gameRedisService.deductPointForHint(roomId, userId);
+        if(!deducted){
+            broadcaster.sendToUser(userId,
+                    messageFactory.createHintMessage(GameMessageType.HINT_REJECTED, roomId, userId, "포인트가 부족합니다."));
+            return;
+        }
+
+        //3. 힌트 사용 기록
+        gameRedisService.markHintUsed(roomId, userId);
+
+        //4. 첫 글자 힌트 전송
+        String answer = game.getCurrentAnswer();
+        String hint = answer.substring(0,1);
+
+        broadcaster.sendToUser(userId,
+                messageFactory.createHintMessage(GameMessageType.HINT_RESPONSE, roomId, userId, hint));
+    }
+
+    /**
+     * 게임을 끝내기
+     * db에 redis 정보 저장, 최종 승자 판단
+     */
+    public void endGame(Long roomId, GameStatusRedis game){
+        PlayerStatus user1 = game.getUser1();
+        PlayerStatus user2 = game.getUser2();
+
+        int count1 = user1.getCorrectCount();
+        int count2 = user2.getCorrectCount();
+
+        Long winnerId = null;
+        if(count1>count2) {
+            winnerId = user1.getUserId();
+        }else if(count1<count2){
+            winnerId = user2.getUserId();
+        }
+
+        //1. 포인트 부여 (무승부일 경우 생략)
+        if(winnerId != null){
+            userService.addWinPoint(winnerId);
+        }
+
+        //2. 엔티티 조회
+        GameRoom room = gameRoomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("게임방을 찾을 수 없습니다."));
+
+        User user1Entity = userRepository.getReferenceById(user1.getUserId());
+        User user2Entity = userRepository.getReferenceById(user2.getUserId());
+
+        User winnerEntity = (winnerId != null)
+                ? (winnerId.equals(user1.getUserId()) ? user1Entity : user2Entity)
+                : null;
+
+        //3-1. 게임 결과 기록 GameHistory
+        GameHistory history = GameHistory.of(
+                room,
+                winnerEntity,
+                game.getStartedAt(),
+                LocalDateTime.now(),
+                game.getTotalRound(),
+                room.getMusicEra(),
+                room.getCategory()
+        );
+
+        //3-2. 게임 결과 기록 GameHistoryUser
+        List<GameHistoryUser> historyUsers = List.of(
+                GameHistoryUser.of(
+                        history,
+                        user1Entity,
+                        user1Entity.getSeniorCenter(),
+                        user1.getCorrectCount(),
+                        user1.getHintUsedCount(), // PlayerStatus에서 가져와야 함
+                        winnerId != null && winnerId.equals(user1.getUserId()
+                        )
+                ),
+                GameHistoryUser.of(
+                        history,
+                        user2Entity,
+                        user2Entity.getSeniorCenter(),
+                        user2.getCorrectCount(),
+                        user2.getHintUsedCount(),
+                        winnerId != null && winnerId.equals(user2.getUserId())
+                )
+        );
+        history.getHistoryUsers().addAll(historyUsers);
+
+        //3. 저장
+        gameHistoryRepository.save(history);
+        room.changeGameStatus(GameStatus.FINISHED);
+
+        //4. webSocket 알림 전송
+        String resultMessage = (winnerEntity != null)
+                ? "승자는" + winnerEntity.getNickname() + " 님입니다"
+                : "무승부입니다";
+
+        broadcaster.broadcastToRoom(roomId,
+                messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, resultMessage));
+
+        //5. redis 정리
+        gameRedisService.finishGame(roomId);
+    }
+
+}

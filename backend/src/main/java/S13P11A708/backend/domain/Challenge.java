@@ -1,14 +1,24 @@
 package S13P11A708.backend.domain;
 
+import java.time.LocalDateTime;
+
 import S13P11A708.backend.domain.common.BaseEntity;
-import jakarta.persistence.*;
+import S13P11A708.backend.domain.enums.ChallengeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Entity
 @Getter
@@ -44,9 +54,17 @@ public class Challenge extends BaseEntity {
     @Column(name = "image_description")
     private String imageDescription;
 
+    @Column(name = "ai_description", columnDefinition = "LONGTEXT")
+    private String aiDescription;
+
     @Builder.Default
     @Column(name = "is_success")
     private Boolean isSuccess = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "challenge_type")
+    @Builder.Default
+    private ChallengeType challengeType = ChallengeType.CUSTOM;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "senior_center_id")
@@ -89,6 +107,11 @@ public class Challenge extends BaseEntity {
     }
 
     /**
+     * AI 요약 등록 setter
+     */
+    public void updateAiDescription(String aiDescription) { this.aiDescription = aiDescription; }
+
+    /**
      * 도전 완료 setter
      */
     public void completeChallenge() {
@@ -99,5 +122,12 @@ public class Challenge extends BaseEntity {
      * 도전 완료 취소 setter
      */
     public void cancelCompletion() { this.isSuccess = false; }
+
+    /**
+     * AI 신문과 연관관계 설정
+     */
+    public void setAiNews(AiNews aiNews) {
+        this.aiNews = aiNews;
+    }
 
 }
