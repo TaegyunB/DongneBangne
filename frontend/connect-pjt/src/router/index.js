@@ -55,8 +55,8 @@ const router = createRouter({
       props: true
     },
     {
-      path: '/admin/game',
-      name: 'game',
+      path: '/games',
+      name: 'games',
       component: GameView,
     },
     {
