@@ -104,7 +104,7 @@ public class GameAnsSocketTest {
                 System.out.println("✅ [TEST] STOMP connected, sessionId=" + session.getSessionId());
                 connected.countDown();
 
-                String dest = "/sub/game/" + roomId;
+                String dest = "/sub/games/" + roomId;
                 System.out.println("▶ [TEST] SUBSCRIBE " + dest);
 
                 session.subscribe(dest, new StompFrameHandler() {
@@ -177,7 +177,7 @@ public class GameAnsSocketTest {
                 connected.countDown();
                 // sub/game/{roomId} 토픽을 구독
                 // 이 토픽에서 서버가 보내는 GameInfoSocketMessage를 수신
-                session.subscribe("/sub/game/" + roomId, new StompFrameHandler() {
+                session.subscribe("/sub/games/" + roomId, new StompFrameHandler() {
                     @Override public java.lang.reflect.Type getPayloadType(StompHeaders headers) { return GameInfoSocketMessage.class; }
                     @Override public void handleFrame(StompHeaders headers, Object payload) {
                         inbox.add((GameInfoSocketMessage) payload);

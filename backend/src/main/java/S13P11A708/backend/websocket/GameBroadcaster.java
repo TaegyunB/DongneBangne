@@ -15,11 +15,11 @@ public class GameBroadcaster {
 
     // 전체 방에 브로드캐스트
     public void broadcastToRoom(Long roomId, GameInfoSocketMessage message){
-        messagingTemplate.convertAndSend("/sub/game/" + roomId, message);
+        messagingTemplate.convertAndSend("/sub/games/" + roomId, message);
     }
 
     public void broadcastAns(Long roomId, GameAnsSocketMessage message) {
-        messagingTemplate.convertAndSend("/sub/game/" + roomId, message);
+        messagingTemplate.convertAndSend("/sub/games/" + roomId, message);
     }
 
     // 특정 유저에게만 전송 (힌트)
