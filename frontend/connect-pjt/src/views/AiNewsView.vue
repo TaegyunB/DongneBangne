@@ -125,7 +125,7 @@ const fetchNews = async () => {
     console.log('API 요청 시작: /api/v1/ai-news')
     
     // 명시적으로 HTTP URL 사용
-    const response = await axios.get('http://localhost:8080/api/v1/ai-news', {
+    const response = await axios.get('/api/v1/ai-news', {
       withCredentials: true,
       timeout: 10000
     })
