@@ -1,0 +1,29 @@
+const WebSocket = require('ws');
+const PORT = 5000;
+const wsServer = new WebSocket.Server({
+  port: PORT
+});
+
+wsServer.on('connection', function (socket){
+    // Some feedback on the console
+  console.log('A client just connected');
+
+  // Attach some behavior to the incoming socket
+  socket.on('message', function(msg) {
+    console.log(('Received message from client: ' + msg));
+
+
+    // Broadcast that message to all connected client
+    wsServer.clients.forEach(function (client){
+      if (client !== socket){
+        client.send(msg);
+      }
+    });
+  });
+
+  socket.on('close', function() {
+    console.log('Client disconnected');
+  })
+});
+
+console.log((new Date()) + " - Server is listening on port " + PORT);
