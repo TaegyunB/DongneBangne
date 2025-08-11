@@ -159,6 +159,8 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user' 
 import axios from 'axios'
 
+import defaultImage from '@/assets/default_image.png'
+
 const router = useRouter()
 const userStore = useUserStore()
 
@@ -224,7 +226,7 @@ const getChallengeImage = (challenge) => {
     // API에서 받은 도전과제의 이미지
     return challenge.challengeImage
   }
-  return '/src/assets/default_image.png'
+  return defaultImage
 }
 
 const updateCompletedCount = () => {
