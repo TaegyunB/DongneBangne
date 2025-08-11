@@ -24,27 +24,32 @@ const router = createRouter({
     {
       path: '/',
       name: 'start',
-      component: Start
+      component: Start,
+      meta: { hideToolbar: true },
     },
     {
       path: '/login',
       name: 'onboarding',
-      component: Onboarding
+      component: Onboarding,
+      meta: { hideToolbar: true },
     },
     {
       path: '/senior-center',
       name: 'seniorCenter',
-      component: SeniorCenter
+      component: SeniorCenter,
+      meta: { hideToolbar: true },
     },
     {
       path: '/senior-center/profile',
       name: 'seniorCenterProfile',
-      component: SeniorCenterProfile
+      component: SeniorCenterProfile,
+      meta: { hideToolbar: true },
     },
     { 
       path: '/mainpage',
       name: 'mainPage',
       component: MainPage,
+      meta: { hideToolbar: true },
     },
     { 
       path: '/rankings',
@@ -72,6 +77,7 @@ const router = createRouter({
       path: '/games',
       name: 'games',
       component: GameView,
+      meta: { hideToolbar: true },
     },
     {
       path: '/webrtc',

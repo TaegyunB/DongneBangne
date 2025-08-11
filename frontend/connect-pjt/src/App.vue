@@ -1,28 +1,19 @@
 <template>
-  <!-- 툴바: 지정한 경로에서는 숨김 -->
-  <nav v-if="!hideToolbar" class="toolbar">
+  <!-- 툴바: meta로 제어 -->
+  <nav v-if="!hideToolbar" :class="['toolbar', { 'toolbar--hidden': headerHidden }]">
     <div class="toolbar-container">
       <img src="@/assets/logo.png" alt="로고" class="logo" @click="router.push('/')" />
 
-      <div v-if="ui.showMenu" class="nav-menu">
-        <router-link to="/admin/game" class="nav-item">게임</router-link>
+      <div class="nav-menu">
+        <router-link to="/games" class="nav-item">게임</router-link>
         <a href="#" @click.prevent="navigateTo('/challenges')" class="nav-item">도전과제</a>
         <a href="#" class="nav-item">게시판</a>
         <a href="#" class="nav-item">순위</a>
         <a href="#" class="nav-item">AI 신문</a>
       </div>
 
-      <!-- 우측: 환영문구 또는 프로필 드롭다운 -->
-      <div v-if="!ui.showProfile" class="welcome-message" v-html="ui.welcomeText"></div>
-
-      <div v-else class="profile-wrap">
-        <img
-          ref="profileBtn"
-          src="@/assets/profile.png"
-          alt="프로필"
-          class="profile"
-          @click.stop="toggleProfileMenu"
-        />
+      <div class="profile-wrap">
+        <img ref="profileBtn" src="@/assets/profile.png" alt="프로필" class="profile" @click.stop="toggleProfileMenu" />
         <div v-if="showProfileMenu" class="profile-menu">
           <button class="menu-item" @click="goProfile">프로필로 가기</button>
           <button class="menu-item danger" @click="logout">로그아웃</button>
@@ -31,84 +22,92 @@
     </div>
   </nav>
 
-  <!-- 본문 -->
-  <main class="">
+
+  <main>
     <RouterView />
   </main>
 </template>
 
 <script setup>
 import { RouterView, useRouter, useRoute } from 'vue-router'
-import { onMounted, onBeforeUnmount, ref, computed } from 'vue'
-import { useUiStore } from '@/stores/useUiStore'
+import { onMounted, onBeforeUnmount, ref, computed, watch } from 'vue'
 import { useUserStore } from '@/stores/user.js'
 import api from '@/api/axios'
 
-const ui = useUiStore()
 const user = useUserStore()
 const router = useRouter()
 const route = useRoute()
 
-/** 툴바 숨김 경로 */
-const HIDDEN_ROUTES = new Set(['/', '/login', '/games', '/mainpage'])
-const hideToolbar = computed(() => HIDDEN_ROUTES.has(route.path))
+// 라우트 메타로 툴바 자체 숨김 제어
+const hideToolbar = computed(() => route.meta?.hideToolbar === true)
 
-/** 프로필 드롭다운 */
+// ▼ 스크롤 방향 감지로 자동 숨김
+const headerHidden = ref(false)
+const lastY = ref(0)
+const SCROLL_DELTA = 8 // 민감도
+const onScroll = () => {
+  const y = window.scrollY || 0
+  const delta = y - lastY.value
+  if (y <= 0) {
+    headerHidden.value = false // 최상단이면 항상 보이기
+  } else if (delta > SCROLL_DELTA) {
+    headerHidden.value = true   // 아래로 스크롤 → 숨김
+  } else if (delta < -SCROLL_DELTA) {
+    headerHidden.value = false  // 위로 스크롤 → 표시
+  }
+  lastY.value = y
+}
+
+onMounted(() => {
+  lastY.value = window.scrollY || 0
+  window.addEventListener('scroll', onScroll, { passive: true })
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', onScroll)
+})
+
+// 라우트 바뀔 때 상태 초기화 (새 페이지에서 항상 보이도록)
+watch(() => route.fullPath, () => {
+  headerHidden.value = false
+  lastY.value = 0
+})
+
+// 드롭다운
 const showProfileMenu = ref(false)
 const profileBtn = ref(null)
-
-const toggleProfileMenu = () => {
-  showProfileMenu.value = !showProfileMenu.value
-}
+const toggleProfileMenu = () => { showProfileMenu.value = !showProfileMenu.value }
 const onDocClick = (e) => {
   const menu = document.querySelector('.profile-menu')
-  if (
-    showProfileMenu.value &&
-    !profileBtn.value?.contains(e.target) &&
-    !menu?.contains(e.target)
-  ) {
+  if (showProfileMenu.value && !profileBtn.value?.contains(e.target) && !menu?.contains(e.target)) {
     showProfileMenu.value = false
   }
 }
 onMounted(() => document.addEventListener('click', onDocClick, { capture: true }))
 onBeforeUnmount(() => document.removeEventListener('click', onDocClick, { capture: true }))
+watch(() => route.fullPath, () => { showProfileMenu.value = false })
 
-const goProfile = () => {
-  showProfileMenu.value = false
-  router.push('/senior-center/profile')
-}
-
+const goProfile = () => { showProfileMenu.value = false; router.push('/profile') }
 const logout = () => {
   showProfileMenu.value = false
-  // 헤더 토큰 제거(이 프로젝트 규칙)
   delete api.defaults.headers.common['Authorization']
-  // 혹시 저장돼 있으면 같이 정리
   localStorage.removeItem('access_token')
   sessionStorage.removeItem('access_token')
-  // 필요한 스토어 상태 초기화
   if (user?.$reset) user.$reset()
   router.push('/login')
 }
 
-/** 네비게이션 (userRole 전달 필요 시) */
 const navigateTo = (path) => {
-  if (path === '/challenges') {
-    router.push({ path, query: { userRole: user.userRole } })
-  } else {
-    router.push(path)
-  }
+  if (path === '/challenges') router.push({ path, query: { userRole: user.userRole } })
+  else router.push(path)
 }
 
-/** 공개/보호 라우트별 인증 체크 */
+// (옵션) 공개/보호 라우트 인증 체크 기존 로직 유지
 onMounted(async () => {
   const publicRoutes = ['/', '/login', '/onboarding']
   const currentPath = window.location.pathname
   if (!publicRoutes.includes(currentPath)) {
-    try {
-      await user.fetchUserRole()
-    } catch (error) {
-      window.location.href = '/login'
-    }
+    try { await user.fetchUserRole() }
+    catch { window.location.href = '/login' }
   }
 })
 </script>
@@ -188,4 +187,20 @@ html, body, #app { width: 100%; height: 100%; }
 
 /* 본문은 이제 top 마진 불필요 (툴바 고정 해제) */
 main { margin-top: 0; padding-top: 0; }
+
+/* 이미 있는 .toolbar 규칙에 transition만 보강 */
+.toolbar {
+  background: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 2px 4px rgba(0,0,0,.06);
+  transition: transform .25s ease, box-shadow .2s ease;
+}
+
+/* 숨김 상태 */
+.toolbar--hidden {
+  transform: translateY(-100%);
+  box-shadow: none;
+}
 </style>

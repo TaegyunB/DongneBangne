@@ -73,8 +73,8 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted } from 'vue'
-import { useUiStore } from '@/stores/useUiStore'
+import { onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import api from '@/api/axios'
 
 // Swiper
@@ -91,34 +91,31 @@ import onboarding5 from '@/assets/onboarding/onboarding5.png'
 import onboarding6 from '@/assets/onboarding/onboarding6.png'
 
 const modules = [Pagination, Navigation, Mousewheel, Keyboard, A11y]
-
-const ui = useUiStore()
+const route = useRoute()
+const router = useRouter()
 
 onMounted(async () => {
-  ui.showLogo = false
-  ui.showMenu = false
-  ui.showProfile = false
-  ui.welcomeText = '지금 동네방네를 <span class="start-word">시작</span>해보세요!'
+  // /login에 도착했을 때 code가 쿼리나 URL에 있으면 처리
+  const code =
+    (typeof route.query.code === 'string' && route.query.code) ||
+    new URLSearchParams(window.location.search).get('code')
 
-  // SNS 로그인 콜백 처리
-  const code = new URLSearchParams(window.location.search).get('code')
   if (code) {
     try {
+      // 백엔드가 이미 세션/쿠키/헤더 세팅했다고 가정하고 유저 상태 체크
       const res = await api.get('/api/v1/users/senior-center')
-      if (res.data?.hasCenter) window.location.href = '/mainpage'
-      else window.location.href = '/senior-center'
+      if (res.data?.hasCenter) {
+        router.replace('/mainpage')
+      } else {
+        router.replace('/senior-center')
+      }
     } catch (err) {
       console.error('로그인 후 사용자 정보 확인 실패:', err)
-      alert('로그인 후 정보를 불러오는 데 실패했습니다.')
+      router.replace('/login')
     }
+    return
   }
-})
-
-onUnmounted(() => {
-  ui.showLogo = true
-  ui.showMenu = true
-  ui.showProfile = true
-  ui.welcomeText = ''
+  // code 없으면 온보딩에서 로그인 버튼 노출만
 })
 
 const onboardingSections = [
@@ -160,9 +157,7 @@ const sections = [
 ]
 
 const handleKakaoLogin = () => {
-  const url = `${import.meta.env.VITE_API_BASE_URL}/login/oauth2/authorization/kakao`
-  window.location.href = url
-  console.log('카카오 로그인 URL:', url)
+  window.location.href = `${import.meta.env.VITE_API_BASE_URL}/login/oauth2/authorization/kakao`
 }
 </script>
 
