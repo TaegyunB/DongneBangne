@@ -27,98 +27,82 @@
       />
     </div>
 
-    <!-- 공지 리스트 -->
+    <!-- 게시글 리스트 -->
     <div class="notice-list">
       <div
         class="notice-item"
         v-for="(item, index) in filteredNotices"
         :key="index"
-        @click="goToDetail(index)"
+        @click="goToDetail(item.boardId)"
       >
         <div class="notice-left">
           <span class="badge">{{ item.category }}</span>
           <div class="notice-text">
-            <div class="notice-title">{{ item.title }}</div>
-            <div class="notice-meta">작성자: {{ item.author }}</div>
+            <div class="notice-title">{{ item.content }}</div>
+            <div class="notice-meta">작성자: {{ item.nickname }}</div>
           </div>
         </div>
         <div class="notice-right">
-          <div class="notice-date">{{ item.date }}</div>
-          <div class="notice-likes">👍 {{ item.likes }}</div>
+          <div class="notice-date">{{ item.createdAt }}</div>
+          <div class="notice-likes">👍 {{ item.likeCount }}</div>
         </div>
       </div>
     </div>
+
+    <!-- 검색 결과 없음 메시지 -->
+    <div v-if="searched && filteredNotices.length === 0" class="no-result">검색 결과가 없습니다.</div>
   </div>
 </template>
 
-
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import api from '@/api/axios'
 
 const router = useRouter()
 
-const categories = ['전체', '인기', '잡담', '나눔', '취미', '정보']
-const selectedCategory = ref('전체')
+// 카테고리 옵션 (여기에 실제 API 카테고리를 추가)
+const categories = ['전체', 'CHAT', 'SHARE', 'INFO', 'HOBBY']  
+const selectedCategory = ref('전체')  // 기본값은 '전체'
 const searchQuery = ref('')
+const searched = ref(false)  // 검색 여부 표시
 
-// 더미 데이터
-const notices = ref([
-  {
-    id: 1,
-    title: '경로당 요가 프로그램 후기',
-    date: '2025-08-01',
-    category: '취미',
-    author: '홍길동',
-    likes: 12,
-  },
-  {
-    id: 2,
-    title: '송파구 무료 검진 정보 공유',
-    date: '2025-07-30',
-    category: '정보',
-    author: '김철수',
-    likes: 8,
-  },
-  {
-    id: 3,
-    title: '반찬 나눔 행사 열려요',
-    date: '2025-08-02',
-    category: '나눔',
-    author: '이영희',
-    likes: 17,
-  },
-  {
-    id: 4,
-    title: '웃긴 이야기 하나!',
-    date: '2025-08-03',
-    category: '잡담',
-    author: '박명수',
-    likes: 5,
-  },
-  {
-    id: 5,
-    title: '이번 주 인기 게시글입니다',
-    date: '2025-08-04',
-    category: '인기',
-    author: 'admin',
-    likes: 33,
-  },
-])
+// 게시글 데이터 (API 호출을 통해 가져옴)
+const notices = ref([])
 
-// 필터링된 게시글
+// 게시글 데이터 가져오기
+const fetchNotices = async () => {
+  try {
+    const res = await api.get('/api/v1/boards', {
+      params: { category: selectedCategory.value } // 카테고리 필터링
+    })
+    notices.value = res.data
+    searched.value = true
+  } catch (error) {
+    console.error('게시글 로드 실패:', error)
+    searched.value = true
+    notices.value = []
+  }
+}
+
+// API에서 받아온 데이터 필터링 (카테고리와 검색어 기반)
 const filteredNotices = computed(() => {
   return notices.value.filter((n) => {
     const matchCategory = selectedCategory.value === '전체' || n.category === selectedCategory.value
-    const matchSearch = n.title.includes(searchQuery.value)
+    const matchSearch = n.content.includes(searchQuery.value)  // 제목이나 내용에서 검색어 찾기
     return matchCategory && matchSearch
   })
 })
 
-// 상세 페이지 이동
-const goToDetail = (id) => {
-  router.push(`/boards/${id}`)
+// 게시글 상세 페이지로 이동
+const goToDetail = (boardId) => {
+  router.push(`/boards/${boardId}`)
 }
+
+// 컴포넌트 마운트 시 API 호출
+onMounted(() => {
+  fetchNotices()
+})
 </script>
 
 <style scoped>
