@@ -44,14 +44,13 @@ export default {
       isActive: false,
       mouseX: 0,
       mouseY: 0,
-      lensSize: 300, // 돋보기 크기 (2배 확대)
-      zoomLevel: 2,  // 확대 배율 (200%)
-      excludedRoutes: ['/games', '/webrtc'] // 게임 관련 라우트 목록
+      lensSize: 400, // 2배로 확대
+      zoomLevel: 2,
+      excludedRoutes: ['/games', '/webrtc']
     }
   },
   computed: {
     shouldShowMagnifier() {
-      // 현재 라우트가 게임 페이지가 아닌 경우에만 표시
       const currentPath = this.$route?.path || '';
       return !this.excludedRoutes.some(route => 
         currentPath.startsWith(route)
@@ -60,24 +59,21 @@ export default {
     
     lensStyle() {
       return {
-        left: `${this.mouseX}px`,
-        top: `${this.mouseY}px`,
+        left: `${this.mouseX - this.lensSize/2}px`,
+        top: `${this.mouseY - this.lensSize/2}px`,
         width: `${this.lensSize}px`,
         height: `${this.lensSize}px`,
       }
     },
     
     contentStyle() {
-      // 마우스 위치를 중심으로 정확한 확대 계산
-      const centerX = this.lensSize / 2;
-      const centerY = this.lensSize / 2;
-      
-      // 마우스 위치가 확대된 후에도 렌즈 중심에 오도록 계산
-      const translateX = centerX - (this.mouseX * this.zoomLevel);
-      const translateY = centerY - (this.mouseY * this.zoomLevel);
+      // CSS transform으로 실시간 확대
+      // 마우스 위치가 렌즈 중앙에 오도록 계산
+      const offsetX = -this.mouseX * this.zoomLevel + this.lensSize/2;
+      const offsetY = -this.mouseY * this.zoomLevel + this.lensSize/2;
       
       return {
-        transform: `scale(${this.zoomLevel}) translate(${translateX / this.zoomLevel}px, ${translateY / this.zoomLevel}px)`,
+        transform: `scale(${this.zoomLevel}) translate(${offsetX/this.zoomLevel}px, ${offsetY/this.zoomLevel}px)`,
         transformOrigin: '0 0',
       }
     }
@@ -89,69 +85,80 @@ export default {
       
       if (this.isActive) {
         this.startMagnifier();
-        // 상태 저장
-        localStorage.setItem('magnifierActive', 'true');
+        try {
+          localStorage.setItem('magnifierActive', 'true');
+        } catch (e) {
+          console.warn('LocalStorage not available:', e);
+        }
       } else {
         this.stopMagnifier();
-        localStorage.removeItem('magnifierActive');
+        try {
+          localStorage.removeItem('magnifierActive');
+        } catch (e) {
+          console.warn('LocalStorage not available:', e);
+        }
       }
     },
     
     startMagnifier() {
       document.addEventListener('mousemove', this.handleMouseMove);
-      document.body.style.cursor = 'none'; // 기본 커서 숨김
-      this.updateMagnifierContent();
+      document.body.style.cursor = 'none';
+      
+      // 돋보기용 body 복사본 생성
+      this.createMagnifierContent();
     },
     
     stopMagnifier() {
       document.removeEventListener('mousemove', this.handleMouseMove);
-      document.body.style.cursor = 'auto'; // 커서 복원
+      document.body.style.cursor = 'auto';
     },
     
     handleMouseMove(event) {
-      // 마우스 위치를 정확히 가져오기 (뷰포트 기준)
+      // 실시간으로 마우스 위치 업데이트 (throttling 없음)
       this.mouseX = event.clientX;
       this.mouseY = event.clientY;
-      this.updateMagnifierContent();
     },
     
-    updateMagnifierContent() {
+    createMagnifierContent() {
       this.$nextTick(() => {
         if (!this.$refs.magnifierLens) return;
         
-        const lens = this.$refs.magnifierLens;
-        const content = lens.querySelector('.magnifier-content');
+        const content = this.$refs.magnifierLens.querySelector('.magnifier-content');
+        if (!content) return;
         
-        if (content) {
-          // 현재 페이지 전체를 캡처하여 복사
-          const html = document.documentElement.cloneNode(true);
-          
-          // 돋보기 관련 요소들 제거
-          const magnifierElements = html.querySelectorAll('.magnifier-toggle, .magnifier-lens');
-          magnifierElements.forEach(el => el.remove());
-          
-          // 기존 스타일 유지
-          const existingStyles = Array.from(document.head.querySelectorAll('style, link[rel="stylesheet"]'));
-          existingStyles.forEach(style => {
-            if (!html.querySelector(`[href="${style.href}"]`) && !html.querySelector(`style[data-vite-dev-id="${style.dataset.viteDevId}"]`)) {
-              html.head.appendChild(style.cloneNode(true));
-            }
-          });
-          
-          content.innerHTML = '';
-          content.appendChild(html);
-        }
+        // 현재 페이지의 HTML을 그대로 복사
+        const htmlClone = document.documentElement.cloneNode(true);
+        
+        // 돋보기 관련 요소들 제거
+        const magnifierElements = htmlClone.querySelectorAll('.magnifier-toggle, .magnifier-lens');
+        magnifierElements.forEach(el => el.remove());
+        
+        // 모든 스크립트 제거 (이벤트 중복 방지)
+        const scripts = htmlClone.querySelectorAll('script');
+        scripts.forEach(script => script.remove());
+        
+        // 링크와 버튼의 기본 동작 방지
+        const interactiveElements = htmlClone.querySelectorAll('a, button, input, select, textarea');
+        interactiveElements.forEach(el => {
+          el.style.pointerEvents = 'none';
+        });
+        
+        // 내용 교체
+        content.innerHTML = htmlClone.outerHTML;
       });
     },
     
     initializeMagnifier() {
-      // 페이지 로드 시 이전 상태 복원
-      const savedState = localStorage.getItem('magnifierActive');
-      if (savedState === 'true') {
-        this.isActive = true;
-        this.$nextTick(() => {
-          this.startMagnifier();
-        });
+      try {
+        const savedState = localStorage.getItem('magnifierActive');
+        if (savedState === 'true') {
+          this.isActive = true;
+          this.$nextTick(() => {
+            this.startMagnifier();
+          });
+        }
+      } catch (e) {
+        console.warn('LocalStorage not available:', e);
       }
     }
   },
@@ -165,7 +172,6 @@ export default {
   },
   
   watch: {
-    // 라우트 변경 시 돋보기 상태 관리
     '$route'() {
       if (!this.shouldShowMagnifier && this.isActive) {
         this.isActive = false;
@@ -175,13 +181,21 @@ export default {
           this.startMagnifier();
         });
       }
+    },
+    
+    // 돋보기가 활성화되면 내용 업데이트
+    isActive(newVal) {
+      if (newVal) {
+        this.$nextTick(() => {
+          this.createMagnifierContent();
+        });
+      }
     }
   }
 }
 </script>
 
 <style scoped>
-/* 돋보기 토글 버튼 */
 .magnifier-toggle {
   position: fixed;
   bottom: 20px;
@@ -215,7 +229,6 @@ export default {
   background: #FF5252;
 }
 
-/* 돋보기 렌즈 */
 .magnifier-lens {
   position: fixed;
   z-index: 10000;
@@ -224,20 +237,23 @@ export default {
   overflow: hidden;
   pointer-events: none;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-  background: white;
-  transform: translate(-50%, -50%);
+  background: #fff;
 }
 
 .magnifier-content {
   width: 100vw;
   height: 100vh;
   position: absolute;
-  top: 0;
-  left: 0;
-  overflow: visible;
+  overflow: hidden;
+  pointer-events: none;
 }
 
-/* 펄스 애니메이션 */
+/* 돋보기 내부 요소들의 상호작용 차단 */
+.magnifier-content * {
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
 @keyframes pulse {
   0% {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 0 0 rgba(76, 175, 80, 0.7);
@@ -250,7 +266,6 @@ export default {
   }
 }
 
-/* 모바일 대응 */
 @media (max-width: 768px) {
   .magnifier-toggle {
     width: 50px;
@@ -265,7 +280,6 @@ export default {
   }
 }
 
-/* 접근성을 위한 키보드 포커스 */
 .magnifier-toggle:focus {
   outline: 3px solid #FFD700;
   outline-offset: 3px;
