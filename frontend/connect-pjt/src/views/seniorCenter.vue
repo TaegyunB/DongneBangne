@@ -2,6 +2,7 @@
   <div class="find-senior-center">
     <main class="main-content">
       <h1 class="headline">경로당 찾기</h1>
+      <OnboardingGuide v-model="showOnboarding" @confirm="handleOnboardingConfirm" />
       <div class="search-box">
         <select v-model="selectedType" class="type-select">
           <option value="name">이름</option>
@@ -14,7 +15,11 @@
           placeholder="싸피 경로당"
           @keyup.enter="onSearch"
         />
-        <button class="search-btn" @click="onSearch">Search</button>
+        <!-- 버튼만 살짝 수정: 로딩/빈값일 때 비활성화 -->
+        <button class="search-btn" :disabled="isSearchDisabled" @click="onSearch">
+          {{ isLoading ? 'Searching...' : 'Search' }}
+        </button>
+
       </div>
 
       <!-- 검색 결과 리스트 -->
@@ -61,80 +66,104 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import api from '@/api/axios' // axios 인스턴스 import만!
+import { ref, onMounted, computed } from 'vue'
+import api from '@/api/axios'
 import { useRouter } from 'vue-router'
+import { useOnboardingStore } from '@/stores/useOnboardingStore'
+import OnboardingGuide from '@/components/OnboardingGuide.vue'
 
 const selectedType = ref('name')
 const keyword = ref('')
 const searchResults = ref([])
 const searched = ref(false)
+const isLoading = ref(false)
+
 const router = useRouter()
+const store = useOnboardingStore()
 
 const showModal = ref(false)
-const modalCenter = ref({ name: '', address: '' })
+const modalCenter = ref({ id: null, name: '', address: '' })
+const showOnboarding = ref(false)
+
+const isSearchDisabled = computed(() => !keyword.value.trim() || isLoading.value)
+
+// 응답 정규화: 백엔드가 seniorCenterId/seniorCenterName로 줄 수도 있음
+const normalizeCenter = c => ({
+  id: c.id ?? c.seniorCenterId ?? c.senior_center_id ?? null,
+  name: c.name ?? c.seniorCenterName ?? c.centerName ?? '',
+  address: c.address ?? c.addr ?? ''
+})
 
 // DB에서 실제 검색
 async function fetchCenters() {
+  isLoading.value = true
   try {
     const res = await api.get('/api/v1/senior-centers', {
       params: { type: selectedType.value, keyword: keyword.value.trim() }
     })
-    console.log('백엔드 응답 데이터:', res.data, res.status)
-    console.log('파라미터:', selectedType.value, keyword.value.trim())
-    searchResults.value = res.data
-    searched.value = true
+    const list = Array.isArray(res.data) ? res.data.map(normalizeCenter) : []
+    searchResults.value = list
   } catch (e) {
+    console.error('경로당 검색 실패:', e)
     searchResults.value = []
+  } finally {
     searched.value = true
+    isLoading.value = false
   }
 }
 
 function onSearch() {
-  if (!keyword.value.trim()) {
-    searchResults.value = []
+  if (isSearchDisabled.value) {
     searched.value = true
+    searchResults.value = []
     return
   }
   fetchCenters()
 }
 
-// 지도 버튼 클릭시 카카오맵 새 창 열기
+// 지도 버튼 클릭
 function openKakaoMap(address) {
   const url = 'https://map.kakao.com/?q=' + encodeURIComponent(address)
   window.open(url, '_blank', 'width=700,height=600')
 }
 
-// 확인 버튼 클릭시 모달 오픈
+// 확인 모달 열기
 function openConfirm(center) {
   modalCenter.value = center
   showModal.value = true
 }
 
-// // 모달 내 확인/취소 버튼 동작
-// function confirmCenter() {
-//   showModal.value = false
-//   router.push('/senior-center/profile')
-// }
-// function closeModal() {
-//   showModal.value = false
-// }
+// 모달 취소
+function closeModal() {
+  showModal.value = false
+}
 
+// 모달 내 확인(선택 확정)
 async function confirmCenter() {
   try {
-    // 실제 DB에 저장 요청
     await api.post('/api/v1/users/senior-center', {
-      seniorCenterId: modalCenter.value.id // ← id가 맞는지 반드시 확인!
+      seniorCenterId: modalCenter.value.id
     })
     showModal.value = false
-    // 성공 시 라우터 이동
     router.push('/senior-center/profile')
   } catch (err) {
+    console.error('경로당 선택 실패:', err)
     alert('경로당 선택에 실패했습니다.')
     showModal.value = false
   }
 }
 
+onMounted(() => {
+  if (!store.seen) {
+    showOnboarding.value = true
+  }
+})
+
+function handleOnboardingConfirm(payload) {
+  if (payload.confirm && payload.dontShowAgain) {
+    store.markSeen()
+  }
+}
 </script>
 
 <style scoped>
