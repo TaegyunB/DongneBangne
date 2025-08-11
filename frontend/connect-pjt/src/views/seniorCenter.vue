@@ -15,14 +15,11 @@
           placeholder="싸피 경로당"
           @keyup.enter="onSearch"
         />
-        <!-- 버튼만 살짝 수정: 로딩/빈값일 때 비활성화 -->
         <button class="search-btn" :disabled="isSearchDisabled" @click="onSearch">
           {{ isLoading ? 'Searching...' : 'Search' }}
         </button>
-
       </div>
 
-      <!-- 검색 결과 리스트 -->
       <table v-if="searchResults.length" class="result-table">
         <thead>
           <tr>
@@ -37,7 +34,13 @@
             <td>{{ center.name }}</td>
             <td>{{ center.address }}</td>
             <td>
-              <button class="map-btn" @click="openKakaoMap(center.address)">지도</button>
+              <a
+                href="https://map.kakao.com/?q={{ center.address }}"
+                target="_blank"
+                class="map-btn"
+              >
+                지도
+              </a>
             </td>
             <td>
               <button class="confirm-btn" @click="openConfirm(center)">확인</button>
@@ -47,16 +50,25 @@
       </table>
       <div v-else-if="searched" class="no-result">검색 결과가 없습니다.</div>
 
-      <!-- 확인 모달 -->
       <div v-if="showModal" class="modal-overlay">
         <div class="modal-content">
-          <h3>정말로 맞습니까?</h3>
+          <h3>선택한 경로당이 맞으신가요?</h3>
           <p>
             <b>{{ modalCenter.name }}</b><br />
             {{ modalCenter.address }}
           </p>
           <div class="modal-actions">
-            <button class="confirm-btn" @click="confirmCenter">네</button>
+            <label>
+              <input type="checkbox" v-model="isConfirmed" />
+              <span>동의합니다</span>
+            </label>
+            <button
+              class="confirm-btn"
+              @click="confirmCenter"
+              :disabled="!isConfirmed"
+            >
+              확인
+            </button>
             <button class="cancel-btn" @click="closeModal">아니오</button>
           </div>
         </div>
@@ -183,6 +195,7 @@ function handleOnboardingConfirm(payload) {
   margin-bottom: 30px;
   letter-spacing: -1px;
 }
+
 .search-box {
   display: flex;
   align-items: center;
@@ -191,9 +204,10 @@ function handleOnboardingConfirm(payload) {
   border-radius: 8px;
   padding: 18px 24px;
   gap: 14px;
-  min-width: 470px;
+  min-width: 600px;  /* 검색창 너비를 늘리기 */
   box-sizing: border-box;
 }
+
 .type-select {
   font-size: 16px;
   padding: 8px 10px;
@@ -202,11 +216,11 @@ function handleOnboardingConfirm(payload) {
   min-width: 70px;
 }
 .search-input {
-  font-size: 16px;
-  padding: 8px 12px;
+  font-size: 20px;  /* 글자 크기 키우기 */
+  padding: 12px 16px;
   border: none;
   outline: none;
-  width: 600px;
+  width: 100%;  /* 100%로 넓혀서 여백을 줄임 */
   background: transparent;
 }
 .search-btn {
