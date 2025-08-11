@@ -50,7 +50,7 @@ public class SeniorCenter extends BaseEntity {
     @Column(name = "ranking_year")
     private Integer rankingYear;
 
-    @Column(name = "rankingMonth")
+    @Column(name = "ranking_month")
     private Integer rankingMonth;
 
     @CreatedDate
