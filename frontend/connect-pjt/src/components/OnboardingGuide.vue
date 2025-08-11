@@ -11,11 +11,6 @@
         <li>확인 누르면 내 경로당으로 설정</li>
       </ol>
 
-      <label class="onb-check">
-        <input type="checkbox" v-model="dontShowAgain" />
-        <span>다시 보지 않기</span>
-      </label>
-
       <div class="onb-actions">
         <button class="onb-btn onb-cancel" @click="close(false)">닫기</button>
         <button class="onb-btn onb-primary" @click="close(true)">알겠어요</button>
