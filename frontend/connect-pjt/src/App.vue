@@ -17,8 +17,9 @@
       <img v-else src="@/assets/profile.png" alt="프로필" class="profile">
     </div>
   </nav>
-  
+    
   <!-- 이 아래 부분에 이제 본문 위치 -->
+   <!-- <main :style="{ marginTop: hideToolbar ? '0' : '60px', paddingTop: hideToolbar ? '0' : '20px' }"></main> -->
   <main class="">
     <RouterView />
   </main>
