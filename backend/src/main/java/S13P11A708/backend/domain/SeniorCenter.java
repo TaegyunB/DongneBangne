@@ -77,7 +77,6 @@ public class SeniorCenter extends BaseEntity {
         this.rankingMonth = now.getMonthValue();
     }
 
-    //
     //==Setter 메서드==//
 
     /**
