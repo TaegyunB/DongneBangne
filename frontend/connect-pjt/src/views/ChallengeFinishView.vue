@@ -19,13 +19,14 @@
                 />
             </div>
             
-            <!-- 이미지 업로드 (선택사항) -->
+            <!-- 이미지 업로드 (필수) -->
             <div class="section">
-                <h3>이미지 업로드 (선택사항)</h3>
+                <h3>이미지 업로드 <span class="required">*필수</span></h3>
                 <div class="upload-area" @click="triggerFileInput">
                     <div v-if="!form.image" class="upload-placeholder">
                         <div class="upload-icon">📁</div>
                         <button type="button" class="upload-btn">파일 선택</button>
+                        <p>도전 인증을 위한 이미지를<br>업로드해주세요</p>
                     </div>
                     <div v-else class="preview">
                         <img :src="previewUrl" alt="preview" />
@@ -53,7 +54,7 @@
                         <label>도전 상세:</label>
                         <p class="content-text">{{ form.description }}</p>
                     </div>
-                    <div v-if="form.image" class="form-group">
+                    <div class="form-group">
                         <label>업로드 이미지:</label>
                         <div class="confirm-image">
                             <img :src="previewUrl" alt="확인 이미지" />
@@ -98,7 +99,8 @@ const showSuccessModal = ref(false)
 const loading = ref(false)
 const confirming = ref(false)
 
-const isValid = computed(() => form.value.description.trim())
+// 이미지 업로드도 필수로 변경
+const isValid = computed(() => form.value.description.trim() && form.value.image)
 
 const challengeId = ref(null)
 const challengeType = ref('system') // 'system' 또는 'admin'
@@ -138,8 +140,13 @@ const removeImage = () => {
 const cancel = () => router.go(-1)
 
 const submit = () => {
-  if (!isValid.value) {
+  if (!form.value.description.trim()) {
     alert('도전 상세 내용을 입력해주세요.')
+    return
+  }
+  
+  if (!form.value.image) {
+    alert('도전 인증을 위한 이미지를 업로드해주세요.')
     return
   }
   
@@ -150,24 +157,57 @@ const closeConfirmModal = () => {
   showConfirmModal.value = false
 }
 
+const token = localStorage.getItem('accessToken');
+
 const confirmSubmit = async () => {
   confirming.value = true
 
   try {
+    // ==========  파일 유효성 검사 추가  ==========
+    console.log('=== 파일 유효성 검사 ===')
+    
+    if (!form.value.image) {
+      alert('이미지를 선택해주세요.')
+      return
+    }
+    
+    // 파일 크기 검사 (10MB = 10 * 1024 * 1024 bytes)
+    const maxSize = 10 * 1024 * 1024
+    if (form.value.image.size > maxSize) {
+      alert(`파일 크기가 너무 큽니다. 최대 ${Math.round(maxSize / 1024 / 1024)}MB까지 업로드 가능합니다.`)
+      return
+    }
+    
+    // 파일 타입 검사
+    if (!form.value.image.type.startsWith('image/')) {
+      alert('이미지 파일만 업로드 가능합니다.')
+      return
+    }
+    
+    console.log('파일 정보:')
+    console.log('- 이름:', form.value.image.name)
+    console.log('- 크기:', `${(form.value.image.size / 1024 / 1024).toFixed(2)}MB`)
+    console.log('- 타입:', form.value.image.type)
+    console.log('- 설명 길이:', form.value.description.length)
+    
+    // ==========  FormData 생성  ==========
     const formData = new FormData()
+    formData.append('imageFile', form.value.image)
     formData.append('imageDescription', form.value.description)
-    if (form.value.image) {
-      formData.append('imageFile', form.value.image)
+    
+    // FormData 내용 확인
+    console.log('FormData entries:')
+    for (let [key, value] of formData.entries()) {
+      if (value instanceof File) {
+        console.log(`${key}: File(${value.name}, ${value.size} bytes)`)
+      } else {
+        console.log(`${key}: ${value}`)
+      }
     }
 
-    console.log('missionFinishUpdate API 호출:', {
-      challengeId: challengeId.value,
-      description: form.value.description,
-      image: form.value.image,
-      challengeType: challengeType.value
-    })
-
-    // 첫 번째 API 호출: missionFinishUpdate
+    console.log('🚀 missionFinishUpdate API 호출 시작...')
+    
+    // ==========  더 짧은 타임아웃으로 테스트  ==========
     const response = await axios.post(
       `/api/v1/admin/challenges/${challengeId.value}/missionFinishUpdate`, 
       formData,
@@ -175,58 +215,120 @@ const confirmSubmit = async () => {
         withCredentials: true,
         headers: {
           'Content-Type': 'multipart/form-data'
+        },
+        timeout: 60000, // 60초로 증가
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+          console.log(`업로드 진행률: ${percentCompleted}%`)
+          
+          // 진행률이 100%가 되면 서버 처리 중임을 표시
+          if (percentCompleted === 100) {
+            console.log('⏳ 파일 업로드 완료, 서버 처리 중...')
+          }
         }
       }
     )
 
-    console.log('missionFinishUpdate 서버 응답:', response.data)
+    console.log('✅ missionFinishUpdate 성공:', response.data)
 
-    // 두 번째 API 호출: complete
-    console.log('complete API 호출:', {
-      challengeId: challengeId.value
-    })
-
+    // 두 번째 API 호출
+    console.log('🚀 complete API 호출 시작...')
+    
     const completeResponse = await axios.post(
       `/api/v1/admin/challenges/${challengeId.value}/complete`,
-      {}, // 빈 객체 (request body 필요없음)
+      {},
       {
         withCredentials: true,
         headers: {
           'Content-Type': 'application/json'
-        }
+        },
+        timeout: 30000
       }
     )
 
-    console.log('complete API 서버 응답:', completeResponse.data)
+    console.log('✅ complete API 성공:', completeResponse.data)
 
-    // 바로 완료 상태로 localStorage 업데이트
+    // 성공 처리
     const completedChallenge = {
       challengeId: parseInt(challengeId.value),
       description: form.value.description,
-      image: form.value.image ? previewUrl.value : null,
+      image: previewUrl.value,
       completedAt: new Date().toISOString(),
-      is_success: true, // 바로 완료 상태
+      is_success: true,
       is_uploaded: true,
       serverData: response.data,
-      completeData: completeResponse.data // complete API 응답도 저장
+      completeData: completeResponse.data
     }
 
-    // 도전 타입에 따라 다른 localStorage 키 사용
     if (challengeType.value === 'admin') {
-      // ADMIN이 생성한 도전과제
       localStorage.setItem(`admin_challenge_${challengeId.value}`, JSON.stringify(completedChallenge))
     } else {
-      // 우리가 제공하는 도전과제 (기존 방식 유지)
       localStorage.setItem(`challenge_${challengeId.value}`, JSON.stringify(completedChallenge))
     }
     
     showConfirmModal.value = false
     showSuccessModal.value = true
+
   } catch (error) {
-    console.error('업로드 오류:', error)
-    alert('도전 인증 업로드 중 오류가 발생했습니다.')
+    console.error('❌ API 호출 에러:', error)
+    
+    if (error.code === 'ERR_NETWORK') {
+      console.log('🔍 Network Error 상세 분석:')
+      console.log('- readyState:', error.request?.readyState)
+      console.log('- status:', error.request?.status)
+      console.log('- responseText:', error.request?.responseText)
+      
+      // 백엔드 로그 확인 요청
+      alert(`네트워크 오류가 발생했습니다. 
+
+가능한 원인:
+1. 서버에서 파일 처리 중 오류 발생
+2. S3 업로드 실패  
+3. 데이터베이스 오류
+
+백엔드 서버 로그를 확인해주세요.`)
+      
+    } else if (error.code === 'ECONNABORTED') {
+      alert('요청 시간이 초과되었습니다. 파일 크기를 줄이거나 나중에 다시 시도해주세요.')
+    } else if (error.response) {
+      const status = error.response.status
+      const errorMessage = error.response.data?.message || `서버 오류 (${status})`
+      alert(`서버 오류: ${errorMessage}`)
+    } else {
+      alert('알 수 없는 오류가 발생했습니다.')
+    }
+    
   } finally {
     confirming.value = false
+  }
+}
+
+// ==========  간단한 테스트 함수  ==========
+const testSmallFile = async () => {
+  try {
+    // 매우 작은 더미 파일로 테스트
+    const dummyFile = new File(['test'], 'test.txt', { type: 'text/plain' })
+    const testFormData = new FormData()
+    testFormData.append('imageFile', dummyFile)
+    testFormData.append('imageDescription', 'test description')
+    
+    console.log('🧪 작은 파일로 테스트...')
+    
+    const response = await axios.post(
+      `/api/v1/admin/challenges/${challengeId.value}/missionFinishUpdate`,
+      testFormData,
+      {
+        withCredentials: true,
+        timeout: 10000
+      }
+    )
+    
+    console.log('✅ 작은 파일 테스트 성공:', response.data)
+    
+  } catch (error) {
+    console.error('❌ 작은 파일 테스트 실패:', error)
   }
 }
 
@@ -254,6 +356,13 @@ const goToChallenge = () => {
 .content { display: flex; gap: 40px; margin-bottom: 40px; }
 .section { flex: 1; }
 .section h3 { font-size: 20px; font-weight: bold; margin-bottom: 15px; }
+
+.required {
+    color: #FF4444;
+    font-size: 16px;
+    font-weight: normal;
+    margin-left: 8px;
+}
 
 .textarea {
     width: 100%; height: 200px; padding: 15px; border: 2px solid #e0e0e0;
