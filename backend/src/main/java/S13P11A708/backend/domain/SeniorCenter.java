@@ -2,6 +2,7 @@ package S13P11A708.backend.domain;
 
 import S13P11A708.backend.domain.common.BaseEntity;
 import jakarta.persistence.*;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
@@ -13,6 +14,7 @@ import java.util.List;
 
 @Entity
 @Getter
+@Builder
 @NoArgsConstructor
 @Table(name = "senior_center")
 public class SeniorCenter extends BaseEntity {
@@ -32,12 +34,15 @@ public class SeniorCenter extends BaseEntity {
     private String address;
 
     @Column(name = "trot_point")
+    @Builder.Default
     private Long trotPoint = 0L;
 
     @Column(name = "challenge_point")
+    @Builder.Default
     private Long challengePoint = 0L;
 
     @Column(name = "total_point")
+    @Builder.Default
     private Long totalPoint = 0L;
 
     @Column(name = "ranking_year")
