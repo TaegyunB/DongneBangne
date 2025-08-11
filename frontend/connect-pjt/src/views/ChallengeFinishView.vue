@@ -163,97 +163,172 @@ const confirmSubmit = async () => {
   confirming.value = true
 
   try {
+    // ==========  파일 유효성 검사 추가  ==========
+    console.log('=== 파일 유효성 검사 ===')
+    
+    if (!form.value.image) {
+      alert('이미지를 선택해주세요.')
+      return
+    }
+    
+    // 파일 크기 검사 (10MB = 10 * 1024 * 1024 bytes)
+    const maxSize = 10 * 1024 * 1024
+    if (form.value.image.size > maxSize) {
+      alert(`파일 크기가 너무 큽니다. 최대 ${Math.round(maxSize / 1024 / 1024)}MB까지 업로드 가능합니다.`)
+      return
+    }
+    
+    // 파일 타입 검사
+    if (!form.value.image.type.startsWith('image/')) {
+      alert('이미지 파일만 업로드 가능합니다.')
+      return
+    }
+    
+    console.log('파일 정보:')
+    console.log('- 이름:', form.value.image.name)
+    console.log('- 크기:', `${(form.value.image.size / 1024 / 1024).toFixed(2)}MB`)
+    console.log('- 타입:', form.value.image.type)
+    console.log('- 설명 길이:', form.value.description.length)
+    
+    // ==========  FormData 생성  ==========
     const formData = new FormData()
-    formData.append('imageDescription', form.value.description)
     formData.append('imageFile', form.value.image)
+    formData.append('imageDescription', form.value.description)
+    
+    // FormData 내용 확인
+    console.log('FormData entries:')
+    for (let [key, value] of formData.entries()) {
+      if (value instanceof File) {
+        console.log(`${key}: File(${value.name}, ${value.size} bytes)`)
+      } else {
+        console.log(`${key}: ${value}`)
+      }
+    }
 
-    console.log('missionFinishUpdate API 호출:', {
-      challengeId: challengeId.value,
-      description: form.value.description,
-      image: form.value.image,
-      challengeType: challengeType.value
-    })
-
-    // 첫 번째 API 호출: missionFinishUpdate
+    console.log('🚀 missionFinishUpdate API 호출 시작...')
+    
+    // ==========  더 짧은 타임아웃으로 테스트  ==========
     const response = await axios.post(
       `/api/v1/admin/challenges/${challengeId.value}/missionFinishUpdate`, 
       formData,
       {
         withCredentials: true,
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
+        },
+        timeout: 60000, // 60초로 증가
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+          console.log(`업로드 진행률: ${percentCompleted}%`)
+          
+          // 진행률이 100%가 되면 서버 처리 중임을 표시
+          if (percentCompleted === 100) {
+            console.log('⏳ 파일 업로드 완료, 서버 처리 중...')
+          }
         }
       }
     )
 
-    console.log('missionFinishUpdate 서버 응답:', response.data)
+    console.log('✅ missionFinishUpdate 성공:', response.data)
 
-    // 두 번째 API 호출: complete
-    console.log('complete API 호출:', {
-      challengeId: challengeId.value
-    })
-
+    // 두 번째 API 호출
+    console.log('🚀 complete API 호출 시작...')
+    
     const completeResponse = await axios.post(
       `/api/v1/admin/challenges/${challengeId.value}/complete`,
-      {}, // 빈 객체 (request body 필요없음)
+      {},
       {
         withCredentials: true,
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        timeout: 30000
       }
     )
 
-    console.log('complete API 서버 응답:', completeResponse.data)
+    console.log('✅ complete API 성공:', completeResponse.data)
 
-    // 바로 완료 상태로 localStorage 업데이트
+    // 성공 처리
     const completedChallenge = {
       challengeId: parseInt(challengeId.value),
       description: form.value.description,
       image: previewUrl.value,
       completedAt: new Date().toISOString(),
-      is_success: true, // 바로 완료 상태
+      is_success: true,
       is_uploaded: true,
       serverData: response.data,
-      completeData: completeResponse.data // complete API 응답도 저장
+      completeData: completeResponse.data
     }
 
-    // 도전 타입에 따라 다른 localStorage 키 사용
     if (challengeType.value === 'admin') {
-      // ADMIN이 생성한 도전과제
       localStorage.setItem(`admin_challenge_${challengeId.value}`, JSON.stringify(completedChallenge))
     } else {
-      // 우리가 제공하는 도전과제 (기존 방식 유지)
       localStorage.setItem(`challenge_${challengeId.value}`, JSON.stringify(completedChallenge))
     }
     
     showConfirmModal.value = false
     showSuccessModal.value = true
+
   } catch (error) {
     console.error('❌ API 호출 에러:', error)
     
-    // 상세 에러 정보 출력
-    if (error.response) {
-      console.error('응답 상태:', error.response.status)
-      console.error('응답 데이터:', error.response.data)
-      console.error('응답 헤더:', error.response.headers)
+    if (error.code === 'ERR_NETWORK') {
+      console.log('🔍 Network Error 상세 분석:')
+      console.log('- readyState:', error.request?.readyState)
+      console.log('- status:', error.request?.status)
+      console.log('- responseText:', error.request?.responseText)
       
-      // 백엔드 에러 메시지 표시
-      const errorMessage = error.response.data?.message || 
-                          error.response.data?.error || 
-                          `서버 오류 (${error.response.status})`
-      alert(`도전 인증 실패: ${errorMessage}`)
-    } else if (error.request) {
-      console.error('요청이 전송되지 않음:', error.request)
-      alert('서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.')
+      // 백엔드 로그 확인 요청
+      alert(`네트워크 오류가 발생했습니다. 
+
+가능한 원인:
+1. 서버에서 파일 처리 중 오류 발생
+2. S3 업로드 실패  
+3. 데이터베이스 오류
+
+백엔드 서버 로그를 확인해주세요.`)
+      
+    } else if (error.code === 'ECONNABORTED') {
+      alert('요청 시간이 초과되었습니다. 파일 크기를 줄이거나 나중에 다시 시도해주세요.')
+    } else if (error.response) {
+      const status = error.response.status
+      const errorMessage = error.response.data?.message || `서버 오류 (${status})`
+      alert(`서버 오류: ${errorMessage}`)
     } else {
-      console.error('요청 설정 오류:', error.message)
-      alert('요청 처리 중 오류가 발생했습니다.')
+      alert('알 수 없는 오류가 발생했습니다.')
     }
+    
   } finally {
     confirming.value = false
+  }
+}
+
+// ==========  간단한 테스트 함수  ==========
+const testSmallFile = async () => {
+  try {
+    // 매우 작은 더미 파일로 테스트
+    const dummyFile = new File(['test'], 'test.txt', { type: 'text/plain' })
+    const testFormData = new FormData()
+    testFormData.append('imageFile', dummyFile)
+    testFormData.append('imageDescription', 'test description')
+    
+    console.log('🧪 작은 파일로 테스트...')
+    
+    const response = await axios.post(
+      `/api/v1/admin/challenges/${challengeId.value}/missionFinishUpdate`,
+      testFormData,
+      {
+        withCredentials: true,
+        timeout: 10000
+      }
+    )
+    
+    console.log('✅ 작은 파일 테스트 성공:', response.data)
+    
+  } catch (error) {
+    console.error('❌ 작은 파일 테스트 실패:', error)
   }
 }
 
