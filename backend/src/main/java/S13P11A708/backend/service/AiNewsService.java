@@ -19,6 +19,7 @@ import org.apache.http.impl.client.AIMDBackoffManager;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.swing.text.html.Option;
 import java.time.LocalDateTime;
@@ -45,7 +46,7 @@ public class AiNewsService {
     public List<AiNewsResponseDto> getAiNewsList(Long userId) {
         SeniorCenter seniorCenter = validateMemberAndGetSeniorCenter(userId);
 
-        List<AiNews> newsList = aiNewsRepository.findBySeniorCenter_IdOrderByCreatedAtDesc(seniorCenter.getId());
+        List<AiNews> newsList = aiNewsRepository.findBySeniorCenterIdOrderByCreatedAtDesc(seniorCenter.getId());
 
         return newsList.stream()
                 .map(AiNewsResponseDto::from)
@@ -53,7 +54,7 @@ public class AiNewsService {
     }
 
     /**
-     * AI 신문 상세 조회 -> 지울 준비
+     * AI 신문 상세 조회
      */
     public AiNewsResponseDto getAiNewsDetail(Long newsId, Long userId) {
         SeniorCenter seniorCenter = validateMemberAndGetSeniorCenter(userId);
@@ -67,6 +68,30 @@ public class AiNewsService {
         }
 
         return AiNewsResponseDto.from(aiNews);
+    }
+
+    /**
+     * AI 신문 PDF URL 조회
+     */
+    public String getNewsPdfUrl(Long userId, Long newsId) {
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        AiNews aiNews = aiNewsRepository.findById(newsId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 AI 신문을 찾을 수 없습니다."));
+
+
+        // 같은 센터 소속인지 확인
+        if (!aiNews.getSeniorCenter().getId().equals(user.getSeniorCenter().getId())) {
+            throw new IllegalArgumentException("해당 AI 신문에 대한 권한이 없습니다.");
+        }
+
+        if (aiNews.getPdfUrl() == null || aiNews.getPdfUrl().isEmpty()) {
+            throw new IllegalArgumentException("생성된 PDF가 없습니다.");
+        }
+
+        return aiNews.getPdfUrl();
     }
 
     //== Admin 전용 메서드 ==//
@@ -147,39 +172,39 @@ public class AiNewsService {
     }
 
     /**
-     * 프론트에서 생성된 PDF URL을 받아서 S3에 저장 (Admin 전용)
+     * AI 신문 PDF 업로드 및 저장
      */
-    public GeneratePdfUrlResponseDto savePdfFromUrl(SavedPdfRequestDto requestDto, Long userId) {
+    public String uploadNewsPdf(Long userId, Long newsId, MultipartFile pdfFile) {
+
+        SeniorCenter seniorCenter = validateAdminAndGetSeniorCenter(userId);
+
+        AiNews aiNews = aiNewsRepository.findById(newsId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 AI 신문을 찾을 수 없습니다."));
+
+        if (!aiNews.getSeniorCenter().getId().equals(seniorCenter.getId())) {
+            throw new IllegalArgumentException("해당 AI 신문에 대한 권한이 없습니다.");
+        }
+
         try {
-            SeniorCenter seniorCenter = validateAdminAndGetSeniorCenter(userId);
+            // S3에 PDF 업로드
+            String fileName = String.format("ai-news/%s/%d/%d_%d.pdf",
+                    seniorCenter.getCenterName(),
+                    seniorCenter.getId(),
+                    aiNews.getYear(),
+                    aiNews.getMonth());
 
-            AiNews aiNews = aiNewsRepository.findById(requestDto.getNewsId())
-                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 AI 신문입니다."));
+            String pdfUrl = s3Service.uploadMultipartFile(pdfFile, fileName);
 
-            // 권한 확인
-            if (!aiNews.getSeniorCenter().getId().equals(seniorCenter.getId())) {
-                throw new IllegalArgumentException("해당 AI 신문에 대한 권한이 없습니다.");
-            }
-
-            // PDF URL 유효성 검증
-            if (requestDto.getPdfUrl() == null || requestDto.getPdfUrl().trim().isEmpty()) {
-                throw new IllegalArgumentException("PDF URL이 필요합니다.");
-            }
-
-            // PDF 다운로드 및 S3 업로드
-            String s3PdfUrl = s3Service.downloadAndUploadPdf(
-                    requestDto.getPdfUrl(),
-                    generateS3FileName(seniorCenter.getCenterName(), aiNews.getYear(), aiNews.getMonth()));
-
-            // AI News에 PDF URL 및 생성 상태 업데이트
-            aiNews.updatePdfUrl(s3PdfUrl);
+            // AI 신문 엔티티에 PDF URL 저장
+            aiNews.updatePdfUrl(pdfUrl);
             aiNews.updateGenerated(true);
-            AiNews updatedAiNews = aiNewsRepository.save(aiNews);
 
-            return GeneratePdfUrlResponseDto.from(updatedAiNews);
+            aiNewsRepository.save(aiNews);
+
+            return pdfUrl;
 
         } catch (Exception e) {
-            throw new RuntimeException("AI 신문 PDF 저장 중 오류가 발생했습니다: " + e.getMessage(), e);
+            throw new RuntimeException("PDF 업로드 중 오류가 발생했습니다: " + e.getMessage(), e);
         }
     }
 
@@ -225,11 +250,4 @@ public class AiNewsService {
 
         return seniorCenter;
     }
-
-    //== ==//
-    private String generateS3FileName(String seniorCenterName, Integer year, Integer month) {
-        return String.format("ai-news/%s/%d_%02d_news.pdf",
-                seniorCenterName, year, month);
-    }
-
 }
