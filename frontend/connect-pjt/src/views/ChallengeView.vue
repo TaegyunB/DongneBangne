@@ -37,17 +37,25 @@
         <div class="challenge-content">
           <div class="text-content">
             <div class="title-with-buttons">
-              <h2>{{ challenge.challengeTitle || challenge.title }}</h2>
-              <!-- userRole이 admin일 때만 수정/삭제 버튼 표시 -->
-              <div v-if="userRole === 'ADMIN' && index >= 2 && !challenge.isEmpty" class="action-buttons">
-                <button class="edit-btn" @click.stop="editChallenge(index)">수정</button>
-                <button class="delete-btn" @click.stop="showDeleteConfirm(index)">삭제</button>
+              <h2>{{ getDisplayTitle(challenge, index) }}</h2>
+              <!-- 기존 수정/삭제 버튼 또는 새로운 생성 버튼 -->
+              <div v-if="shouldShowActionButtons(challenge, index)" class="action-buttons">
+                <!-- 도전이 있을 때: 수정/삭제 버튼 -->
+                <template v-if="!challenge.isEmpty">
+                  <button class="edit-btn" @click.stop="editChallenge(index)">수정</button>
+                  <button class="delete-btn" @click.stop="showDeleteConfirm(index)">삭제</button>
+                </template>
+                <!-- 도전이 없을 때: 생성 버튼 -->
+                <template v-else>
+                  <button class="create-btn" @click.stop="moveToCreate()">생성</button>
+                </template>
               </div>
             </div>
-            <p>{{ challenge.description }}</p>
+            <p>{{ getDisplayDescription(challenge, index) }}</p>
           </div>
           <!-- 완료/미완료 상태 표시만 (클릭 불가) -->
           <div 
+            v-if="!challenge.isEmpty"
             class="challenge-complete-btn"
             :class="{ 'completed': isCompleted(challenge) }"
           >
@@ -145,11 +153,6 @@
         </div>
       </div>
     </div>
-
-    <!-- 생성 버튼 - userRole이 admin일 때만 표시 -->
-    <div class="create-challenge" v-if="userRole === 'ADMIN' && shouldShowCreateButton">
-      <button class="challenge-btn" @click="moveToCreate()">도전과제 생성하기</button>
-    </div>
   </div>
 </template>
 
@@ -184,14 +187,6 @@ const modals = ref({
   delete: { show: false, showFinal: false, selectedChallenge: null, selectedIndex: null }
 })
 
-// 계산된 속성
-const shouldShowCreateButton = computed(() => {
-  const customChallengeCount = challenges.value.filter((challenge, index) => 
-    index >= 2 && challenge.challengeType === 'CUSTOM' && !challenge.isEmpty
-  ).length
-  return customChallengeCount < 2
-})
-
 // 모달 상태 단축 접근
 const showModal = computed(() => modals.value.detail.show)
 const selectedChallenge = computed(() => modals.value.detail.selectedChallenge)
@@ -202,7 +197,43 @@ const editForm = computed(() => modals.value.edit.form)
 const showDeleteModal = computed(() => modals.value.delete.show)
 const showFinalDeleteModal = computed(() => modals.value.delete.showFinal)
 
-// 핵심 기능 함수들 
+// 새로운 유틸리티 함수들
+const getDisplayTitle = (challenge, index) => {
+  if (!challenge.isEmpty) {
+    return challenge.challengeTitle || challenge.title
+  }
+  
+  // 빈 도전인 경우
+  if (index >= 2) { // 3, 4번째 칸 (커스텀 도전)
+    return userRole.value === 'ADMIN' 
+      ? '도전과제를 생성해주세요' 
+      : '아직 도전과제가 등록되지 않았습니다'
+  } else { // 1, 2번째 칸 (서비스 제공 도전)
+    return '준비 중입니다.'
+  }
+}
+
+const getDisplayDescription = (challenge, index) => {
+  if (!challenge.isEmpty) {
+    return challenge.description
+  }
+  
+  // 빈 도전인 경우
+  if (index >= 2) { // 3, 4번째 칸 (커스텀 도전)
+    return userRole.value === 'ADMIN' 
+      ? '새로운 도전과제를 만들어보세요.' 
+      : '관리자가 도전과제를 등록하면 참여할 수 있습니다.'
+  } else { // 1, 2번째 칸 (서비스 제공 도전)
+    return '곧 새로운 도전과제가 업데이트됩니다.'
+  }
+}
+
+const shouldShowActionButtons = (challenge, index) => {
+  // ADMIN이고 3,4번째 칸(커스텀 도전과제)인 경우에만 버튼 표시
+  return userRole.value === 'ADMIN' && index >= 2
+}
+
+// 기존 핵심 기능 함수들 
 const isCompleted = (challenge) => {
   if (challenge.id) {
     // API에서 받은 도전과제 (서비스 제공 또는 커스텀)
@@ -510,512 +541,472 @@ watch(() => router.currentRoute.value, async () => {
 </script>
 
 <style>
-        /* 기본 스타일 */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+    /* 기본 스타일 */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: #f8f9fa;
-            color: #333;
-            line-height: 1.6;
-        }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background-color: #f8f9fa;
+        color: #333;
+        line-height: 1.6;
+    }
 
-        /* 메인 컬러 변수 */
-        :root {
-            --primary-orange: #FF6B35;
-            --secondary-orange: #FFE5DE;
-            --primary-blue: #4A90E2;
-            --secondary-blue: #E8F4FD;
-            --neutral-gray: #f5f5f5;
-            --dark-gray: #666;
-            --text-black: #333;
-            --border-light: #e0e0e0;
-        }
+    /* 메인 컬러 변수 */
+    :root {
+        --primary-orange: #FF6B35;
+        --secondary-orange: #FFE5DE;
+        --primary-blue: #4A90E2;
+        --secondary-blue: #E8F4FD;
+        --primary-green: #28a745;
+        --neutral-gray: #f5f5f5;
+        --dark-gray: #666;
+        --text-black: #333;
+        --border-light: #e0e0e0;
+    }
 
-        /* 헤더 */
+    /* 헤더 */
+    .header {
+        text-align: center;
+        margin: 30px auto;
+        font-size: 32px;
+        font-weight: 700;
+        color: var(--text-black);
+    }
+
+    /* 진행률 섹션 */
+    .progress-container {
+        max-width: 800px;
+        width: 90%;
+        margin: 30px auto;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        background: white;
+        padding: 25px;
+        border-radius: 16px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    }
+
+    .progress-container h3 {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--text-black);
+        min-width: 80px;
+    }
+
+    .progress-bar {
+        flex: 1;
+        height: 12px;
+        border-radius: 8px;
+        background: var(--neutral-gray);
+        overflow: hidden;
+    }
+
+    .inner-bar {
+        height: 100%;
+        border-radius: 8px;
+        background: linear-gradient(90deg, var(--primary-orange), var(--primary-blue));
+        transition: width 0.3s ease;
+    }
+
+    /* 메시지 박스 */
+    .message-box {
+        max-width: 800px;
+        width: 90%;
+        margin: 20px auto;
+        color: var(--primary-blue);
+        font-weight: 600;
+        text-align: center;
+        padding: 20px;
+        background: var(--secondary-blue);
+        border-radius: 16px;
+        font-size: 18px;
+        border: 2px solid rgba(74, 144, 226, 0.1);
+    }
+
+    /* 도전과제 컨테이너 */
+    .challenge-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        max-width: 1200px;
+        width: 90%;
+        margin: 30px auto;
+        gap: 24px;
+    }
+
+    .single-challenge {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        cursor: pointer;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        min-height: 420px;
+        transition: all 0.2s ease;
+        border: 2px solid transparent;
+    }
+
+    .single-challenge:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        border-color: var(--primary-orange);
+    }
+
+    .challenge-image {
+        width: 100%;
+        height: 200px;
+        overflow: hidden;
+        background: var(--neutral-gray);
+    }
+
+    .challenge-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center;
+    }
+
+    .challenge-content {
+        position: relative;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        background: white;
+    }
+
+    .text-content {
+        flex: 1;
+    }
+
+    .title-with-buttons {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+    }
+
+    .challenge-content h2 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 700;
+        flex: 1;
+        color: var(--text-black);
+        line-height: 1.3;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+        margin-left: 12px;
+    }
+
+    .edit-btn, .delete-btn, .create-btn {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        color: white;
+        transition: all 0.2s ease;
+    }
+
+    .edit-btn {
+        background-color: var(--primary-blue);
+    }
+
+    .edit-btn:hover {
+        background-color: #357abd;
+    }
+
+    .delete-btn {
+        background-color: #e74c3c;
+    }
+
+    .delete-btn:hover {
+        background-color: #c0392b;
+    }
+
+    .create-btn {
+        background-color: var(--primary-green);
+    }
+
+    .create-btn:hover {
+        background-color: #218838;
+    }
+
+    .challenge-content p {
+        margin: 8px 0 20px 0;
+        font-size: 16px;
+        font-weight: 400;
+        line-height: 1.5;
+        color: var(--dark-gray);
+    }
+
+    /* 완료 버튼 */
+    .challenge-complete-btn {
+        position: absolute;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-weight: 600;
+        color: white;
+        width: 100px;
+        height: 36px;
+        border: none;
+        font-size: 16px;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--dark-gray);
+        transition: all 0.2s ease;
+    }
+
+    .challenge-complete-btn.completed {
+        background-color: var(--primary-blue);
+    }
+
+    /* 모달 스타일 */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(4px);
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 20px;
+        padding: 32px;
+        width: 90%;
+        max-width: 480px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        text-align: center;
+        z-index: 1001;
+        position: relative;
+    }
+
+    .modal-close-btn:hover {
+        background-color: var(--border-light);
+        color: var(--text-black);
+    }
+
+    .modal-content h2 {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 16px;
+        color: var(--text-black);
+    }
+
+    .modal-description {
+        font-size: 16px;
+        line-height: 1.6;
+        margin-bottom: 20px;
+        color: var(--dark-gray);
+    }
+
+    .modal-place {
+        font-size: 16px;
+        color: var(--dark-gray);
+        margin-bottom: 24px;
+        padding: 12px;
+        background: var(--neutral-gray);
+        border-radius: 12px;
+    }
+
+    .modal-button {
+        background-color: var(--primary-orange);
+        color: white;
+        padding: 14px 28px;
+        font-size: 16px;
+        font-weight: 600;
+        border-radius: 12px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .modal-button:hover {
+        background-color: #e55a2b;
+        transform: translateY(-1px);
+    }
+
+    .completed-message {
+        background-color: var(--secondary-blue);
+        color: var(--primary-blue);
+        padding: 16px 24px;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        border: 2px solid rgba(74, 144, 226, 0.2);
+    }
+
+    /* 수정 모달 */
+    .edit-modal {
+        max-width: 520px;
+        text-align: left;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: var(--text-black);
+        font-size: 16px;
+    }
+
+    .form-input, .form-textarea {
+        width: 100%;
+        padding: 14px;
+        border: 2px solid var(--border-light);
+        border-radius: 12px;
+        font-size: 16px;
+        transition: border-color 0.3s ease;
+        font-family: inherit;
+    }
+
+    .form-input:focus, .form-textarea:focus {
+        outline: none;
+        border-color: var(--primary-orange);
+    }
+
+    .form-textarea {
+        resize: vertical;
+        min-height: 100px;
+    }
+
+    /* 모달 버튼들 */
+    .modal-buttons {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        margin-top: 24px;
+    }
+
+    .btn-cancel, .btn-save, .delete-confirm-btn, .delete-success-btn {
+        padding: 14px 24px;
+        border: none;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-cancel {
+        background-color: var(--neutral-gray);
+        color: var(--dark-gray);
+    }
+
+    .btn-cancel:hover {
+        background-color: var(--border-light);
+    }
+
+    .btn-save, .delete-confirm-btn, .delete-success-btn {
+        background-color: var(--primary-orange);
+        color: white;
+    }
+
+    .btn-save:hover:not(:disabled), .delete-confirm-btn:hover, .delete-success-btn:hover {
+        background-color: #e55a2b;
+        transform: translateY(-1px);
+    }
+
+    .btn-save:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .delete-modal {
+        max-width: 400px;
+    }
+
+    .delete-confirm-btn {
+        width: 140px;
+    }
+
+    .delete-success-btn {
+        width: 180px;
+    }
+
+    /* 반응형 디자인 */
+    @media (max-width: 768px) {
         .header {
-            text-align: center;
-            margin: 30px auto;
-            font-size: 32px;
-            font-weight: 700;
-            color: var(--text-black);
+            font-size: 28px;
+            margin: 20px auto;
         }
 
-        /* 진행률 섹션 */
         .progress-container {
-            max-width: 800px;
-            width: 90%;
-            margin: 30px auto;
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            background: white;
-            padding: 25px;
-            border-radius: 16px;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+            flex-direction: column;
+            gap: 16px;
+            text-align: center;
         }
 
         .progress-container h3 {
-            font-size: 20px;
-            font-weight: 600;
-            color: var(--text-black);
-            min-width: 80px;
+            min-width: auto;
         }
 
-        .progress-bar {
-            flex: 1;
-            height: 12px;
-            border-radius: 8px;
-            background: var(--neutral-gray);
-            overflow: hidden;
-        }
-
-        .inner-bar {
-            height: 100%;
-            border-radius: 8px;
-            background: linear-gradient(90deg, var(--primary-orange), var(--primary-blue));
-            transition: width 0.3s ease;
-        }
-
-        /* 메시지 박스 */
-        .message-box {
-            max-width: 800px;
-            width: 90%;
-            margin: 20px auto;
-            color: var(--primary-blue);
-            font-weight: 600;
-            text-align: center;
-            padding: 20px;
-            background: var(--secondary-blue);
-            border-radius: 16px;
-            font-size: 18px;
-            border: 2px solid rgba(74, 144, 226, 0.1);
-        }
-
-        /* 도전과제 컨테이너 */
         .challenge-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            max-width: 1200px;
-            width: 90%;
-            margin: 30px auto;
-            gap: 24px;
-        }
-
-        .single-challenge {
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-            cursor: pointer;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            min-height: 420px;
-            transition: all 0.2s ease;
-            border: 2px solid transparent;
-        }
-
-        .single-challenge:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-            border-color: var(--primary-orange);
-        }
-
-        .challenge-image {
-            width: 100%;
-            height: 200px;
-            overflow: hidden;
-            background: var(--neutral-gray);
-        }
-
-        .challenge-img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            object-position: center;
-        }
-
-        .challenge-content {
-            position: relative;
-            padding: 24px;
-            display: flex;
-            flex-direction: column;
-            flex: 1;
-            background: white;
-        }
-
-        .text-content {
-            flex: 1;
+            grid-template-columns: 1fr;
+            gap: 16px;
         }
 
         .title-with-buttons {
-            display: flex;
-            justify-content: space-between;
+            flex-direction: column;
             align-items: flex-start;
-            margin-bottom: 12px;
-        }
-
-        .challenge-content h2 {
-            margin: 0;
-            font-size: 20px;
-            font-weight: 700;
-            flex: 1;
-            color: var(--text-black);
-            line-height: 1.3;
         }
 
         .action-buttons {
-            display: flex;
-            gap: 8px;
-            margin-left: 12px;
+            margin-left: 0;
+            margin-top: 8px;
         }
 
-        .edit-btn, .delete-btn {
-            padding: 6px 12px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            color: white;
-            transition: all 0.2s ease;
-        }
-
-        .edit-btn {
-            background-color: var(--primary-blue);
-        }
-
-        .edit-btn:hover {
-            background-color: #357abd;
-        }
-
-        .delete-btn {
-            background-color: #e74c3c;
-        }
-
-        .delete-btn:hover {
-            background-color: #c0392b;
-        }
-
-        .challenge-content p {
-            margin: 8px 0 20px 0;
-            font-size: 16px;
-            font-weight: 400;
-            line-height: 1.5;
-            color: var(--dark-gray);
-        }
-
-        /* 완료 버튼 */
-        .challenge-complete-btn {
-            position: absolute;
-            bottom: 24px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-weight: 600;
-            color: white;
-            width: 100px;
-            height: 36px;
-            border: none;
-            font-size: 16px;
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: var(--dark-gray);
-            transition: all 0.2s ease;
-        }
-
-        .challenge-complete-btn.completed {
-            background-color: var(--primary-blue);
-        }
-
-        /* 생성 버튼 */
-        .create-challenge {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            width: 100%;
-            margin: 30px 0;
-        }
-
-        .challenge-btn {
-            background: linear-gradient(135deg, var(--primary-orange), var(--primary-blue));
-            color: white;
-            width: 280px;
-            height: 56px;
-            border: none;
-            cursor: pointer;
-            font-size: 18px;
-            font-weight: 600;
-            border-radius: 16px;
-            transition: all 0.2s ease;
-            box-shadow: 0 4px 16px rgba(255, 107, 53, 0.3);
-        }
-
-        .challenge-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
-        }
-
-        /* 모달 스타일 */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            backdrop-filter: blur(4px);
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: 20px;
-            padding: 32px;
-            width: 90%;
-            max-width: 480px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-            text-align: center;
-            z-index: 1001;
-            position: relative;
-        }
-
-        .modal-close-btn {
-            position: absolute;
-            top: 16px;
-            right: 16px;
-            width: 32px;
-            height: 32px;
-            border: none;
-            background: var(--neutral-gray);
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--dark-gray);
-            cursor: pointer;
-            border-radius: 50%;
-            transition: all 0.2s ease;
-        }
-
-        .modal-close-btn:hover {
-            background-color: var(--border-light);
-            color: var(--text-black);
-        }
-
-        .modal-content h2 {
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 16px;
-            color: var(--text-black);
-        }
-
-        .modal-description {
-            font-size: 16px;
-            line-height: 1.6;
-            margin-bottom: 20px;
-            color: var(--dark-gray);
-        }
-
-        .modal-place {
-            font-size: 16px;
-            color: var(--dark-gray);
-            margin-bottom: 24px;
-            padding: 12px;
-            background: var(--neutral-gray);
-            border-radius: 12px;
-        }
-
-        .modal-button {
-            background-color: var(--primary-orange);
-            color: white;
-            padding: 14px 28px;
-            font-size: 16px;
-            font-weight: 600;
-            border-radius: 12px;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .modal-button:hover {
-            background-color: #e55a2b;
-            transform: translateY(-1px);
-        }
-
-        .completed-message {
-            background-color: var(--secondary-blue);
-            color: var(--primary-blue);
-            padding: 16px 24px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            border: 2px solid rgba(74, 144, 226, 0.2);
-        }
-
-        /* 수정 모달 */
-        .edit-modal {
-            max-width: 520px;
-            text-align: left;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: var(--text-black);
-            font-size: 16px;
-        }
-
-        .form-input, .form-textarea {
-            width: 100%;
-            padding: 14px;
-            border: 2px solid var(--border-light);
-            border-radius: 12px;
-            font-size: 16px;
-            transition: border-color 0.3s ease;
-            font-family: inherit;
-        }
-
-        .form-input:focus, .form-textarea:focus {
-            outline: none;
-            border-color: var(--primary-orange);
-        }
-
-        .form-textarea {
-            resize: vertical;
-            min-height: 100px;
-        }
-
-        /* 모달 버튼들 */
         .modal-buttons {
-            display: flex;
+            flex-direction: column;
             gap: 12px;
-            justify-content: center;
-            margin-top: 24px;
         }
 
-        .btn-cancel, .btn-save, .delete-confirm-btn, .delete-success-btn {
-            padding: 14px 24px;
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
+        .btn-cancel, .btn-save {
+            width: 100%;
         }
+    }
 
-        .btn-cancel {
-            background-color: var(--neutral-gray);
-            color: var(--dark-gray);
+    /* 접근성 개선 */
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
         }
+    }
 
-        .btn-cancel:hover {
-            background-color: var(--border-light);
+    /* 고대비 모드 지원 */
+    @media (prefers-contrast: high) {
+        .single-challenge {
+            border: 2px solid var(--text-black);
         }
-
-        .btn-save, .delete-confirm-btn, .delete-success-btn {
-            background-color: var(--primary-orange);
-            color: white;
+        
+        .modal-content {
+            border: 2px solid var(--text-black);
         }
-
-        .btn-save:hover:not(:disabled), .delete-confirm-btn:hover, .delete-success-btn:hover {
-            background-color: #e55a2b;
-            transform: translateY(-1px);
-        }
-
-        .btn-save:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .delete-modal {
-            max-width: 400px;
-        }
-
-        .delete-confirm-btn {
-            width: 140px;
-        }
-
-        .delete-success-btn {
-            width: 180px;
-        }
-
-        /* 반응형 디자인 */
-        @media (max-width: 768px) {
-            .header {
-                font-size: 28px;
-                margin: 20px auto;
-            }
-
-            .progress-container {
-                flex-direction: column;
-                gap: 16px;
-                text-align: center;
-            }
-
-            .progress-container h3 {
-                min-width: auto;
-            }
-
-            .challenge-container {
-                grid-template-columns: 1fr;
-                gap: 16px;
-            }
-
-            .title-with-buttons {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .action-buttons {
-                margin-left: 0;
-                margin-top: 8px;
-            }
-
-            .modal-buttons {
-                flex-direction: column;
-                gap: 12px;
-            }
-
-            .btn-cancel, .btn-save {
-                width: 100%;
-            }
-
-            .challenge-btn {
-                width: 100%;
-                max-width: 320px;
-            }
-        }
-
-        /* 접근성 개선 */
-        @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-            }
-        }
-
-        /* 고대비 모드 지원 */
-        @media (prefers-contrast: high) {
-            .single-challenge {
-                border: 2px solid var(--text-black);
-            }
-            
-            .modal-content {
-                border: 2px solid var(--text-black);
-            }
-        }
-    </style>
+    }
+</style>
