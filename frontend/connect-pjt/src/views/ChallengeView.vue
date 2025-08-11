@@ -248,6 +248,7 @@ const fetchChallenges = async () => {
       }
     })
     console.log('도전과제 목록 응답:', response.data)
+
     
     const data = response.data
     
@@ -261,6 +262,10 @@ const fetchChallenges = async () => {
     
     // 커스텀 도전과제
     const customChallenges = data.customChallenges || []
+
+    //디버깅
+    console.log(serviceChallenges[0])
+    console.log(serviceChallenges[1])
     
     // 4개의 슬롯에 배치
     challenges.value = [
@@ -502,194 +507,513 @@ watch(() => router.currentRoute.value, async () => {
 }, { immediate: true })
 </script>
 
-<style scoped>
-/* 레이아웃 */
-.header { text-align: center; margin: 20px auto; }
+<style>
+        /* 기본 스타일 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-.progress-container, .message-box {
-  max-width: 800px; width: 90%; margin: 20px auto;
-}
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            line-height: 1.6;
+        }
 
-.progress-container {
-  display: flex; align-items: center; gap: 15px;
-}
+        /* 메인 컬러 변수 */
+        :root {
+            --primary-orange: #FF6B35;
+            --secondary-orange: #FFE5DE;
+            --primary-blue: #4A90E2;
+            --secondary-blue: #E8F4FD;
+            --neutral-gray: #f5f5f5;
+            --dark-gray: #666;
+            --text-black: #333;
+            --border-light: #e0e0e0;
+        }
 
-.progress-bar { 
-  flex: 1; height: 15px; border-radius: 10px; background: #E6E6E6; 
-}
+        /* 헤더 */
+        .header {
+            text-align: center;
+            margin: 30px auto;
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-black);
+        }
 
-.inner-bar { 
-  height: 100%; border-radius: 10px; background: #107C10; 
-}
+        /* 진행률 섹션 */
+        .progress-container {
+            max-width: 800px;
+            width: 90%;
+            margin: 30px auto;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: white;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+        }
 
-.message-box {
-  color: #115EA3; font-weight: bold; text-align: center; 
-  padding: 5px; background: #EBF3FC; border-radius: 30px; font-size: 20px; 
-}
+        .progress-container h3 {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-black);
+            min-width: 80px;
+        }
 
-/* 도전과제 컨테이너 */
-.challenge-container {
-  display: flex; justify-content: space-between; align-items: stretch;
-  max-width: 1200px; width: 90%; margin: 20px auto; gap: 20px;
-}
+        .progress-bar {
+            flex: 1;
+            height: 12px;
+            border-radius: 8px;
+            background: var(--neutral-gray);
+            overflow: hidden;
+        }
 
-.single-challenge {
-  flex: 1; color: black; font-weight: bold; border-radius: 10px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4); cursor: pointer;
-  position: relative; overflow: hidden; display: flex; flex-direction: column; height: 480px;
-}
+        .inner-bar {
+            height: 100%;
+            border-radius: 8px;
+            background: linear-gradient(90deg, var(--primary-orange), var(--primary-blue));
+            transition: width 0.3s ease;
+        }
 
-.challenge-image { width: 100%; aspect-ratio: 1; overflow: hidden; }
-.challenge-img { width: 100%; height: 100%; object-fit: cover; object-position: center; }
+        /* 메시지 박스 */
+        .message-box {
+            max-width: 800px;
+            width: 90%;
+            margin: 20px auto;
+            color: var(--primary-blue);
+            font-weight: 600;
+            text-align: center;
+            padding: 20px;
+            background: var(--secondary-blue);
+            border-radius: 16px;
+            font-size: 18px;
+            border: 2px solid rgba(74, 144, 226, 0.1);
+        }
 
-.challenge-content { 
-  position: relative; padding: 15px; display: flex; flex-direction: column; flex: 1;
-}
+        /* 도전과제 컨테이너 */
+        .challenge-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            max-width: 1200px;
+            width: 90%;
+            margin: 30px auto;
+            gap: 24px;
+        }
 
-.text-content { flex: 1; }
-.text-content p {font-size: 18px !important;}
-.title-with-buttons {
-  display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;
-}
+        .single-challenge {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+            cursor: pointer;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 420px;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
 
-.challenge-content h2 { margin: 0; font-size: 23px; flex: 1; }
+        .single-challenge:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            border-color: var(--primary-orange);
+        }
 
-.action-buttons { display: flex; gap: 5px; margin-left: 10px; }
+        .challenge-image {
+            width: 100%;
+            height: 200px;
+            overflow: hidden;
+            background: var(--neutral-gray);
+        }
 
-.edit-btn, .delete-btn {
-  padding: 4px 8px; border: none; border-radius: 4px; font-size: 16px; 
-  font-weight: bold; cursor: pointer; color: white;
-}
+        .challenge-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+        }
 
-.edit-btn { background-color: #28a745; }
-.edit-btn:hover { background-color: #218838; }
-.delete-btn { background-color: #dc3545; }
-.delete-btn:hover { background-color: #c82333; }
+        .challenge-content {
+            position: relative;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            background: white;
+        }
 
-.challenge-content p { 
-  margin: 5px 0 15px 0; font-size: 16px; font-weight: normal; line-height: 1.4; 
-}
+        .text-content {
+            flex: 1;
+        }
 
-/* 도전과제 배경색 */
-.challenge-1 .challenge-content { background: #FFBF8F; }
-.challenge-1:hover .challenge-content { background: #FFD4B3; }
-.challenge-2 .challenge-content { background: #97B9FF; }
-.challenge-2:hover .challenge-content { background: #B3D1FF; }
-.challenge-3 .challenge-content { background: #ABBAF9; }
-.challenge-3:hover .challenge-content { background: #C4D0FB; }
-.challenge-4 .challenge-content { background: #F1C399; }
-.challenge-4:hover .challenge-content { background: #F5D6B8; }
+        .title-with-buttons {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
 
-.challenge-complete-btn {
-  position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-  font-weight: bold; color: white; width: 120px; height: 35px; border: none;
-  font-size: 20px; border-radius: 15px; 
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1); background-color: #FF8120;
-  display: flex; align-items: center; justify-content: center;
-}
+        .challenge-content h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
+            flex: 1;
+            color: var(--text-black);
+            line-height: 1.3;
+        }
 
-.challenge-complete-btn.completed { background-color: #3074FF; }
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            margin-left: 12px;
+        }
 
-/* 생성 버튼 */
-.create-challenge { display: flex; justify-content: center; align-items: center; width: 100%; }
+        .edit-btn, .delete-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            color: white;
+            transition: all 0.2s ease;
+        }
 
-.challenge-btn {
-  margin: 10px; background-color: #3074FF; font-weight: bold; color: white;
-  width: 320px; height: 65px; border: none; cursor: pointer;
-  font-size: 23px; border-radius: 15px; 
-}
+        .edit-btn {
+            background-color: var(--primary-blue);
+        }
 
-.challenge-btn:hover { background-color: #a2b7e3; }
+        .edit-btn:hover {
+            background-color: #357abd;
+        }
 
-/* 모달 공통 스타일 */
-.modal-overlay {
-  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-  background: rgba(0, 0, 0, 0.4); z-index: 1000;
-  display: flex; align-items: center; justify-content: center;
-}
+        .delete-btn {
+            background-color: #e74c3c;
+        }
 
-.modal-content {
-  background: white; border-radius: 16px; padding: 30px 40px;
-  width: 90%; max-width: 480px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-  text-align: center; z-index: 1001; position: relative;
-}
+        .delete-btn:hover {
+            background-color: #c0392b;
+        }
 
-.modal-close-btn {
-  position: absolute; top: 15px; right: 15px; width: 30px; height: 30px;
-  border: none; background: none; font-size: 24px; font-weight: bold;
-  color: #666; cursor: pointer; border-radius: 50%;
-}
+        .challenge-content p {
+            margin: 8px 0 20px 0;
+            font-size: 16px;
+            font-weight: 400;
+            line-height: 1.5;
+            color: var(--dark-gray);
+        }
 
-.modal-close-btn:hover { background-color: #f0f0f0; color: #333; }
+        /* 완료 버튼 */
+        .challenge-complete-btn {
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-weight: 600;
+            color: white;
+            width: 100px;
+            height: 36px;
+            border: none;
+            font-size: 16px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--dark-gray);
+            transition: all 0.2s ease;
+        }
 
-.modal-content h2 { font-size: 28px; font-weight: bold; margin-bottom: 15px; }
+        .challenge-complete-btn.completed {
+            background-color: var(--primary-blue);
+        }
 
-.modal-description { font-size: 20px; line-height: 1.6; margin-bottom: 20px; }
+        /* 생성 버튼 */
+        .create-challenge {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            margin: 30px 0;
+        }
 
-.modal-place { font-size: 20px; color: #444; margin-bottom: 25px; }
+        .challenge-btn {
+            background: linear-gradient(135deg, var(--primary-orange), var(--primary-blue));
+            color: white;
+            width: 280px;
+            height: 56px;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 16px;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 16px rgba(255, 107, 53, 0.3);
+        }
 
-.modal-button {
-  background-color: #3074FF; color: white; padding: 12px 24px;
-  font-size: 20px; border-radius: 10px; border: none; cursor: pointer;font-weight: bold;
-}
+        .challenge-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
+        }
 
-.modal-button:hover { background-color: #6c9dff; }
+        /* 모달 스타일 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
 
-.completed-message {
-  background-color: #e8f5e8; color: #2d5a2d; padding: 12px 24px;
-  border-radius: 10px; font-size: 20px; font-weight: 600;
-}
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 32px;
+            width: 90%;
+            max-width: 480px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+            text-align: center;
+            z-index: 1001;
+            position: relative;
+        }
 
-/* 수정 모달 */
-.edit-modal { max-width: 500px; text-align: left; }
+        .modal-close-btn {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: var(--neutral-gray);
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--dark-gray);
+            cursor: pointer;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
 
-.edit-form { margin-bottom: 25px; }
+        .modal-close-btn:hover {
+            background-color: var(--border-light);
+            color: var(--text-black);
+        }
 
-.form-group { margin-bottom: 20px; margin-top: 20px;}
+        .modal-content h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--text-black);
+        }
 
-.form-group label { display: block; margin-bottom: 8px; font-weight: bold; color: #333; font-size: 20px;}
+        .modal-description {
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            color: var(--dark-gray);
+        }
 
-.form-input, .form-textarea {
-  width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;
-  font-size: 18px; transition: border-color 0.3s;
-}
+        .modal-place {
+            font-size: 16px;
+            color: var(--dark-gray);
+            margin-bottom: 24px;
+            padding: 12px;
+            background: var(--neutral-gray);
+            border-radius: 12px;
+        }
 
-.form-input:focus, .form-textarea:focus { outline: none; border-color: #3074FF; }
+        .modal-button {
+            background-color: var(--primary-orange);
+            color: white;
+            padding: 14px 28px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
 
-.form-textarea { resize: vertical; min-height: 80px; font-family: inherit; }
+        .modal-button:hover {
+            background-color: #e55a2b;
+            transform: translateY(-1px);
+        }
 
-/* 모달 버튼들 */
-.modal-buttons { display: flex; gap: 15px; justify-content: center; margin-top: 25px; }
+        .completed-message {
+            background-color: var(--secondary-blue);
+            color: var(--primary-blue);
+            padding: 16px 24px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            border: 2px solid rgba(74, 144, 226, 0.2);
+        }
 
-.btn-cancel, .btn-save, .delete-confirm-btn, .delete-success-btn {
-  padding: 12px 24px; border: none; border-radius: 8px;
-  font-size: 20px; font-weight: bold; cursor: pointer;
-}
+        /* 수정 모달 */
+        .edit-modal {
+            max-width: 520px;
+            text-align: left;
+        }
 
-.btn-cancel { background-color: #f5f5f5; color: #666; }
-.btn-cancel:hover { background-color: #e0e0e0; }
+        .form-group {
+            margin-bottom: 20px;
+        }
 
-.btn-save, .delete-confirm-btn, .delete-success-btn { 
-  background-color: #3074FF; color: white; 
-}
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-black);
+            font-size: 16px;
+        }
 
-.btn-save:hover:not(:disabled), .delete-confirm-btn:hover, .delete-success-btn:hover { 
-  background-color: #6c9dff; 
-}
+        .form-input, .form-textarea {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid var(--border-light);
+            border-radius: 12px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+            font-family: inherit;
+        }
 
-.btn-save:disabled { background-color: #ccc; cursor: not-allowed; }
+        .form-input:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--primary-orange);
+        }
 
-.delete-modal { max-width: 400px; }
-.delete-confirm-btn { width: 150px; }
-.delete-success-btn { width: 200px; }
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
 
-/* 반응형 */
-@media (max-width: 768px) {
-  .challenge-container { flex-direction: column; align-items: center; }
-  .single-challenge { width: 100%; max-width: 400px; }
-  .title-with-buttons { flex-direction: column; align-items: flex-start; }
-  .action-buttons { margin-left: 0; margin-top: 5px; }
-  .modal-buttons { flex-direction: column; gap: 10px; }
-  .btn-cancel, .btn-save { width: 100%; }
-}
-</style>
+        /* 모달 버튼들 */
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 24px;
+        }
+
+        .btn-cancel, .btn-save, .delete-confirm-btn, .delete-success-btn {
+            padding: 14px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-cancel {
+            background-color: var(--neutral-gray);
+            color: var(--dark-gray);
+        }
+
+        .btn-cancel:hover {
+            background-color: var(--border-light);
+        }
+
+        .btn-save, .delete-confirm-btn, .delete-success-btn {
+            background-color: var(--primary-orange);
+            color: white;
+        }
+
+        .btn-save:hover:not(:disabled), .delete-confirm-btn:hover, .delete-success-btn:hover {
+            background-color: #e55a2b;
+            transform: translateY(-1px);
+        }
+
+        .btn-save:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .delete-modal {
+            max-width: 400px;
+        }
+
+        .delete-confirm-btn {
+            width: 140px;
+        }
+
+        .delete-success-btn {
+            width: 180px;
+        }
+
+        /* 반응형 디자인 */
+        @media (max-width: 768px) {
+            .header {
+                font-size: 28px;
+                margin: 20px auto;
+            }
+
+            .progress-container {
+                flex-direction: column;
+                gap: 16px;
+                text-align: center;
+            }
+
+            .progress-container h3 {
+                min-width: auto;
+            }
+
+            .challenge-container {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .title-with-buttons {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .action-buttons {
+                margin-left: 0;
+                margin-top: 8px;
+            }
+
+            .modal-buttons {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .btn-cancel, .btn-save {
+                width: 100%;
+            }
+
+            .challenge-btn {
+                width: 100%;
+                max-width: 320px;
+            }
+        }
+
+        /* 접근성 개선 */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* 고대비 모드 지원 */
+        @media (prefers-contrast: high) {
+            .single-challenge {
+                border: 2px solid var(--text-black);
+            }
+            
+            .modal-content {
+                border: 2px solid var(--text-black);
+            }
+        }
+    </style>
