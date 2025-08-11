@@ -219,18 +219,19 @@ public class GameEndSocketTest {
         String wsUrl = "ws://localhost:" + port + "/ws-game";
         CountDownLatch connected = new CountDownLatch(1);
         CountDownLatch gotEnd = new CountDownLatch(1);
-        CopyOnWriteArrayList<GameInfoSocketMessage> inbox = new CopyOnWriteArrayList<>();
+        CopyOnWriteArrayList<GameEndSocketMessage> inbox = new CopyOnWriteArrayList<>();
 
         StompSessionHandler handler = new StompSessionHandlerAdapter() {
             @Override public void afterConnected(StompSession session, StompHeaders ch) {
                 System.out.println("✅ [TEST] connected (tie)");
                 connected.countDown();
+                //웹소켓 구독 (서버 브로드캐스트를 받음)
                 String dest = "/sub/games/" + roomId;
                 System.out.println("▶ [TEST] SUB " + dest);
                 session.subscribe(dest, new StompFrameHandler() {
-                    @Override public java.lang.reflect.Type getPayloadType(StompHeaders headers) { return GameInfoSocketMessage.class; }
+                    @Override public java.lang.reflect.Type getPayloadType(StompHeaders headers) { return GameEndSocketMessage.class; }
                     @Override public void handleFrame(StompHeaders headers, Object payload) {
-                        GameInfoSocketMessage msg = (GameInfoSocketMessage) payload;
+                        GameEndSocketMessage msg = (GameEndSocketMessage) payload;
                         System.out.println("📨 [TEST] RECV " + msg.getType() + " '" + msg.getPayload() + "'");
                         inbox.add(msg);
                         gotEnd.countDown();
@@ -245,7 +246,7 @@ public class GameEndSocketTest {
         assertTrue(connected.await(5, TimeUnit.SECONDS));
         assertTrue(gotEnd.await(15, TimeUnit.SECONDS));
 
-        GameInfoSocketMessage end = inbox.stream()
+        GameEndSocketMessage end = inbox.stream()
                 .filter(m -> m.getType() == GameMessageType.GAME_END)
                 .findFirst().orElseThrow();
 
