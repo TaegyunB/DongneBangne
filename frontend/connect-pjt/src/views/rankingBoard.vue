@@ -51,9 +51,9 @@
               </div>
             </div>
           </td>
-          <td class="text-center">{{ center.trotPoint.toLocaleString() }}</td>
-          <td class="text-center">{{ center.missionPoint.toLocaleString() }}</td>
-          <td class="text-blue text-center">{{ center.monthlyPoint.toLocaleString() }}</td>
+          <td class="text-center">{{ center.trotPoint ?? 0}}</td>
+          <td class="text-center">{{ center.missionPoint ?? 0 }}</td>
+          <td class="text-blue text-center">{{ center.monthlyPoint ?? 0}}</td>
         </tr>
       </tbody>
     </table>
