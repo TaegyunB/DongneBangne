@@ -1,7 +1,7 @@
 <template>
   <div class="find-senior-center">
     <main class="main-content">
-      <h1 class="headline">경로당 찾기</h1>
+      <h1 class="headline">내 소속 경로당 찾기</h1>
       <OnboardingGuide v-model="showOnboarding" @confirm="handleOnboardingConfirm" />
       <div class="search-box">
         <select v-model="selectedType" class="type-select">
@@ -175,12 +175,12 @@ function handleOnboardingConfirm(payload) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-top: 120px;
+  margin-top: 50px;
 }
 .headline {
   font-size: 42px;
   font-weight: 600;
-  margin-bottom: 50px;
+  margin-bottom: 30px;
   letter-spacing: -1px;
 }
 .search-box {
@@ -206,7 +206,7 @@ function handleOnboardingConfirm(payload) {
   padding: 8px 12px;
   border: none;
   outline: none;
-  width: 200px;
+  width: 600px;
   background: transparent;
 }
 .search-btn {
@@ -226,7 +226,7 @@ function handleOnboardingConfirm(payload) {
 
 /* 검색 결과 테이블 */
 .result-table {
-  width: 700px;
+  width: 900px;
   margin-top: 32px;
   border-collapse: collapse;
   background: #fafbfc;
