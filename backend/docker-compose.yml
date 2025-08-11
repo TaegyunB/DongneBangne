@@ -23,11 +23,14 @@ services:
       - SPRING_JPA_SHOW_SQL=true
 
       # Redis 설정
-      # - SPRING_REDIS_HOST=redis
-      # - SPRING_REDIS_PORT=6379
+      - SPRING_DATA_REDIS_HOST=dongnae-redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - SPRING_DATA_REDIS_PASSWORD=dongnaeredis
+      - SPRING_CACHE_TYPE=redis
 
     depends_on:
       - mysql
+      - redis
     networks:
       - dongnae-network
     restart: always
@@ -43,18 +46,46 @@ services:
     image: mysql:8.0
     container_name: dongnae-mysql
     ports:
-      - "3307:3306"  # 외부 접근용 (개발/디버깅용)
+      - "3307:3306"
     environment:
       - MYSQL_ROOT_PASSWORD=bangnae
       - MYSQL_DATABASE=dongnae
       - MYSQL_USER=dongnaeuser
       - MYSQL_PASSWORD=dongnaepass
-      # - MYSQL_INNODB_BUFFER_POOL_SIZE=256M
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
       - dongnae-network
     restart: always
+
+  # Redis 캐시 서버
+  redis:
+    image: redis:7-alpine
+    container_name: dongnae-redis
+    ports:
+      - "6380:6379"
+    command: >
+      redis-server
+      --requirepass dongnaeredis
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+      --appendonly yes
+      --appendfsync everysec
+      --bind 0.0.0.0
+    volumes:
+      - redis_data:/data
+    networks:
+      - dongnae-network
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "dongnaeredis", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
 
 networks:
   dongnae-network:
@@ -63,28 +94,5 @@ networks:
 volumes:
   mysql_data:
     driver: local
-  redis-data:
+  redis_data:
     driver: local
-
-  # Vue.js 프론트엔드 서비스 (포트 3000)
-  # dongnae-frontend:
-  #   image: taegyunb99/dongnae-frontend:latest
-  #   container_name: dongnae-frontend
-  #   ports:
-  #     - "3000:80"    # 시스템 nginx가 3000 포트로 프록시
-  #   environment:
-  #     - NODE_ENV=production
-  #   depends_on:
-  #     dongnae-backend:
-  #       condition: service_healthy
-  #   networks:
-  #     - dongnae-network
-  #   restart: unless-stopped
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 3
-  #     start_period: 30s
-
-#
