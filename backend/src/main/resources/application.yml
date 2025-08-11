@@ -113,6 +113,6 @@ openai:
 logging:
   level:
     org.hibernate.SQL: debug  # Hibernate가 실행하는 SQL 쿼리문을 로그에 출력
-    org.springframework.web.socket: DEBUG
-    org.springframework.messaging.simp.stomp: DEBUG
-    org.springframework.messaging.simp.broker: DEBUG
+#    org.springframework.web.socket: DEBUG
+#    org.springframework.messaging.simp.stomp: DEBUG
+#    org.springframework.messaging.simp.broker: DEBUG
