@@ -252,12 +252,6 @@ const handleKakaoLogin = () => {
   background: #12795a;
 }
 
-/* (선택) 전체 페이지 세로 스크롤 제거 */
-:global(html), :global(body) {
-  height: 100%;
-  overflow: hidden;
-}
-
 .login-cta {
   position: fixed;
   left: 50%;
