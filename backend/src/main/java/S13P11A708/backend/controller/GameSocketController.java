@@ -19,19 +19,6 @@ public class GameSocketController {
 
     private final GameService gameService;
 
-//    /**
-//     * 게임 시작 요청
-//     * 클라이언트에서 /pub/game/start로 전송
-//     */
-//    @MessageMapping("/game/start")
-//    public void startGame(GameStartSocketMessage message, Principal principal) {
-//        Long requesterId = extractUserIdFromPrincipal(principal);
-//        Long roomId = message.getRoomId();
-//
-//        log.info("[GAME_START] 요청자 ID: {}, roomId: {}", requesterId, roomId);
-//
-//        gameService.startGame(roomId, message.getUser1Id(), message.getUser2Id());
-//    }
 
     /**
      * 정답 제출, 인증 처리

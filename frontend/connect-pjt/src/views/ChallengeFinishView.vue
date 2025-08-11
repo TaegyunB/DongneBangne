@@ -44,11 +44,36 @@
             </button>
         </div>
         
-        <!-- 모달 -->
-        <div v-if="showModal" class="modal" @click="closeModal">
+        <!-- 확인 모달 -->
+        <div v-if="showConfirmModal" class="modal" @click="closeConfirmModal">
             <div class="modal-content" @click.stop>
-                <h2>도전 인증 정보가 <br> 업로드되었습니다.</h2>
-                <p>관리자의 승인을 기다려주세요.</p>
+                <h2>도전 인증 내용을 확인해주세요</h2>
+                <div class="confirm-content">
+                    <div class="form-group">
+                        <label>도전 상세:</label>
+                        <p class="content-text">{{ form.description }}</p>
+                    </div>
+                    <div v-if="form.image" class="form-group">
+                        <label>업로드 이미지:</label>
+                        <div class="confirm-image">
+                            <img :src="previewUrl" alt="확인 이미지" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-buttons">
+                    <button @click="closeConfirmModal" class="btn-modal-cancel">수정하기</button>
+                    <button @click="confirmSubmit" class="btn-modal-confirm" :disabled="confirming">
+                        {{ confirming ? '제출 중...' : '확인' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 성공 모달 -->
+        <div v-if="showSuccessModal" class="modal" @click="closeSuccessModal">
+            <div class="modal-content" @click.stop>
+                <h2>도전 인증이 <br> 완료되었습니다!</h2>
+                <p>도전이 성공적으로 인증되어 완료 상태로 변경되었습니다.</p>
                 <div class="modal-buttons">
                     <button @click="goToChallenge" class="btn-modal">도전 페이지로</button>
                 </div>
@@ -68,8 +93,10 @@ const route = useRoute()
 const form = ref({ description: '', image: null })
 const previewUrl = ref('')
 const fileInput = ref(null)
-const showModal = ref(false)
+const showConfirmModal = ref(false)
+const showSuccessModal = ref(false)
 const loading = ref(false)
+const confirming = ref(false)
 
 const isValid = computed(() => form.value.description.trim())
 
@@ -110,13 +137,21 @@ const removeImage = () => {
 
 const cancel = () => router.go(-1)
 
-const submit = async () => {
+const submit = () => {
   if (!isValid.value) {
     alert('도전 상세 내용을 입력해주세요.')
     return
   }
+  
+  showConfirmModal.value = true
+}
 
-  loading.value = true
+const closeConfirmModal = () => {
+  showConfirmModal.value = false
+}
+
+const confirmSubmit = async () => {
+  confirming.value = true
 
   try {
     const formData = new FormData()
@@ -132,6 +167,7 @@ const submit = async () => {
       challengeType: challengeType.value
     })
 
+    // 첫 번째 API 호출: missionFinishUpdate
     const response = await axios.post(
       `/api/v1/admin/challenges/${challengeId.value}/missionFinishUpdate`, 
       formData,
@@ -143,40 +179,61 @@ const submit = async () => {
       }
     )
 
-    console.log('서버 응답:', response.data)
+    console.log('missionFinishUpdate 서버 응답:', response.data)
 
-    const uploadedChallenge = {
+    // 두 번째 API 호출: complete
+    console.log('complete API 호출:', {
+      challengeId: challengeId.value
+    })
+
+    const completeResponse = await axios.post(
+      `/api/v1/admin/challenges/${challengeId.value}/complete`,
+      {}, // 빈 객체 (request body 필요없음)
+      {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    )
+
+    console.log('complete API 서버 응답:', completeResponse.data)
+
+    // 바로 완료 상태로 localStorage 업데이트
+    const completedChallenge = {
       challengeId: parseInt(challengeId.value),
       description: form.value.description,
       image: form.value.image ? previewUrl.value : null,
-      uploadedAt: new Date().toISOString(),
-      is_success: false,
+      completedAt: new Date().toISOString(),
+      is_success: true, // 바로 완료 상태
       is_uploaded: true,
-      serverData: response.data
+      serverData: response.data,
+      completeData: completeResponse.data // complete API 응답도 저장
     }
 
     // 도전 타입에 따라 다른 localStorage 키 사용
     if (challengeType.value === 'admin') {
       // ADMIN이 생성한 도전과제
-      localStorage.setItem(`admin_challenge_${challengeId.value}`, JSON.stringify(uploadedChallenge))
+      localStorage.setItem(`admin_challenge_${challengeId.value}`, JSON.stringify(completedChallenge))
     } else {
       // 우리가 제공하는 도전과제 (기존 방식 유지)
-      localStorage.setItem(`challenge_${challengeId.value}`, JSON.stringify(uploadedChallenge))
+      localStorage.setItem(`challenge_${challengeId.value}`, JSON.stringify(completedChallenge))
     }
     
-    showModal.value = true
+    showConfirmModal.value = false
+    showSuccessModal.value = true
   } catch (error) {
     console.error('업로드 오류:', error)
     alert('도전 인증 업로드 중 오류가 발생했습니다.')
   } finally {
-    loading.value = false
+    confirming.value = false
   }
 }
 
-const closeModal = () => showModal.value = false
+const closeSuccessModal = () => showSuccessModal.value = false
 
 const goToChallenge = () => {
-  showModal.value = false
+  showSuccessModal.value = false
   router.push('/challenges')
 }
 </script>
@@ -245,22 +302,43 @@ const goToChallenge = () => {
 }
 .modal-content {
     background: white; padding: 40px; border-radius: 12px; text-align: center;
-    max-width: 500px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    max-width: 600px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
 }
-.modal-content h2 { font-size: 32px; margin-bottom: 10px; }
-.modal-content p { color: #666; margin-bottom: 30px; font-size: 20px; }
+.modal-content h2 { font-size: 28px; margin-bottom: 20px; }
+.modal-content p { color: #666; margin-bottom: 30px; font-size: 18px; }
+
+.confirm-content { text-align: left; margin: 30px 0; }
+.form-group { margin-bottom: 20px; }
+.form-group label { 
+    display: block; margin-bottom: 8px; font-weight: bold; 
+    color: #333; font-size: 18px; 
+}
+.content-text { 
+    background: #f8f9fa; padding: 15px; border-radius: 8px; 
+    font-size: 16px; line-height: 1.5; border: 1px solid #e9ecef; 
+}
+.confirm-image { 
+    width: 200px; height: 150px; border-radius: 8px; 
+    overflow: hidden; border: 1px solid #e9ecef; 
+}
+.confirm-image img { width: 100%; height: 100%; object-fit: cover; }
+
 .modal-buttons { display: flex; gap: 15px; justify-content: center; }
-.btn-modal {
-    padding: 12px 24px; border: none; border-radius: 6px; background: #3074FF;
-    color: white; cursor: pointer; transition: background-color 0.3s;font-size: 20px;font-weight: bold;
+.btn-modal, .btn-modal-cancel, .btn-modal-confirm {
+    padding: 12px 24px; border: none; border-radius: 6px; 
+    cursor: pointer; transition: background-color 0.3s;font-size: 18px;font-weight: bold;
 }
-.btn-modal:hover { background: #6c9dff; }
+.btn-modal, .btn-modal-confirm { background: #3074FF; color: white; }
+.btn-modal:hover, .btn-modal-confirm:hover:not(:disabled) { background: #6c9dff; }
+.btn-modal-cancel { background: #f5f5f5; color: #666; }
+.btn-modal-cancel:hover { background: #e0e0e0; }
+.btn-modal-confirm:disabled { background: #ccc; cursor: not-allowed; }
 
 @media (max-width: 768px) {
     .content { flex-direction: column; gap: 20px; }
     .buttons { flex-direction: column; align-items: center; }
     .btn-cancel, .btn-submit { width: 200px; }
     .modal-buttons { flex-direction: column; gap: 10px; }
-    .btn-modal { width: 100%; }
+    .btn-modal, .btn-modal-cancel, .btn-modal-confirm { width: 100%; }
 }
 </style>

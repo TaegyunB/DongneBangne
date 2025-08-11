@@ -63,6 +63,8 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests((auth) -> auth
                         .requestMatchers("/", "/oauth2/**", "/login/**", "/api/v1/senior-centers", "/api/v1/senior-centers/**").permitAll() // "/api/v1/senior-centers" 추가 // 와일드 카드 추가
+                        .requestMatchers("/ws-game/**", "/ws-game", "/signal", "/signal/**").permitAll()
+                        .requestMatchers("/websocket/**", "/sockjs/**").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/**").authenticated()
                 );
@@ -76,7 +78,10 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        config.setAllowedOrigins(List.of("http://localhost:5173")); // Vue 개발 서버 주소, 배포 시 실제 주소로 전환할 것
+        config.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "https://i13a708.p.ssafy.io"
+        )); // Vue 개발 서버 주소, 배포 시 실제 주소로 전환할 것
 //        config.setAllowedMethods(List.of("*"));
 //        config.setAllowedHeaders(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")); // *금지

@@ -45,7 +45,7 @@ public class AiNewsService {
     public List<AiNewsResponseDto> getAiNewsList(Long userId) {
         SeniorCenter seniorCenter = validateMemberAndGetSeniorCenter(userId);
 
-        List<AiNews> newsList = aiNewsRepository.findAiNewsBySeniorCenterIdOrderByCreatedAtDesc(seniorCenter.getId());
+        List<AiNews> newsList = aiNewsRepository.findBySeniorCenter_IdOrderByCreatedAtDesc(seniorCenter.getId());
 
         return newsList.stream()
                 .map(AiNewsResponseDto::from)

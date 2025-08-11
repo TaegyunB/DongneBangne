@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class BoardCreateRequestDto {
+public class CreateBoardRequestDto {
 
     @NotBlank(message = "게시글 제목은 필수입니다.")
     @Size(max = 500, message = "게시글 제목은 500자를 초과할 수 없습니다.")
@@ -29,8 +29,8 @@ public class BoardCreateRequestDto {
 
     private String boardImage;
 
-    public static BoardCreateRequestDto from(Board board) {
-        return BoardCreateRequestDto.builder()
+    public static CreateBoardRequestDto from(Board board) {
+        return CreateBoardRequestDto.builder()
                 .title(board.getTitle())
                 .content(board.getContent())
                 .boardCategory(board.getCategory())

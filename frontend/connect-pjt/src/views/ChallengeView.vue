@@ -46,15 +46,13 @@
             </div>
             <p>{{ challenge.description }}</p>
           </div>
-          <!-- ADMIN만 완료/미완료 버튼을 클릭할 수 있도록 수정 -->
-          <button 
+          <!-- 완료/미완료 상태 표시만 (클릭 불가) -->
+          <div 
             class="challenge-complete-btn"
-            :class="{ 'completed': isCompleted(challenge), 'uploaded': isUploaded(challenge) && !isCompleted(challenge) }"
-            @click.stop="userRole === 'ADMIN' ? toggleChallengeStatus(challenge) : null"
-            :disabled="userRole !== 'ADMIN'"
+            :class="{ 'completed': isCompleted(challenge) }"
           >
             {{ getButtonText(challenge) }}
-          </button>
+          </div>
         </div>
       </div>
     </div>
@@ -83,14 +81,6 @@
           class="completed-message"
         >
           완료된 도전입니다
-        </div>
-
-        <!-- 업로드된 상태 표시 -->
-        <div 
-          v-if="!selectedChallenge.isEmpty && isUploaded(selectedChallenge) && !isCompleted(selectedChallenge)"
-          class="uploaded-message"
-        >
-          관리자 승인 대기 중입니다
         </div>
       </div>
     </div>
@@ -156,16 +146,6 @@
       </div>
     </div>
 
-    <!-- 상태 변경 성공 모달 -->
-    <div v-if="showStatusModal" class="modal-overlay" @click.self="closeStatusModal">
-      <div class="modal-content delete-modal">
-        <h2>{{ statusModalMessage }}</h2>
-        <div class="modal-buttons">
-          <button class="delete-success-btn" @click="closeStatusModal">확인</button>
-        </div>
-      </div>
-    </div>
-
     <!-- 생성 버튼 - userRole이 admin일 때만 표시 -->
     <div class="create-challenge" v-if="userRole === 'ADMIN' && shouldShowCreateButton">
       <button class="challenge-btn" @click="moveToCreate()">도전과제 생성하기</button>
@@ -178,6 +158,8 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user' 
 import axios from 'axios'
+
+import defaultImage from '@/assets/default_image.png'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -195,12 +177,11 @@ const currentMessage = ref('')
 const challenges = ref([])
 const challengeDetails = ref({}) // 도전 상세 정보 캐시
 
-// 모달 상태 
+// 모달 상태 (status 관련 제거됨)
 const modals = ref({
   detail: { show: false, selectedChallenge: { challengeTitle: '', description: '', challengePlace: '' }, selectedChallengeId: null },
   edit: { show: false, form: { title: '', description: '', place: '' }, editingIndex: null, showSuccess: false },
-  delete: { show: false, showFinal: false, selectedChallenge: null, selectedIndex: null },
-  status: { show: false, message: '' }
+  delete: { show: false, showFinal: false, selectedChallenge: null, selectedIndex: null }
 })
 
 // 계산된 속성
@@ -208,7 +189,7 @@ const shouldShowCreateButton = computed(() =>
   JSON.parse(localStorage.getItem('adminChallenges') || '[]').length < 2
 )
 
-// 모달 상태 단축 접근 
+// 모달 상태 단축 접근 (status 관련 제거됨)
 const showModal = computed(() => modals.value.detail.show)
 const selectedChallenge = computed(() => modals.value.detail.selectedChallenge)
 const selectedChallengeId = computed(() => modals.value.detail.selectedChallengeId)
@@ -217,9 +198,6 @@ const showEditSuccessModal = computed(() => modals.value.edit.showSuccess)
 const editForm = computed(() => modals.value.edit.form)
 const showDeleteModal = computed(() => modals.value.delete.show)
 const showFinalDeleteModal = computed(() => modals.value.delete.showFinal)
-const selectedDeleteChallenge = computed(() => modals.value.delete.selectedChallenge)
-const showStatusModal = computed(() => modals.value.status.show)
-const statusModalMessage = computed(() => modals.value.status.message)
 
 // 핵심 기능 함수들 
 const isCompleted = (challenge) => {
@@ -236,25 +214,9 @@ const isCompleted = (challenge) => {
   }
 }
 
-const isUploaded = (challenge) => {
-  if (challenge.id) {
-    // API에서 받은 도전과제 (우리가 제공하는 도전)
-    return challenge.imageDescription !== null && challenge.imageDescription !== undefined
-  } else if (challenge.challengeId) {
-    // ADMIN이 생성한 도전과제
-    const data = localStorage.getItem(`admin_challenge_${challenge.challengeId}`)
-    return data ? JSON.parse(data).is_uploaded === true : false
-  } else {
-    // 빈 칸
-    return false
-  }
-}
-
 const getButtonText = (challenge) => {
   if (isCompleted(challenge)) {
     return '완료'
-  } else if (isUploaded(challenge)) {
-    return '대기'
   } else {
     return '미완료'
   }
@@ -267,9 +229,9 @@ const getChallengeImage = (challenge) => {
   } else if (challenge.challengeId) {
     // ADMIN이 생성한 도전과제
     const data = localStorage.getItem(`admin_challenge_${challenge.challengeId}`)
-    return data && JSON.parse(data).image ? JSON.parse(data).image : '/src/assets/default_image.png'
+    return data && JSON.parse(data).image ? JSON.parse(data).image : defaultImage
   }
-  return '/src/assets/default_image.png'
+  return defaultImage
 }
 
 const updateCompletedCount = () => {
@@ -287,7 +249,7 @@ const updateMessage = () => {
 const fetchChallenges = async () => {
   try {
     const response = await axios.get('/api/v1/challenges', {
-      withCredentials: true,  // 쿠키 포함하여 요청
+      withCredentials: true,
       headers: {
         'Content-Type': 'application/json'
       }
@@ -297,8 +259,6 @@ const fetchChallenges = async () => {
     const apiChallenges = response.data || []
     const customChallenges = JSON.parse(localStorage.getItem('adminChallenges') || '[]')
     
-    // 첫 번째, 두 번째는 API에서 받은 도전과제 (우리가 제공하는 도전)
-    // 세 번째, 네 번째는 ADMIN이 생성한 도전과제
     challenges.value = [
       apiChallenges[0] || { challengeTitle: '준비 중입니다.', description: '', isEmpty: true },
       apiChallenges[1] || { challengeTitle: '준비 중입니다.', description: '', isEmpty: true },
@@ -306,7 +266,6 @@ const fetchChallenges = async () => {
       customChallenges[1] || { title: '도전과제를 생성해주세요', description: '', isEmpty: true, index: 4 }
     ]
     
-    // 월 정보 업데이트
     if (apiChallenges.length > 0 && apiChallenges[0].month) {
       currentMonth.value = apiChallenges[0].month
     }
@@ -314,7 +273,6 @@ const fetchChallenges = async () => {
     updateCompletedCount()
   } catch (error) {
     console.error('도전과제 목록 불러오기 실패:', error)
-    // 실패 시 기존 로직으로 fallback
     const customChallenges = JSON.parse(localStorage.getItem('adminChallenges') || '[]')
     challenges.value = [
       { challengeTitle: '준비 중입니다.', description: '', isEmpty: true },
@@ -338,141 +296,10 @@ const fetchChallengeDetail = async (challengeId) => {
   }
 }
 
-// 도전과제 상태 토글 함수
-const toggleChallengeStatus = async (challenge) => {
-  if (userRole.value !== 'ADMIN') return
-
-  // API 도전과제인 경우 (우리가 제공하는 도전)
-  if (challenge.id) {
-    const challengeId = challenge.id
-    const currentlyCompleted = isCompleted(challenge)
-    const currentlyUploaded = isUploaded(challenge)
-
-    // 업로드되지 않은 상태에서는 토글 불가
-    if (!currentlyUploaded && !currentlyCompleted) {
-      alert('먼저 도전 인증을 업로드해주세요.')
-      return
-    }
-
-    try {
-      if (currentlyCompleted) {
-        // 완료 → 미완료 (cancel API)
-        const response = await axios.put(`/api/v1/admin/challenges/${challengeId}/cancel`,{},{
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        })
-        console.log('Cancel API 응답:', response.data)
-        
-        // 로컬 상태 업데이트
-        challenge.isSuccess = false
-        
-        modals.value.status = { 
-          show: true, 
-          message: `도전이 취소되었습니다.<br>${response.data.subtractedPoint}점이 차감되었습니다.` 
-        }
-      } else {
-        // 미완료(업로드됨) → 완료 (complete API)
-        const response = await axios.post(`/api/v1/admin/challenges/${challengeId}/complete`, {}, {
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        })
-        console.log('Complete API 응답:', response.data)
-        
-        // 로컬 상태 업데이트
-        challenge.isSuccess = true
-        
-        modals.value.status = { 
-          show: true, 
-          message: `도전이 완료되었습니다!<br>${response.data.earnedPoint}점이 부여되었습니다.` 
-        }
-      }
-      
-      updateCompletedCount()
-      
-    } catch (error) {
-      console.error('상태 변경 오류:', error)
-      alert('도전 상태 변경 중 오류가 발생했습니다.')
-    }
-  } 
-  // ADMIN이 생성한 도전과제인 경우
-  else if (challenge.challengeId) {
-    const challengeId = challenge.challengeId
-    const currentlyCompleted = isCompleted(challenge)
-    const currentlyUploaded = isUploaded(challenge)
-
-    if (!currentlyUploaded && !currentlyCompleted) {
-      alert('먼저 도전 인증을 업로드해주세요.')
-      return
-    }
-
-    try {
-      if (currentlyCompleted) {
-        // Cancel API - withCredentials 추가!
-        const response = await axios.put(`/api/v1/admin/challenges/${challengeId}/cancel`, {}, {
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        })
-        console.log('Cancel API 응답:', response.data)
-        
-        const data = localStorage.getItem(`admin_challenge_${challengeId}`)
-        if (data) {
-          const challengeData = JSON.parse(data)
-          challengeData.is_success = false
-          localStorage.setItem(`admin_challenge_${challengeId}`, JSON.stringify(challengeData))
-        }
-        
-        modals.value.status = { 
-          show: true, 
-          message: `도전이 취소되었습니다.<br>${response.data.subtractedPoint}점이 차감되었습니다.` 
-        }
-      } else {
-        const response = await axios.post(`/api/v1/admin/challenges/${challengeId}/complete`,{},{
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        })
-        console.log('Complete API 응답:', response.data)
-        
-        const data = localStorage.getItem(`admin_challenge_${challengeId}`)
-        if (data) {
-          const challengeData = JSON.parse(data)
-          challengeData.is_success = true
-          challengeData.completedAt = new Date().toISOString()
-          challengeData.earnedPoints = response.data.earnedPoint
-          localStorage.setItem(`admin_challenge_${challengeId}`, JSON.stringify(challengeData))
-        }
-        
-        modals.value.status = { 
-          show: true, 
-          message: `도전이 완료되었습니다!<br>${response.data.earnedPoint}점이 부여되었습니다.` 
-        }
-      }
-      
-      updateCompletedCount()
-      
-    } catch (error) {
-      console.error('상태 변경 오류:', error)
-      alert('도전 상태 변경 중 오류가 발생했습니다.')
-    }
-  }
-}
-
-const closeStatusModal = () => {
-  modals.value.status.show = false
-}
-
 // 모달 함수
 const openModal = async (challenge, index) => {
   if (challenge.isEmpty) return
   
-  // API 도전과제인 경우 (우리가 제공하는 도전) 상세 정보 가져오기
   if (challenge.id) {
     const detailChallenge = await fetchChallengeDetail(challenge.id)
     if (detailChallenge) {
@@ -483,7 +310,6 @@ const openModal = async (challenge, index) => {
       }
     }
   } else {
-    // ADMIN이 생성한 도전과제
     modals.value.detail = { 
       show: true, 
       selectedChallenge: challenge, 
@@ -528,12 +354,10 @@ const saveEditChallenge = async () => {
   try {
     const challenge = challenges.value[editingIndex]
     
-    // API 도전과제인 경우 (우리가 제공하는 도전) - 수정 불가
     if (challenge.id) {
       alert('시스템 제공 도전과제는 수정할 수 없습니다.')
       return
     } 
-    // ADMIN이 생성한 도전과제인 경우
     else if (challenge.challengeId) {
       const challengeId = challenge.challengeId
 
@@ -548,7 +372,6 @@ const saveEditChallenge = async () => {
         }
       })
 
-      // 로컬 상태 업데이트
       challenges.value[editingIndex] = {
         ...challenges.value[editingIndex],
         challengeTitle: response.data.challengeTitle,
@@ -556,7 +379,6 @@ const saveEditChallenge = async () => {
         description: response.data.description
       }
 
-      // localStorage 업데이트
       const adminChallenges = JSON.parse(localStorage.getItem('adminChallenges') || '[]')
       const adminIndex = editingIndex - 2
       
@@ -613,12 +435,10 @@ const confirmDelete = async () => {
     const challenge = challenges.value[selectedIndex]
     
     try {
-      // API 도전과제인 경우 (우리가 제공하는 도전) - 삭제 불가
       if (challenge.id) {
         alert('시스템 제공 도전과제는 삭제할 수 없습니다.')
         return
       } 
-      // ADMIN이 생성한 도전과제인 경우
       else if (challenge.challengeId) {
         const response = await axios.delete(`/api/v1/admin/challenges/${challenge.challengeId}`, {
           withCredentials: true,
@@ -628,14 +448,12 @@ const confirmDelete = async () => {
         })
         console.log(response.data.message)
 
-        // localStorage에서도 제거
         const adminChallenges = JSON.parse(localStorage.getItem('adminChallenges') || '[]')
         const adminIndex = selectedIndex - 2
         adminChallenges.splice(adminIndex, 1)
         localStorage.setItem('adminChallenges', JSON.stringify(adminChallenges))
       }
       
-      // 목록에서 제거하고 다시 불러오기
       await fetchChallenges()
 
     } catch (error) {
@@ -673,7 +491,6 @@ const moveToFinish = () => {
 
 // 라이프사이클 훅
 onMounted(async () => {
-  // userRole이 없으면 가져오기
   if (!userStore.userRole) {
     await userStore.fetchUserRole()
   }
@@ -682,7 +499,7 @@ onMounted(async () => {
   console.log('ChallengeView currentMonth:', currentMonth.value)
   
   loadMessages()
-  await fetchChallenges() // API에서 도전과제 목록 가져오기
+  await fetchChallenges()
 })
 
 watch(percent, updateMessage)
@@ -773,16 +590,12 @@ watch(() => router.currentRoute.value, async () => {
 .challenge-complete-btn {
   position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
   font-weight: bold; color: white; width: 120px; height: 35px; border: none;
-  cursor: pointer; font-size: 20px; border-radius: 15px; 
+  font-size: 20px; border-radius: 15px; 
   box-shadow: 0 2px 4px rgba(0,0,0,0.1); background-color: #FF8120;
+  display: flex; align-items: center; justify-content: center;
 }
 
 .challenge-complete-btn.completed { background-color: #3074FF; }
-.challenge-complete-btn.uploaded { background-color: #FFA500; }
-.challenge-complete-btn:disabled { 
-  cursor: not-allowed; 
-  opacity: 0.7;
-}
 
 /* 생성 버튼 */
 .create-challenge { display: flex; justify-content: center; align-items: center; width: 100%; }
@@ -831,11 +644,6 @@ watch(() => router.currentRoute.value, async () => {
 
 .completed-message {
   background-color: #e8f5e8; color: #2d5a2d; padding: 12px 24px;
-  border-radius: 10px; font-size: 20px; font-weight: 600;
-}
-
-.uploaded-message {
-  background-color: #fff3cd; color: #856404; padding: 12px 24px;
   border-radius: 10px; font-size: 20px; font-weight: 600;
 }
 

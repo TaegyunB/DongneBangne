@@ -3,8 +3,8 @@ package S13P11A708.backend.service;
 import S13P11A708.backend.domain.*;
 import S13P11A708.backend.domain.enums.GameMessageType;
 import S13P11A708.backend.domain.enums.GameStatus;
-import S13P11A708.backend.dto.redis.GameStatusRedis;
-import S13P11A708.backend.dto.redis.PlayerStatus;
+import S13P11A708.backend.domain.game.GameStatusRedis;
+import S13P11A708.backend.domain.game.PlayerStatus;
 import S13P11A708.backend.dto.webSocket.GameInfoSocketMessage;
 import S13P11A708.backend.repository.GameHistoryRepository;
 import S13P11A708.backend.repository.GameRoomRepository;
@@ -13,13 +13,14 @@ import S13P11A708.backend.repository.UserRepository;
 import S13P11A708.backend.service.redis.GameRedisService;
 import S13P11A708.backend.websocket.GameBroadcaster;
 import S13P11A708.backend.websocket.GameMessageFactory;
-import S13P11A708.backend.dto.webSocket.GameAnsSocketMessage;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class GameService {
@@ -85,15 +86,27 @@ public class GameService {
      */
     public void handleAnswer(Long roomId, Long senderId, String answer) {//방 id, 보낸 사람id, 보낸 answer
 
+        log.info("[FLOW] ===== handleAnswer START =====");
+        log.info("[1] 방 ID={}, 제출자 ID={}, 제출 답안='{}'", roomId, senderId, answer);
+
+
         //1. 현재 게임상태 불러오기
         GameStatusRedis game = gameRedisService.getGameStatusRedis(roomId);
+        log.info("[2] 현재 라운드={}, 총 라운드={}, 정답='{}'",
+                game.getRound(), game.getTotalRound(), game.getCurrentAnswer());
+
+
         if(game == null) throw new RuntimeException("게임 상태를 찾을 수 없습니다.");
 
         //2. 이미 정답을 맞춘 사람인지
         PlayerStatus player = gameRedisService.getPlayer(roomId, senderId);
+        log.info("[3] 플레이어 상태: answered={}, correctCount={}",
+                player.isAnswered(), player.getCorrectCount());
+
         if(player == null) return;
 
         if(player.isAnswered()){
+            log.info("[FLOW] 이미 정답 맞춘 상태 → 리턴");
             broadcaster.broadcastToRoom(senderId,
                     messageFactory.createInfoMessage(GameMessageType.ANSWER_REJECTED, roomId, "이미 정답을 맞추셨습니다."));
             return;
@@ -102,6 +115,7 @@ public class GameService {
         //3. 정답 여부 판별
         String correctAnswer = game.getCurrentAnswer();
         boolean isCorrect = correctAnswer.equalsIgnoreCase(answer.trim()); //입력받은 string 앞뒤 공백 지우기
+        log.info("[4] 정답 여부 → {}", isCorrect);
 
         //4. 정답 결과 broadcast
         GameMessageType resultType = isCorrect ? GameMessageType.ANSWER_RESULT : GameMessageType.ANSWER_REJECTED;
@@ -109,14 +123,19 @@ public class GameService {
         broadcaster.broadcastToRoom(roomId,
                 messageFactory.createInfoMessage(resultType, roomId, message));
 
-        if(!isCorrect) return;
+        if(!isCorrect) {
+            log.info("[FLOW] 오답 → 라운드 유지");
+            return;
+        }
 
         //5. 정답 처리: 정답이면 카운트 올리기
         gameRedisService.increaseCount(roomId, senderId);
+        log.info("[5] 정답자 카운트 증가");
 
         //6. 다음 라운드 진행
         int nextRound = game.getRound() + 1;
         if(nextRound > game.getTotalRound()) {
+            log.info("[FLOW] 마지막 라운드 → 게임 종료 처리");
             gameRedisService.finishGame(roomId);
             endGame(roomId, game); // db 저장, 최종 승자 판단
             return;
@@ -127,12 +146,18 @@ public class GameService {
         Long nextQuizId = quizIdList.get(nextRound - 1);
         TrotQuiz nextQuiz = trotQuizRepository.findById(nextQuizId)
                 .orElseThrow(() -> new RuntimeException("다음 문제를 찾을 수 없습니다."));
+
         //8.redis 방 상태 업데이트
         gameRedisService.advanceRound(roomId, nextQuiz);
+        log.info("[6] 다음 라운드={}, 다음 문제 ID={}", nextRound, nextQuizId);
 
         //9. 다음 문제 클라언트에 전송
         broadcaster.broadcastToRoom(roomId,
                 messageFactory.createInfoMessage(GameMessageType.ROUND_QUESTION, roomId, nextQuiz.getUrl()));
+
+        log.info("[7] 다음 문제 URL 방송: {}", nextQuiz.getUrl());
+
+        log.info("===== [handleAnswer END] =====");
     }
 
     /**

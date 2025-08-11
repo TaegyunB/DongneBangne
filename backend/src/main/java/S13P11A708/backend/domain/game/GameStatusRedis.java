@@ -1,17 +1,23 @@
-package S13P11A708.backend.dto.redis;
+package S13P11A708.backend.domain.game;
 
 import S13P11A708.backend.domain.enums.GameStatus;
 import lombok.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.redis.core.RedisHash;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+@RedisHash(value="gameStatusRedis", timeToLive = 60)
 @Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class GameStatusRedis {
+    @Id
     private Long roomId;
+
     private int round;
     private int totalRound;
     private List<Long> quizIdList;
@@ -30,16 +36,29 @@ public class GameStatusRedis {
         throw new IllegalArgumentException("해당 userId는 게임방에 없습니다.");
     }
 
+    @Override
+    public String toString() {
+        return "GameStatusRedis{" +
+                "roomId=" + roomId +
+                ", round=" + round +
+                ", totalRound=" + totalRound +
+                ", currentQuizId=" + currentQuizId +
+                ", status=" + status +
+                ", user1=" + user1 +
+                ", user2=" + user2 +
+                '}';
+    }
+
     public boolean bothPlayerAnswered() {
         return user1.isAnswered() && user2.isAnswered();
     }
 
     public void updateCurrentQuizId(Long quizId){
-        this.currentQuizId = currentQuizId;
+        this.currentQuizId = quizId;
     }
 
     public void updateCurrentAnswer(String answer){
-        this.currentAnswer = currentAnswer;
+        this.currentAnswer = answer;
     }
 
     public void updateCurrentUrl(String url){
