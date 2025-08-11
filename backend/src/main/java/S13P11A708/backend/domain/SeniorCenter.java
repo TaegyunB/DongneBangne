@@ -2,6 +2,7 @@ package S13P11A708.backend.domain;
 
 import S13P11A708.backend.domain.common.BaseEntity;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -16,6 +17,7 @@ import java.util.List;
 @Getter
 @Builder
 @NoArgsConstructor
+@AllArgsConstructor
 @Table(name = "senior_center")
 public class SeniorCenter extends BaseEntity {
 
@@ -60,9 +62,11 @@ public class SeniorCenter extends BaseEntity {
 
     // 경로당 소속 회원들 - mappedBy로 User의 seniorCenter 필드와 연결
     @OneToMany(mappedBy = "seniorCenter", fetch = FetchType.LAZY)
+    @Builder.Default
     private List<User> members = new ArrayList<>();
 
     @OneToMany(mappedBy = "seniorCenter", fetch = FetchType.LAZY)
+    @Builder.Default
     private List<Challenge> challenges = new ArrayList<>();
 
     // JPA 라이프사이클 콜백으로 자동 설정
