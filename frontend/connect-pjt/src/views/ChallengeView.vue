@@ -14,6 +14,20 @@
     <div class="message-box">
       <p>{{ currentMessage }}</p>
     </div>
+
+    <!-- AI 신문 생성 섹션 -->
+    <div v-if="shouldShowAINewsButton" class="ai-news-section">
+      <div class="ai-news-card">
+        <div class="ai-news-content">
+          <div class="ai-news-icon">📰</div>
+          <h3>이번 달 도전을 AI 신문으로 만들어보세요!</h3>
+          <p>완료된 도전과제들을 바탕으로 특별한 신문을 생성할 수 있습니다.</p>
+        </div>
+        <button @click="goToAINews" class="btn-ai-news" :disabled="creatingAINews">
+          {{ creatingAINews ? '🤖 AI 신문 생성 중...' : '✨ AI 신문 생성하기' }}
+        </button>
+      </div>
+    </div>
      
     <!-- 도전과제 목록 -->
     <div class="challenge-container">
@@ -30,6 +44,9 @@
             :src="getChallengeImage(challenge)" 
             :alt="challenge.challengeTitle || challenge.title"
             class="challenge-img"
+            crossorigin="anonymous"
+            @error="onImageError($event, challenge)"
+            @load="onImageLoad($event, challenge)"
           />
         </div>
         
@@ -74,6 +91,11 @@
         <div class="modal-place">
           <span class="icon">📍</span>
           장소: {{ selectedChallenge.challengePlace || selectedChallenge.place || '장소 정보 없음' }}
+        </div>
+        
+        <!-- 모달 내 이미지 표시 -->
+        <div v-if="selectedChallenge.challengeImage" class="modal-image">
+          <img :src="selectedChallenge.challengeImage" :alt="selectedChallenge.challengeTitle" />
         </div>
         
         <button 
@@ -160,7 +182,7 @@
 import { ref, computed, onMounted, watch } from 'vue' 
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user' 
-import axios from 'axios'
+import api from '@/api/axios' // 기존 API 클라이언트 import
 
 import defaultImage from '@/assets/default_image.png'
 
@@ -179,6 +201,7 @@ const progressMessages = ref([])
 const currentMessage = ref('')
 const challenges = ref([])
 const challengeDetails = ref({}) // 도전 상세 정보 캐시
+const creatingAINews = ref(false) // AI 신문 생성 중 상태
 
 // 모달 상태
 const modals = ref({
@@ -233,6 +256,12 @@ const shouldShowActionButtons = (challenge, index) => {
   return userRole.value === 'ADMIN' && index >= 2
 }
 
+// AI 신문 버튼 표시 조건
+const shouldShowAINewsButton = computed(() => {
+  // 완료된 도전이 1개 이상 있을 때 AI 신문 버튼 표시
+  return count.value > 0
+})
+
 // 기존 핵심 기능 함수들 
 const isCompleted = (challenge) => {
   if (challenge.id) {
@@ -252,12 +281,60 @@ const getButtonText = (challenge) => {
   }
 }
 
+// 이미지 처리 함수 (S3 디버깅 포함)
 const getChallengeImage = (challenge) => {
+  console.log('=== 이미지 디버깅 ===')
+  console.log('Challenge 전체 객체:', challenge)
+  console.log('Challenge ID:', challenge.id)
+  console.log('Challenge Image URL:', challenge.challengeImage)
+  console.log('Challenge isEmpty:', challenge.isEmpty)
+  console.log('URL 타입:', typeof challenge.challengeImage)
+  
+  // 빈 도전인 경우 기본 이미지
+  if (challenge.isEmpty) {
+    console.log('📷 빈 도전 - 기본 이미지 사용')
+    return defaultImage
+  }
+  
   if (challenge.id && challenge.challengeImage) {
-    // API에서 받은 도전과제의 이미지
+    // S3 URL 확인
+    if (challenge.challengeImage.includes('amazonaws.com') || 
+        challenge.challengeImage.includes('s3')) {
+      console.log('✅ S3 URL 감지:', challenge.challengeImage)
+    } else {
+      console.log('⚠️ S3 URL이 아닐 수 있음:', challenge.challengeImage)
+    }
     return challenge.challengeImage
   }
+  
+  console.log('📷 ID 또는 이미지 URL 없음 - 기본 이미지 사용')
   return defaultImage
+}
+
+// 이미지 에러 핸들링
+const onImageError = (event, challenge) => {
+  console.error('❌ 이미지 로드 실패:', {
+    src: event.target.src,
+    challengeId: challenge.id,
+    challengeImage: challenge.challengeImage,
+    error: event,
+    errorType: event.target.src.includes('s3') ? 'S3 CORS/권한 문제' : '기타 오류'
+  })
+  
+  // S3 이미지 에러인 경우 특별 처리
+  if (event.target.src.includes('s3') || event.target.src.includes('amazonaws')) {
+    console.warn('🔒 S3 이미지 로드 실패 - CORS 또는 권한 문제일 가능성')
+  }
+  
+  // 기본 이미지로 대체
+  event.target.src = defaultImage
+}
+
+const onImageLoad = (event, challenge) => {
+  console.log('✅ 이미지 로드 성공:', {
+    src: event.target.src,
+    challengeId: challenge.id
+  })
 }
 
 const updateCompletedCount = () => {
@@ -274,16 +351,12 @@ const updateMessage = () => {
 // API에서 도전과제 목록 가져오기
 const fetchChallenges = async () => {
   try {
-    const response = await axios.get('/api/v1/challenges', {
-      withCredentials: true,
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
+    // 기존 api 인스턴스 사용
+    const response = await api.get('/api/v1/challenges')
     console.log('도전과제 목록 응답:', response.data)
 
-    
     const data = response.data
+    console.log('data:', data)
     
     // 현재 월 업데이트
     if (data.month) {
@@ -296,9 +369,29 @@ const fetchChallenges = async () => {
     // 커스텀 도전과제
     const customChallenges = data.customChallenges || []
 
-    //디버깅
-    console.log(serviceChallenges[0])
-    console.log(serviceChallenges[1])
+    // 디버깅 - 이미지 URL 확인
+    console.log('=== 전체 API 응답 확인 ===')
+    console.log('Full API response:', JSON.stringify(data, null, 2))
+    
+    console.log('=== 서비스 도전과제 이미지 확인 ===')
+    serviceChallenges.forEach((challenge, index) => {
+      console.log(`Service Challenge ${index + 1}:`, {
+        id: challenge.id,
+        title: challenge.challengeTitle,
+        image: challenge.challengeImage,
+        fullObject: challenge
+      })
+    })
+    
+    console.log('=== 커스텀 도전과제 이미지 확인 ===')
+    customChallenges.forEach((challenge, index) => {
+      console.log(`Custom Challenge ${index + 1}:`, {
+        id: challenge.id,
+        title: challenge.challengeTitle,
+        image: challenge.challengeImage,
+        fullObject: challenge
+      })
+    })
     
     // 4개의 슬롯에 배치
     challenges.value = [
@@ -310,6 +403,17 @@ const fetchChallenges = async () => {
       customChallenges[0] || { title: '도전과제를 생성해주세요', description: '', isEmpty: true, index: 3 },
       customChallenges[1] || { title: '도전과제를 생성해주세요', description: '', isEmpty: true, index: 4 }
     ]
+    
+    console.log('=== 최종 challenges 배열 확인 ===')
+    challenges.value.forEach((challenge, index) => {
+      console.log(`Final Challenge ${index + 1}:`, {
+        id: challenge.id,
+        title: challenge.challengeTitle || challenge.title,
+        image: challenge.challengeImage,
+        isEmpty: challenge.isEmpty,
+        fullObject: challenge
+      })
+    })
     
     updateCompletedCount()
   } catch (error) {
@@ -327,12 +431,8 @@ const fetchChallenges = async () => {
 // 도전과제 상세 정보 가져오기
 const fetchChallengeDetail = async (challengeId) => {
   try {
-    const response = await axios.get(`/api/v1/challenges/${challengeId}`, {
-      withCredentials: true,
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
+    // 기존 api 인스턴스 사용
+    const response = await api.get(`/api/v1/challenges/${challengeId}`)
     console.log('도전과제 상세 응답:', response.data)
     challengeDetails.value[challengeId] = response.data
     return response.data
@@ -407,15 +507,11 @@ const saveEditChallenge = async () => {
     else if (challenge.challengeType === 'CUSTOM' && challenge.id) {
       const challengeId = challenge.id
 
-      const response = await axios.put(`/api/v1/admin/challenges/${challengeId}`, {
+      // 기존 api 인스턴스 사용
+      const response = await api.put(`/api/v1/admin/challenges/${challengeId}`, {
         challengeTitle: form.title.trim(),
         challengePlace: form.place.trim(),
         description: form.description.trim()
-      }, {
-        withCredentials: true,
-        headers: {
-          'Content-Type': 'application/json'
-        }
       })
 
       // 성공 시 로컬 상태 업데이트
@@ -475,12 +571,8 @@ const confirmDelete = async () => {
         return
       } 
       else if (challenge.challengeType === 'CUSTOM' && challenge.id) {
-        const response = await axios.delete(`/api/v1/admin/challenges/${challenge.id}`, {
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        })
+        // 기존 api 인스턴스 사용
+        const response = await api.delete(`/api/v1/admin/challenges/${challenge.id}`)
         console.log(response.data.message)
       }
       
@@ -518,6 +610,60 @@ const moveToCreate = () => router.push({ name: 'challengeCreate' })
 const moveToFinish = () => {
   const challengeId = selectedChallenge.value.id || selectedChallengeId.value
   router.push(`/admin/challenges/${challengeId}/complete`)
+}
+
+const goToAINews = async () => {
+  // AI 신문 생성 API 호출
+  creatingAINews.value = true
+  
+  try {
+    console.log('AI 신문 생성 시작...')
+    
+    const response = await api.post('/api/v1/admin/ai-news/create', {
+      year: new Date().getFullYear(),
+      month: new Date().getMonth() + 1
+    })
+    
+    console.log('AI 신문 생성 완료:', response.data)
+    
+    // 생성된 신문의 ID가 있다면 해당 상세 페이지로, 없다면 목록으로
+    if (response.data && response.data.id) {
+      router.push(`/news`)
+    } else {
+      router.push('/news')
+    }
+    
+    alert('AI 신문이 성공적으로 생성되었습니다!')
+    
+  } catch (error) {
+    console.error('AI 신문 생성 실패:', error)
+    
+    let errorMessage = 'AI 신문 생성에 실패했습니다.'
+    
+    if (error.response) {
+      const status = error.response.status
+      const message = error.response.data?.message || '서버 오류'
+      
+      if (status === 400) {
+        errorMessage = `신문 생성 조건이 맞지 않습니다: ${message}`
+      } else if (status === 403) {
+        errorMessage = 'AI 신문을 생성할 권한이 없습니다.'
+      } else if (status === 409) {
+        errorMessage = '이미 생성된 신문이 있습니다.'
+      } else {
+        errorMessage = `AI 신문 생성에 실패했습니다: ${message}`
+      }
+    } else if (error.request) {
+      errorMessage = 'AI 신문 생성에 실패했습니다: 서버와 연결할 수 없습니다.'
+    }
+    
+    alert(errorMessage)
+    
+    // 에러가 발생해도 신문 목록 페이지로 이동 (선택사항)
+    router.push('/news')
+  } finally {
+    creatingAINews.value = false
+  }
 }
 
 // 라이프사이클 훅
@@ -626,6 +772,78 @@ watch(() => router.currentRoute.value, async () => {
         border-radius: 16px;
         font-size: 18px;
         border: 2px solid rgba(74, 144, 226, 0.1);
+    }
+
+    /* AI 신문 생성 섹션 */
+    .ai-news-section {
+        max-width: 800px;
+        width: 90%;
+        margin: 20px auto;
+    }
+
+    .ai-news-card {
+        background: white;
+        border-radius: 16px;
+        padding: 25px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border: 2px solid var(--primary-orange);
+        box-shadow: 0 4px 16px rgba(255, 107, 53, 0.15);
+        transition: all 0.3s ease;
+    }
+
+    .ai-news-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 24px rgba(255, 107, 53, 0.25);
+        border-color: #e55a2b;
+    }
+
+    .ai-news-content {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+
+    .ai-news-icon {
+        font-size: 48px;
+        color: var(--primary-orange);
+        filter: drop-shadow(0 2px 4px rgba(255, 107, 53, 0.3));
+    }
+
+    .ai-news-content h3 {
+        font-size: 22px;
+        font-weight: 700;
+        margin: 0 0 8px 0;
+        color: var(--text-black);
+    }
+
+    .ai-news-content p {
+        font-size: 16px;
+        margin: 0;
+        color: var(--dark-gray);
+        line-height: 1.5;
+    }
+
+    .btn-ai-news {
+        background: var(--primary-orange);
+        color: white;
+        border: none;
+        padding: 14px 28px;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+        min-width: 180px;
+    }
+
+    .btn-ai-news:hover {
+        background: #e55a2b;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
     }
 
     /* 도전과제 컨테이너 */
@@ -800,6 +1018,23 @@ watch(() => router.currentRoute.value, async () => {
         position: relative;
     }
 
+    .modal-close-btn {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: background-color 0.2s ease;
+    }
+
     .modal-close-btn:hover {
         background-color: var(--border-light);
         color: var(--text-black);
@@ -826,6 +1061,20 @@ watch(() => router.currentRoute.value, async () => {
         padding: 12px;
         background: var(--neutral-gray);
         border-radius: 12px;
+    }
+
+    .modal-image {
+        margin: 20px 0;
+        border-radius: 12px;
+        overflow: hidden;
+        max-width: 100%;
+        max-height: 300px;
+    }
+
+    .modal-image img {
+        width: 100%;
+        height: auto;
+        object-fit: cover;
     }
 
     .modal-button {
@@ -988,6 +1237,38 @@ watch(() => router.currentRoute.value, async () => {
         .btn-cancel, .btn-save {
             width: 100%;
         }
+
+        /* AI 신문 섹션 반응형 */
+        .ai-news-card {
+            flex-direction: column;
+            text-align: center;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .ai-news-content {
+            flex-direction: column;
+            gap: 15px;
+            text-align: center;
+        }
+
+        .ai-news-icon {
+            font-size: 40px;
+        }
+
+        .ai-news-content h3 {
+            font-size: 20px;
+        }
+
+        .ai-news-content p {
+            font-size: 15px;
+        }
+
+        .btn-ai-news {
+            width: 100%;
+            min-width: auto;
+            padding: 14px 20px;
+        }
     }
 
     /* 접근성 개선 */
@@ -1006,6 +1287,10 @@ watch(() => router.currentRoute.value, async () => {
         }
         
         .modal-content {
+            border: 2px solid var(--text-black);
+        }
+        
+        .ai-news-card {
             border: 2px solid var(--text-black);
         }
     }
