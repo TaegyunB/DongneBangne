@@ -1,18 +1,28 @@
 <template>
   <div class="main-landing">
-    <div class="section-title">이야기하고, 도전하고, 함께하는 경로당 서비스</div>
+    <!-- 제목과 로고를 함께 배치하는 헤더 섹션 -->
+    <div class="header-section">
+      <!-- <img src="@/assets/logo.png" alt="동네방네 로고" class="logo-icon left"/> -->
+      <div class="section-title">이야기하고, 도전하고, 함께하는 동네방네</div>
+      <!-- <img src="@/assets/logo.png" alt="동네방네 로고" class="logo-icon right"/> -->
+    </div>
     
     <!-- Admin,member UI 공통 -->
     <div class="main-card-grid-one">
       <div class="main-card one" @click="goTo('/challenges')">
-        <div class="card-title">도전 과제</div>
-        <div class="card-desc">함께라서 더 의미있는 도전<br />매달 다양한 도전을 해보세요!</div>
-        <img src="@/assets/mainpage_2/challenge.png" alt="도전 아이콘" class="card-icon" />
+        <div class="card-title_2">도전 과제</div>
+        <div class="card-desc">매달 다양한 도전을 해보세요!</div>
+        <img src="@/assets/mainpage_2/challenge.png" alt="도전 아이콘" class="card-icon_2" />
       </div>
       <div class="main-card two" @click="goTo('/games')">
-        <div class="card-title">게임</div>
-        <div class="card-desc">다른 경로당과 다양한 게임을<br />즐겨보세요!</div>
-        <img src="@/assets/mainpage_2/game.png" alt="게임 아이콘" class="card-icon" />
+        <div class="card-title_2">게임</div>
+        <div class="card-desc">다른 경로당과<br />트로트 게임을 즐겨보세요!</div>
+        <img src="@/assets/mainpage_2/game.png" alt="게임 아이콘" class="card-icon_2" />
+      </div>
+      <div class="main-card five" @click="goTo('/news')">
+        <div class="card-title_2">AI 신문</div>
+        <div class="card-desc">매달 우리만의 특별한 소식지</div>
+        <img src="@/assets/mainpage_2/news.png" alt="신문 아이콘" class="card-icon_2" />
       </div>
     </div>
     <div class="main-card-grid-two">
@@ -25,11 +35,6 @@
         <div class="card-title">순위</div>
         <div class="card-desc">우리 경로당은 몇 등일까요?</div>
         <img src="@/assets/mainpage_2/ranking.png" alt="순위 아이콘" class="card-icon" />
-      </div>
-      <div class="main-card five" @click="goTo('/news')">
-        <div class="card-title">AI 신문</div>
-        <div class="card-desc">매달 우리만의 특별한 소식지</div>
-        <img src="@/assets/mainpage_2/news.png" alt="신문 아이콘" class="card-icon" />
       </div>
     </div>
   </div>
@@ -67,24 +72,71 @@ defineExpose({
 </script>
 
 <style scoped>
+/* 글꼴 정의 */
+@font-face {
+  font-family: 'KoddiUD';
+  src: url('@/assets/fonts/KoddiUDOnGothic-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'KoddiUD';
+  src: url('@/assets/fonts/KoddiUDOnGothic-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'KoddiUD';
+  src: url('@/assets/fonts/KoddiUDOnGothic-ExtraBold.ttf') format('truetype');
+  font-weight: 800;
+  font-style: normal;
+}
+/* 회색 버전 */
+/* .main-landing {
+  width: 100%;
+  min-height: 100vh;
+  background: #f8f9fadc;
+  padding: 60px 0;
+} */
+
 .main-landing {
   width: 100%;
   min-height: 100vh;
-  background: #fff;
+  background-image: url('@/assets/background/back3.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   padding: 60px 0;
 }
 
-.section-title {
+/* 헤더 섹션 - 제목과 로고를 함께 배치 */
+.header-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-bottom: 60px;
-  font-size: 30px;
-  font-weight: 600;
+  gap: 40px;
+}
+
+.section-title {
+  font-size: 45px;
+  font-weight: 750;
   text-align: center;
   color: #1e1e1e;
+  font-family: 'KoddiUD', sans-serif; /* KoddiUD 적용 */
+}
+
+.logo-icon {
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
 }
 
 .main-card-grid-one {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 34px;
   width: 1400px;
   max-width: 1300px;
@@ -94,7 +146,7 @@ defineExpose({
 
 .main-card-grid-two {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 34px;
   width: 1400px;
   max-width: 1300px;
@@ -112,7 +164,7 @@ defineExpose({
   flex-direction: column;
   justify-content: flex-start;
   align-items: flex-start;
-  padding: 23px 20px 14px 25px;
+  padding: 32px 20px 14px 40px;
   min-width: 0;
   overflow: hidden;
   transition: transform 0.11s;
@@ -128,44 +180,83 @@ defineExpose({
 
 .card-title {
   font-size: 32px;
-  font-weight: 700;
-  margin-bottom: 12px;
+  font-weight: 750;
+  margin-bottom: 30px;
   color: #222;
+  font-family: 'KoddiUD', sans-serif; /* KoddiUD 적용 */
+}
+.card-title_2 {
+  font-size: 32px;
+  font-weight: 750;
+  margin-bottom: 20px;
+  color: #222;
+  font-family: 'KoddiUD', sans-serif; /* KoddiUD 적용 */
 }
 
 .card-desc {
   font-size: 25px;
   color: #232426;
   margin-bottom: 6px;
+  font-family: 'KoddiUD', sans-serif; /* KoddiUD 적용 */
 }
 
 .card-icon {
   position: absolute;
-  right: 24px;
-  bottom: 19px;
-  width: 120px;
-  height: 120px;
+  right: 30px;
+  bottom: 20px;
+  width: 180px;
+  height: 180px;
   object-fit: contain;
-  opacity: 0.98;
 }
 
+.card-icon_2 {
+  position: absolute;
+  right: 24px;
+  bottom: 10px;
+  width: 110px;
+  height: 120px;
+  object-fit: contain;
+}
+
+/* 그라데이션 배경 */
 .main-card.one {
-  background: #FFBF8F;
+  background: linear-gradient(135deg,#f5efba 0%, #ffef5f 100%);
 }
 
 .main-card.two {
-  background: #97B9FF;
+  background: linear-gradient(135deg,#f5efba 0%, #ffdc72 100%);
 }
 
 .main-card.three {
-  background: #ABBAF9;
+  background: linear-gradient(135deg,#d1daff 0%, #8ba3ff 100%);
 }
 
 .main-card.four {
-  background: #F1C399;
+  background: linear-gradient(135deg,#d1daff 0%, #8FA3F3 100%);
 }
 
 .main-card.five {
-  background: #7A91F7;
+  background: linear-gradient(135deg,#f7efd0 0%, #FFE082 100%);
 }
+ /* ---------------------- */
+ /* .main-card.one {
+  background: linear-gradient(135deg, #FFD7B9 0%, #FFBC8E 100%);
+}
+
+.main-card.two {
+  background: linear-gradient(135deg,#ABBAF9 0%, #8FA3F3 100%);
+}
+
+.main-card.three {
+  background: linear-gradient(135deg,#ABBAF9 0%, #8FA3F3 100%);
+}
+
+.main-card.four {
+  background: linear-gradient(135deg, #FFD7B9 0%, #FFBC8E 100%);
+}
+
+.main-card.five {
+  background: linear-gradient(135deg,#ABBAF9 0%, #8FA3F3 100%);
+} */
+
 </style>
