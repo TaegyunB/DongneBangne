@@ -51,9 +51,9 @@
               </div>
             </div>
           </td>
-          <td class="text-center">{{ center.trotPoint.toLocaleString() }}</td>
-          <td class="text-center">{{ center.missionPoint.toLocaleString() }}</td>
-          <td class="text-blue text-center">{{ center.monthlyPoint.toLocaleString() }}</td>
+          <td class="text-center">{{ center.trotPoint ?? 0}}</td>
+          <td class="text-center">{{ center.missionPoint ?? 0 }}</td>
+          <td class="text-blue text-center">{{ center.monthlyPoint ?? 0}}</td>
         </tr>
       </tbody>
     </table>
@@ -338,7 +338,7 @@ const reportChallenge = async () => {
   if (!selectedCenter.value?.seniorCenterId || !selectedChallenge.value?.id) return
   if (!confirm('해당 인증을 신고하시겠습니까?')) return
   try {
-    // ⚠️ 백엔드 요구 스펙 확인 필요: body에 {challengeId, reason} 등?
+    // 백엔드 요구 스펙 확인 필요: body에 {challengeId, reason} 등?
     await api.post(`/api/v1/rankings/${selectedCenter.value.seniorCenterId}`, {
       challengeId: selectedChallenge.value.id
     })

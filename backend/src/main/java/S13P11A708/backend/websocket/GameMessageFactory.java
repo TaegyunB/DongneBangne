@@ -2,6 +2,7 @@ package S13P11A708.backend.websocket;
 
 import S13P11A708.backend.domain.enums.GameMessageType;
 import S13P11A708.backend.dto.webSocket.GameAnsSocketMessage;
+import S13P11A708.backend.dto.webSocket.GameEndSocketMessage;
 import S13P11A708.backend.dto.webSocket.GameHintSocketMessage;
 import S13P11A708.backend.dto.webSocket.GameInfoSocketMessage;
 import org.springframework.stereotype.Component;
@@ -32,6 +33,19 @@ public class GameMessageFactory {
                 .userId(userId)
                 .payload(payload)
                 .build();
+    }
+
+    public static GameEndSocketMessage createEndMessage(GameMessageType type, Long roomId, Long winnerId, String winnerNickname, Long userPoint1, Long userPoint2, String payload){
+        return GameEndSocketMessage.builder()
+                .type(type)
+                .roomId(roomId)
+                .winnerId(winnerId)
+                .winnerNickname(winnerNickname)
+                .userPoint1(userPoint1)
+                .userPoint2(userPoint2)
+                .payload(payload)
+                .build();
+
     }
 
 }
