@@ -45,10 +45,13 @@
             </button>
         </div>
         
-        <!-- 확인 모달 -->
+<!-- 확인 모달 -->
         <div v-if="showConfirmModal" class="modal" @click="closeConfirmModal">
             <div class="modal-content" @click.stop>
                 <h2>도전 인증 내용을 확인해주세요</h2>
+                <div class="warning-message">
+                    <p>⚠️ 도전을 인증하면 수정이 불가합니다</p>
+                </div>
                 <div class="confirm-content">
                     <div class="form-group">
                         <label>도전 상세:</label>
@@ -62,7 +65,7 @@
                     </div>
                 </div>
                 <div class="modal-buttons">
-                    <button @click="closeConfirmModal" class="btn-modal-cancel">수정하기</button>
+                    <button @click="closeConfirmModal" class="btn-modal-cancel">취소</button>
                     <button @click="confirmSubmit" class="btn-modal-confirm" :disabled="confirming">
                         {{ confirming ? '제출 중...' : '확인' }}
                     </button>
@@ -86,7 +89,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import axios from 'axios'
+import api from '@/api/axios' // 기존 API 클라이언트 import
 
 const router = useRouter()
 const route = useRoute()
@@ -103,20 +106,10 @@ const confirming = ref(false)
 const isValid = computed(() => form.value.description.trim() && form.value.image)
 
 const challengeId = ref(null)
-const challengeType = ref('system') // 'system' 또는 'admin'
 
 onMounted(() => {
   challengeId.value = route.params.challengeId
-  
-  // challengeId로 도전 타입 구분
-  // 우리가 제공하는 도전인지 ADMIN이 생성한 도전인지 확인
-  const adminChallenges = JSON.parse(localStorage.getItem('adminChallenges') || '[]')
-  const isAdminChallenge = adminChallenges.some(challenge => 
-    challenge.challengeId && challenge.challengeId.toString() === challengeId.value
-  )
-  
-  challengeType.value = isAdminChallenge ? 'admin' : 'system'
-  console.log('도전 타입:', challengeType.value, 'challengeId:', challengeId.value)
+  console.log('challengeId:', challengeId.value)
 })
 
 const triggerFileInput = () => fileInput.value?.click()
@@ -124,6 +117,19 @@ const triggerFileInput = () => fileInput.value?.click()
 const handleFileUpload = (event) => {
   const file = event.target.files[0]
   if (file) {
+    // 파일 크기 검사 (10MB 제한)
+    const maxSize = 10 * 1024 * 1024
+    if (file.size > maxSize) {
+      alert(`파일 크기가 너무 큽니다. 최대 ${Math.round(maxSize / 1024 / 1024)}MB까지 업로드 가능합니다.`)
+      return
+    }
+    
+    // 파일 타입 검사
+    if (!file.type.startsWith('image/')) {
+      alert('이미지 파일만 업로드 가능합니다.')
+      return
+    }
+    
     form.value.image = file
     const reader = new FileReader()
     reader.onload = (e) => previewUrl.value = e.target.result
@@ -157,73 +163,38 @@ const closeConfirmModal = () => {
   showConfirmModal.value = false
 }
 
-const token = localStorage.getItem('accessToken');
-
 const confirmSubmit = async () => {
   confirming.value = true
 
   try {
-    // ==========  파일 유효성 검사 추가  ==========
-    console.log('=== 파일 유효성 검사 ===')
+    console.log('=== 도전 인증 시작 ===')
+    console.log('challengeId:', challengeId.value)
+    console.log('파일 정보:', {
+      name: form.value.image.name,
+      size: `${(form.value.image.size / 1024 / 1024).toFixed(2)}MB`,
+      type: form.value.image.type
+    })
     
-    if (!form.value.image) {
-      alert('이미지를 선택해주세요.')
-      return
-    }
-    
-    // 파일 크기 검사 (10MB = 10 * 1024 * 1024 bytes)
-    const maxSize = 10 * 1024 * 1024
-    if (form.value.image.size > maxSize) {
-      alert(`파일 크기가 너무 큽니다. 최대 ${Math.round(maxSize / 1024 / 1024)}MB까지 업로드 가능합니다.`)
-      return
-    }
-    
-    // 파일 타입 검사
-    if (!form.value.image.type.startsWith('image/')) {
-      alert('이미지 파일만 업로드 가능합니다.')
-      return
-    }
-    
-    console.log('파일 정보:')
-    console.log('- 이름:', form.value.image.name)
-    console.log('- 크기:', `${(form.value.image.size / 1024 / 1024).toFixed(2)}MB`)
-    console.log('- 타입:', form.value.image.type)
-    console.log('- 설명 길이:', form.value.description.length)
-    
-    // ==========  FormData 생성  ==========
+    // FormData 생성
     const formData = new FormData()
     formData.append('imageFile', form.value.image)
     formData.append('imageDescription', form.value.description)
     
-    // FormData 내용 확인
-    console.log('FormData entries:')
-    for (let [key, value] of formData.entries()) {
-      if (value instanceof File) {
-        console.log(`${key}: File(${value.name}, ${value.size} bytes)`)
-      } else {
-        console.log(`${key}: ${value}`)
-      }
-    }
-
     console.log('🚀 missionFinishUpdate API 호출 시작...')
     
-    // ==========  더 짧은 타임아웃으로 테스트  ==========
-    const response = await axios.post(
+    // 첫 번째 API: 이미지 업로드 및 설명 저장
+    const response = await api.post(
       `/api/v1/admin/challenges/${challengeId.value}/missionFinishUpdate`, 
       formData,
       {
-        withCredentials: true,
         headers: {
           'Content-Type': 'multipart/form-data'
         },
-        timeout: 60000, // 60초로 증가
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity,
+        timeout: 60000, // 60초
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
           console.log(`업로드 진행률: ${percentCompleted}%`)
           
-          // 진행률이 100%가 되면 서버 처리 중임을 표시
           if (percentCompleted === 100) {
             console.log('⏳ 파일 업로드 완료, 서버 처리 중...')
           }
@@ -233,102 +204,54 @@ const confirmSubmit = async () => {
 
     console.log('✅ missionFinishUpdate 성공:', response.data)
 
-    // 두 번째 API 호출
+    // 두 번째 API: 도전 완료 처리
     console.log('🚀 complete API 호출 시작...')
     
-    const completeResponse = await axios.post(
+    const completeResponse = await api.post(
       `/api/v1/admin/challenges/${challengeId.value}/complete`,
-      {},
-      {
-        withCredentials: true,
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        timeout: 30000
-      }
+      {}
     )
 
     console.log('✅ complete API 성공:', completeResponse.data)
 
     // 성공 처리
-    const completedChallenge = {
-      challengeId: parseInt(challengeId.value),
-      description: form.value.description,
-      image: previewUrl.value,
-      completedAt: new Date().toISOString(),
-      is_success: true,
-      is_uploaded: true,
-      serverData: response.data,
-      completeData: completeResponse.data
-    }
-
-    if (challengeType.value === 'admin') {
-      localStorage.setItem(`admin_challenge_${challengeId.value}`, JSON.stringify(completedChallenge))
-    } else {
-      localStorage.setItem(`challenge_${challengeId.value}`, JSON.stringify(completedChallenge))
-    }
-    
     showConfirmModal.value = false
     showSuccessModal.value = true
 
   } catch (error) {
     console.error('❌ API 호출 에러:', error)
     
+    let errorMessage = '알 수 없는 오류가 발생했습니다.'
+    
     if (error.code === 'ERR_NETWORK') {
-      console.log('🔍 Network Error 상세 분석:')
-      console.log('- readyState:', error.request?.readyState)
-      console.log('- status:', error.request?.status)
-      console.log('- responseText:', error.request?.responseText)
-      
-      // 백엔드 로그 확인 요청
-      alert(`네트워크 오류가 발생했습니다. 
+      errorMessage = `네트워크 오류가 발생했습니다.
 
 가능한 원인:
 1. 서버에서 파일 처리 중 오류 발생
-2. S3 업로드 실패  
-3. 데이터베이스 오류
+2. 파일 업로드 실패
+3. 서버 연결 문제
 
-백엔드 서버 로그를 확인해주세요.`)
+잠시 후 다시 시도해주세요.`
       
     } else if (error.code === 'ECONNABORTED') {
-      alert('요청 시간이 초과되었습니다. 파일 크기를 줄이거나 나중에 다시 시도해주세요.')
+      errorMessage = '요청 시간이 초과되었습니다. 파일 크기를 줄이거나 나중에 다시 시도해주세요.'
     } else if (error.response) {
       const status = error.response.status
-      const errorMessage = error.response.data?.message || `서버 오류 (${status})`
-      alert(`서버 오류: ${errorMessage}`)
-    } else {
-      alert('알 수 없는 오류가 발생했습니다.')
+      const serverMessage = error.response.data?.message || `서버 오류 (${status})`
+      
+      if (status === 401 || status === 403) {
+        errorMessage = '로그인이 필요합니다. 다시 로그인해주세요.'
+      } else if (status === 413) {
+        errorMessage = '파일 크기가 너무 큽니다. 더 작은 파일을 선택해주세요.'
+      } else {
+        errorMessage = `서버 오류: ${serverMessage}`
+      }
     }
+    
+    alert(errorMessage)
     
   } finally {
     confirming.value = false
-  }
-}
-
-// ==========  간단한 테스트 함수  ==========
-const testSmallFile = async () => {
-  try {
-    // 매우 작은 더미 파일로 테스트
-    const dummyFile = new File(['test'], 'test.txt', { type: 'text/plain' })
-    const testFormData = new FormData()
-    testFormData.append('imageFile', dummyFile)
-    testFormData.append('imageDescription', 'test description')
-    
-    console.log('🧪 작은 파일로 테스트...')
-    
-    const response = await axios.post(
-      `/api/v1/admin/challenges/${challengeId.value}/missionFinishUpdate`,
-      testFormData,
-      {
-        withCredentials: true,
-        timeout: 10000
-      }
-    )
-    
-    console.log('✅ 작은 파일 테스트 성공:', response.data)
-    
-  } catch (error) {
-    console.error('❌ 작은 파일 테스트 실패:', error)
   }
 }
 
@@ -442,6 +365,22 @@ const goToChallenge = () => {
 .btn-modal-cancel { background: #f5f5f5; color: #666; }
 .btn-modal-cancel:hover { background: #e0e0e0; }
 .btn-modal-confirm:disabled { background: #ccc; cursor: not-allowed; }
+
+.warning-message {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 20px 0;
+    text-align: center;
+}
+
+.warning-message p {
+    margin: 0;
+    color: #856404;
+    font-size: 16px;
+    font-weight: bold;
+}
 
 @media (max-width: 768px) {
     .content { flex-direction: column; gap: 20px; }

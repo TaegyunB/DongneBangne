@@ -17,7 +17,7 @@ public interface AiNewsRepository extends JpaRepository<AiNews, Long> {
      * 특정 경로당의 AI 신문 목록 조회 (최신순)
      */
     @Query("SELECT an FROM AiNews an WHERE an.seniorCenter.id = :seniorCenterId ORDER BY an.createdAt DESC")
-    List<AiNews> findBySeniorCenter_IdOrderByCreatedAtDesc(
+    List<AiNews> findBySeniorCenterIdOrderByCreatedAtDesc(
             @Param("seniorCenterId") Long seniorCenterId);
 
     /**

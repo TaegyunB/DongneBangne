@@ -7,6 +7,7 @@ import lombok.*;
 @Builder
 @Entity
 @Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "game_history_user")

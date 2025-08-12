@@ -2,10 +2,7 @@ package S13P11A708.backend.domain;
 
 import S13P11A708.backend.domain.common.BaseEntity;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 
 import java.time.LocalDateTime;
@@ -14,6 +11,7 @@ import java.util.List;
 
 @Entity
 @Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -72,6 +70,13 @@ public class GameHistory extends BaseEntity {
                 .musicEra(era)
                 .category(category)
                 .build();
+    }
+
+    public void addHistoryUser(GameHistoryUser u) {
+        if (u == null) return;
+        if (this.historyUsers == null) this.historyUsers = new ArrayList<>();
+        this.historyUsers.add(u);
+        u.setGameHistory(this); // ✅ 자식의 ManyToOne FK 연결
     }
 
 }
