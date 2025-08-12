@@ -48,7 +48,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import api from '@/api/axios' // 기존 API 클라이언트 import
 
 const title = ref('')
 const place = ref('')
@@ -78,7 +78,8 @@ const handleSubmit = async () => {
   console.log('API로 보낼 데이터:', challengeData)
 
   try {
-    const response = await axios.post('/api/v1/admin/challenges/create', challengeData, {
+    // 기존 api 인스턴스 사용
+    const response = await api.post('/api/v1/admin/challenges/create', challengeData, {
       withCredentials: true,
       headers: {
         'Content-Type': 'application/json'
@@ -86,24 +87,12 @@ const handleSubmit = async () => {
     })
     console.log('서버 응답:', response.data)
 
-    // localStorage에 ADMIN 도전과제로 저장 (challengeId 포함)
-    const adminChallenges = JSON.parse(localStorage.getItem('adminChallenges') || '[]')
-    const newChallenge = {
-      challengeId: response.data.id,
-      challengeTitle: response.data.challengeTitle,
-      challengePlace: response.data.challengePlace,
-      description: response.data.description,
-      isCustom: true,
-      createdAt: new Date().toISOString()
-    }
-
-    adminChallenges.push(newChallenge)
-    localStorage.setItem('adminChallenges', JSON.stringify(adminChallenges))
-    
+    // 성공 모달 표시
     showModal.value = true
+    
   } catch (error) {
     console.error('도전과제 생성 실패:', error)
-    
+
     if (error.response?.status === 401 || error.response?.status === 403) {
       alert('로그인이 필요합니다. 다시 로그인해주세요.')
     } else {
