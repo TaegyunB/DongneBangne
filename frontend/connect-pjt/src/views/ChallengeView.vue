@@ -20,13 +20,15 @@
       <div class="ai-news-card">
         <div class="ai-news-content">
           <div class="ai-news-icon">📰</div>
-          <h3>인증 완료한 도전들을 AI 신문으로 만들어보세요!</h3>
+          <h3>이번 달 도전을 AI 신문으로 만들어보세요!</h3>
+          <p>완료된 도전과제들을 바탕으로 특별한 신문을 생성할 수 있습니다.</p>
         </div>
         <div class="ai-news-action">
           <button 
             @click="goToAINews" 
             class="btn-ai-news" 
             :disabled="creatingAINews || !isAINewsButtonEnabled"
+            :title="getAINewsButtonTooltip"
           >
             {{ creatingAINews ? '🤖 AI 신문 생성 중...' : '✨ AI 신문 생성하기' }}
           </button>
@@ -270,10 +272,18 @@ const isAINewsButtonEnabled = computed(() => {
   return count.value > 0
 })
 
+// AI 신문 버튼 툴팁 메시지
+const getAINewsButtonTooltip = computed(() => {
+  if (count.value === 0) {
+    return '미션을 하나라도 인증해야 활성화됩니다'
+  }
+  return `완료된 ${count.value}개의 도전과제로 AI 신문을 생성합니다`
+})
+
 // AI 신문 설명 텍스트
 const getAINewsDescription = computed(() => {
   if (count.value === 0) {
-    return '도전을 한 개라도 인증해야 AI 신문을 생성할 수 있습니다.'
+    return '미션을 한 개라도 인증해야 AI 신문을 생성할 수 있습니다.'
   }
   return '완료된 도전과제들을 바탕으로 특별한 신문을 생성할 수 있습니다.'
 })
