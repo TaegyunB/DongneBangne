@@ -3,8 +3,8 @@
     <iframe
       ref="unityFrame"
       src="/unity/index.html"
-      width="1280"
-      height="720"
+      width="2560"
+      height="1440"
       frameborder="0"
       allowfullscreen
     ></iframe>
@@ -18,6 +18,7 @@
 </template>
 
 <script>
+import api from '@/api/axios'
 export default {
   data() {
     return {
@@ -33,27 +34,39 @@ export default {
       roomId: 'default', // 방 아이디
       localId: 'ID', // 내 아이디
       remoteId: 'ID', // 상대방 아이디
+      isUnityReady: false, // Unity 준비 여부
     }
   },
   async mounted() {
+
     // Unity가 보낸 메시지 수신
     window.addEventListener('message', (event) => {
       console.log('✅ Unity → Vue 메시지:', event.data)
+      if(event.data.type === 'unity-ready'){
+        this.isUnityReady = true;
+      }
     })
 
+    // 유저 정보 받아오기
     try {
-      await this.initLocalMedia() // 카메라, 마이크 준비
-      await this.connectSignalingServer() // 시그널링 서버 연결
-      if (this.isInitiator) {
-        await this.startAsCaller()
-      } else {
-        // 수신자: offer를 기다림
-        console.log('[RTC] Waiting for offer…')
-      }
-    } catch (err) {
-      // 초기화 실패 시 오류 처리
-      console.error('[Init] error:', err)
+      await this.getUserInfo();
+    }catch(error){
+      console.error('유저 정보 조회 실패:', error);
     }
+
+    // try {
+    //   await this.initLocalMedia() // 카메라, 마이크 준비
+    //   await this.connectSignalingServer() // 시그널링 서버 연결
+    //   if (this.isInitiator) {
+    //     await this.startAsCaller()
+    //   } else {
+    //     // 수신자: offer를 기다림
+    //     console.log('[RTC] Waiting for offer…')
+    //   }
+    // } catch (err) {
+    //   // 초기화 실패 시 오류 처리
+    //   console.error('[Init] error:', err)
+    // }
   },
 
   // 컴포넌트 소멸 시 리소스 해제
@@ -301,6 +314,33 @@ export default {
       this.pendingCandidates = [];
       console.log('[RTC] Peer closed.');
     },
+    // 유저 정보 조회 함수
+    async getUserInfo() {
+      try {
+        const response = await api.get('/api/v1/main/me')
+        const userInfo = response.data
+
+        if (this.isUnityReady) {
+          this.sendUserInfoToUnity(userInfo)
+        } else {
+          const onUnityReady = (event) => {
+            try {
+              const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
+              if (data && data.type === 'unity-ready') {
+                this.isUnityReady = true
+                this.sendUserInfoToUnity(userInfo)
+              }
+            } catch (_) {}
+          }
+          window.addEventListener('message', onUnityReady, { once: true })
+        }
+
+        console.log(response.data)
+      } catch (error) {
+        console.error('유저 정보 조회 실패:', error)
+      }
+    },
+    // Unity 전송 함수
     sendVideoFrameToUnity(video, canvas, videoSender) {
       const ctx = canvas.getContext('2d')
 
@@ -320,6 +360,24 @@ export default {
         '*',
       )
     },
+    sendUserInfoToUnity(userInfo) {
+      const unityFrame = this.$refs.unityFrame
+
+      unityFrame.contentWindow.postMessage(
+        JSON.stringify({
+          type: 'local-user-info',
+          data: JSON.stringify({
+            userid: userInfo.userId,
+            nickname: userInfo.nickname,
+            profileimage: userInfo.profileImage,
+            personalpoint: userInfo.personalPoint,
+          })
+        }),
+        '*',
+      )
+
+      console.log('Vue → Unity 유저 정보 전송: ', userInfo)
+    }
   },
   name: 'UnityView',
 }
@@ -331,9 +389,14 @@ export default {
   justify-content: center;
   align-items: center;
   height: 100vh;
+  width: 100vw;
 }
 iframe {
   border: none;
+  width: 100%;
+  height: 100%;
+  max-width: 2560px;
+  max-height: 1440px;
 }
 .localCamera {
   position: absolute;

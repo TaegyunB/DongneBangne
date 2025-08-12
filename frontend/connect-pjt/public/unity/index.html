@@ -37,6 +37,8 @@
 
           if(typeof unityInstance !== 'undefined'){
             const data = JSON.parse(event.data);
+
+            console.log("Vue → Unity 메시지 수신: ", data);
             if(data.type === "video-frame"){
               if(data.sender === "local"){
                 unityInstance.SendMessage("VueReceiver", "ReceiveLocalVideoFrame", data.data);
@@ -44,6 +46,10 @@
               else if(data.sender === "remote"){
                 unityInstance.SendMessage("VueReceiver", "ReceiveRemoteVideoFrame", data.data);
               }
+            }
+            else if(data.type === "local-user-info"){
+              unityInstance.SendMessage("VueReceiver", "ReceiveLocalUserInfo", data.data);
+              console.log("Vue → Unity 유저 정보 전송: ", data.data);
             }
           }
         }

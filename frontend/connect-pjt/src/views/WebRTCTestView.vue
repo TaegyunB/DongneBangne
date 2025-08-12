@@ -52,15 +52,42 @@ export default {
     //await this.getNameInfo();
   },
   methods: {
-    async initLocalMedia() {
-      try {
-        // navigator.mediaDevices.getUserMedia()는 브라우저에서 카메라와 마이크 권한을 요청하고, MediaStream객체를 호출하는 함수
-        this.localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-        // localVideo에 내 스트림을 연결하는 부분으로 내 화면을 내 비디오에 바로 띄우는 작업
-        this.$refs.localVideo.srcObject = this.localStream
-      } catch (error) {
-        console.log('카메라.마이크 접근 실패', error)
+    // 플레이어 준비 완료
+    onPlayerReady(event) {
+      console.log('YouTube 플레이어 준비 완료')
+      this.isPlayerReady = true
+    },
+    
+    // 플레이어 상태 변경
+    onStateChange(event) {
+      const states = {
+        '-1': 'unstarted',
+        '0': 'ended',
+        '1': 'playing',
+        '2': 'paused',
+        '3': 'buffering',
+        '5': 'video cued'
       }
+      
+      const stateName = states[event.data] || 'unknown'
+      console.log(`플레이어 상태 변경: ${stateName} (${event.data})`)
+      
+      this.isPlaying = event.data === 1
+    },
+    
+    // 플레이어 오류
+    onError(event) {
+      console.error(`플레이어 오류: ${event.data}`)
+    },
+    
+    // 비디오 종료
+    onEnded(event) {
+      console.log('비디오 재생 종료')
+    },
+    
+    // 비디오 큐 완료
+    onCued(event) {
+      console.log('비디오 큐 완료')
     },
     //  -->startCall()함수는 RTCPeerConnection을 생성하고, 내 스트림을 상대에게 연결하고, SDP Offer와 ICE Candidate를 signaling 서버로 보내서 연결을 성립하는 함수
     async startCall() {
