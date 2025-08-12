@@ -10,13 +10,13 @@
       <div class="table-header">
         <div class="col-month">발간 월</div>
         <div class="col-date">발간일자</div>
-        <div class="col-action">액션</div>
+        <div class="col-action">PDF</div>
       </div>
       
       <div class="table-body">
         <div 
           v-for="news in displayNewsList" 
-          :key="news.id || `${news.year}-${news.month}`"
+          :key="news.id"
           class="table-row"
         >
           <div class="col-month">
@@ -29,13 +29,13 @@
           </div>
           
           <div class="col-date">
-            {{ news.year }}.{{ String(news.month).padStart(2, '0') }}.{{ getLastDay(news.year, news.month) }}
+            {{ formatPublishDate(news) }}
           </div>
           
           <div class="col-action">
             <!-- PDF가 생성된 경우: 보기 버튼 -->
             <button 
-              v-if="news.isGenerated && news.pdfUrl"
+              v-if="news.pdfUrl"
               @click="viewNewsPdf(news.id)"
               class="action-btn view-btn"
             >
@@ -44,31 +44,20 @@
             
             <!-- AI 기사는 생성되었지만 PDF가 없는 경우: PDF 생성 버튼 -->
             <button 
-              v-else-if="news.isGenerated && !news.pdfUrl && hasCompletedChallenges(news)"
+              v-else-if="!news.pdfUrl && hasCompletedChallenges(news)"
               @click="showPdfGenerator(news)"
               class="action-btn generate-pdf-btn"
             >
               PDF 생성하기
             </button>
             
-            <!-- AI 기사가 아직 생성되지 않은 경우: AI 신문 생성 버튼 -->
-            <button 
-              v-else-if="!news.isGenerated"
-              @click="createNews(news)"
-              :disabled="creatingNewsIds.includes(getNewsKey(news)) || !canCreateNews(news)"
-              class="action-btn create-btn"
-              :title="getCreateButtonTooltip(news)"
-            >
-              {{ getCreateButtonText(news) }}
-            </button>
-            
             <!-- 완료된 도전과제가 없는 경우 -->
             <span 
               v-else 
               class="no-content-label"
-              title="이번 달은 완료된 도전과제가 없어 신문이 생성되지 않았습니다."
+              title="이번 달은 완료된 도전과제가 없어 PDF를 생성할 수 없습니다."
             >
-              내용 없음
+              PDF 생성 불가
             </span>
           </div>
         </div>
@@ -116,16 +105,6 @@
         {{ page }}
       </button>
       
-      <span v-if="totalPages > 5" class="page-dots">...</span>
-      
-      <button
-        v-if="totalPages > 5"
-        @click="changePage(totalPages)"
-        :class="['page-btn', { active: currentPage === page }]"
-      >
-        {{ totalPages }}
-      </button>
-      
       <button 
         @click="changePage(currentPage + 1)"
         :disabled="currentPage === totalPages"
@@ -154,7 +133,6 @@ const route = useRoute()
 const loading = ref(false)
 const newsList = ref([])
 const seniorCenterName = ref('경로당')
-const creatingNewsIds = ref([])
 const currentPage = ref(1)
 const itemsPerPage = 10
 
@@ -201,55 +179,10 @@ const fetchNews = async () => {
   }
 }
 
-// 현재 월부터 최근 6개월 생성
-const generateRecentMonths = () => {
-  const months = []
-  const now = new Date()
-  
-  for (let i = 0; i < 6; i++) {
-    const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    months.push({
-      year: date.getFullYear(),
-      month: date.getMonth() + 1,
-      isGenerated: false
-    })
-  }
-  
-  return months
-}
-
-// 표시할 신문 목록 (생성된 신문 + 생성 가능한 월)
+// 표시할 신문 목록 (실제로 생성된 신문만)
 const displayNewsList = computed(() => {
-  // 최근 6개월 월 목록
-  const recentMonths = generateRecentMonths()
-  
-  // 기존 신문과 매칭하여 통합 리스트 생성
-  const combinedList = recentMonths.map(monthData => {
-    const existingNews = newsList.value.find(news => 
-      news.year === monthData.year && news.month === monthData.month
-    )
-    
-    if (existingNews) {
-      return {
-        ...existingNews,
-        isGenerated: existingNews.isGenerated || true, // API에서 온 데이터는 생성된 것으로 간주
-        centerName: existingNews.centerName || seniorCenterName.value
-      }
-    } else {
-      return {
-        ...monthData,
-        id: null,
-        pdfUrl: null,
-        challenges: [],
-        newsTitle: `${monthData.year}년 ${monthData.month}월 ${seniorCenterName.value} 소식`,
-        centerName: seniorCenterName.value,
-        isGenerated: false
-      }
-    }
-  })
-  
-  // 년-월 내림차순 정렬
-  const sorted = combinedList.sort((a, b) => {
+  // API에서 받은 신문 목록을 년-월 내림차순으로 정렬
+  const sortedNews = [...newsList.value].sort((a, b) => {
     if (a.year !== b.year) return b.year - a.year
     return b.month - a.month
   })
@@ -257,11 +190,12 @@ const displayNewsList = computed(() => {
   // 페이지네이션 적용
   const startIndex = (currentPage.value - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
-  return sorted.slice(startIndex, endIndex)
+  return sortedNews.slice(startIndex, endIndex)
 })
 
-// 페이지네이션 계산
-const totalPages = computed(() => Math.ceil(6 / itemsPerPage)) // 최근 6개월 기준
+// 페이지네이션 계산 (실제 신문 개수 기준)
+const totalPages = computed(() => Math.ceil(newsList.value.length / itemsPerPage))
+
 const visiblePages = computed(() => {
   const pages = []
   const start = Math.max(1, currentPage.value - 2)
@@ -273,74 +207,41 @@ const visiblePages = computed(() => {
   return pages
 })
 
-// 신문 키 생성 (id가 없는 경우 year-month 조합)
-const getNewsKey = (news) => {
-  return news.id || `${news.year}-${news.month}`
-}
-
 // 신문 설명 생성
 const getNewsDescription = (news) => {
-  if (news.isGenerated && news.challenges && news.challenges.length > 0) {
-    const challengeNames = news.challenges.map(c => 
-      c.challengeName || c.challengeTitle || '활동'
-    ).join(', ')
-    return `${challengeNames} 활동을 하며 추억을 나누...`
-  } else if (news.isGenerated && (!news.challenges || news.challenges.length === 0)) {
-    return '이번 달은 도전과제가 없었습니다.'
-  } else if (!news.isGenerated) {
-    return '이번 달 도전과제로 AI 신문을 만들어보세요!'
-  }
-  return '도전과제가 없는 달입니다.'
-}
-
-// 해당 월의 마지막 날 구하기
-const getLastDay = (year, month) => {
-  return new Date(year, month, 0).getDate()
-}
-
-// 신문 생성 가능 여부 확인
-const canCreateNews = (news) => {
-  // 이미 생성된 경우 false
-  if (news.isGenerated) return false
-  
-  // 현재 월보다 미래 월인 경우 false
-  const now = new Date()
-  const currentYear = now.getFullYear()
-  const currentMonth = now.getMonth() + 1
-  
-  if (news.year > currentYear || (news.year === currentYear && news.month > currentMonth)) {
-    return false
-  }
-  
-  return true
-}
-
-// 생성하기 버튼 텍스트
-const getCreateButtonText = (news) => {
-  if (creatingNewsIds.value.includes(getNewsKey(news))) {
-    return 'AI 신문 생성중...'
-  }
-  
-  if (!canCreateNews(news)) {
-    return '생성 불가'
-  }
-  
-  return 'AI 신문 생성하기'
-}
-
-// 생성하기 버튼 툴팁
-const getCreateButtonTooltip = (news) => {
-  if (!canCreateNews(news)) {
-    const now = new Date()
-    const currentYear = now.getFullYear()
-    const currentMonth = now.getMonth() + 1
+  if (news.challenges && news.challenges.length > 0) {
+    const challengeNames = news.challenges
+      .filter(c => c.challengeName || c.challengeTitle)
+      .map(c => c.challengeName || c.challengeTitle)
+      .slice(0, 3) // 최대 3개까지만 표시
+      .join(', ')
     
-    if (news.year > currentYear || (news.year === currentYear && news.month > currentMonth)) {
-      return '미래 월의 신문은 생성할 수 없습니다.'
+    if (challengeNames) {
+      return `${challengeNames} 활동을 하며 추억을 나누...`
     }
-    return '이미 생성된 신문입니다.'
   }
-  return `${news.year}년 ${news.month}월에 완료한 도전과제로 AI 신문을 생성합니다.`
+  
+  return '이번 달의 도전과제 활동 내용입니다.'
+}
+
+// 발간일자 포맷팅 (현재 날짜 기준)
+const formatPublishDate = (news) => {
+  // 신문이 생성된 날짜가 있으면 그 날짜를 사용, 없으면 현재 날짜 사용
+  let publishDate
+  
+  if (news.createdAt) {
+    // API에서 생성일시를 제공하는 경우
+    publishDate = new Date(news.createdAt)
+  } else {
+    // 생성일시가 없으면 현재 날짜 사용
+    publishDate = new Date()
+  }
+  
+  const year = publishDate.getFullYear()
+  const month = String(publishDate.getMonth() + 1).padStart(2, '0')
+  const day = String(publishDate.getDate()).padStart(2, '0')
+  
+  return `${year}.${month}.${day}`
 }
 
 // 완료된 도전과제가 있는지 확인
@@ -387,66 +288,16 @@ const viewNewsPdf = async (newsId) => {
     
   } catch (error) {
     console.error('PDF 조회 실패:', error)
-    alert('PDF를 불러오는데 실패했습니다.')
-  }
-}
-
-// AI 신문 생성하기
-const createNews = async (news) => {
-  if (!canCreateNews(news)) {
-    alert('이 신문을 생성할 수 없습니다.') 
-    return
-  }
-
-  const newsKey = getNewsKey(news)
-  creatingNewsIds.value.push(newsKey)
-  
-  try {
-    console.log(`${news.year}년 ${news.month}월 AI 신문 생성 시작`)
     
-    const response = await api.post('/api/v1/admin/ai-news/create', {
-      year: news.year,
-      month: news.month
-    })
+    let errorMessage = 'PDF를 불러오는데 실패했습니다.'
     
-    console.log('AI 신문 생성 완료:', response.data)
-    
-    // 성공시 신문 목록 새로고침
-    await fetchNews()
-    
-    alert(`${news.year}년 ${news.month}월 AI 신문이 성공적으로 생성되었습니다!`)
-    
-    // 생성된 신문 보기 (생성된 신문의 ID가 있는 경우)
-    if (response.data && response.data.id) {
-      router.push(`/news/${response.data.id}`)
-    }
-    
-  } catch (error) {
-    console.error('AI 신문 생성 실패:', error)
-    
-    let errorMessage = 'AI 신문 생성에 실패했습니다.'
-    
-    if (error.response) {
-      const status = error.response.status
-      const message = error.response.data?.message || '서버 오류'
-      
-      if (status === 400) {
-        errorMessage = `신문 생성 조건이 맞지 않습니다: ${message}`
-      } else if (status === 403) {
-        errorMessage = 'AI 신문을 생성할 권한이 없습니다.'
-      } else if (status === 409) {
-        errorMessage = '이미 생성된 신문이거나 중복된 요청입니다.'
-      } else {
-        errorMessage = `AI 신문 생성에 실패했습니다: ${message}`
-      }
-    } else if (error.request) {
-      errorMessage = 'AI 신문 생성에 실패했습니다: 서버와 연결할 수 없습니다.'
+    if (error.response?.status === 404) {
+      errorMessage = 'PDF 파일을 찾을 수 없습니다. PDF를 먼저 생성해주세요.'
+    } else if (error.response?.status === 403) {
+      errorMessage = 'PDF를 볼 권한이 없습니다.'
     }
     
     alert(errorMessage)
-  } finally {
-    // 생성 중 상태 제거
-    creatingNewsIds.value = creatingNewsIds.value.filter(id => id !== newsKey)
   }
 }
 
@@ -465,7 +316,7 @@ onMounted(async () => {
   
   if (generatePdfId) {
     const news = newsList.value.find(n => n.id == generatePdfId)
-    if (news && news.isGenerated && !news.pdfUrl) {
+    if (news && !news.pdfUrl) {
       showPdfGenerator(news)
     }
   }
@@ -610,29 +461,13 @@ onMounted(async () => {
 }
 
 .generate-pdf-btn {
-  background-color: #8b5cf6;
-  color: white;
-}
-
-.generate-pdf-btn:hover:not(:disabled) {
-  background-color: #7c3aed;
-  transform: translateY(-1px);
-}
-
-.create-btn {
   background-color: #10b981;
   color: white;
 }
 
-.create-btn:hover:not(:disabled) {
+.generate-pdf-btn:hover:not(:disabled) {
   background-color: #059669;
   transform: translateY(-1px);
-}
-
-.create-btn:disabled {
-  background-color: #9ca3af;
-  cursor: not-allowed;
-  transform: none;
 }
 
 .no-content-label {
@@ -694,11 +529,6 @@ onMounted(async () => {
   background-color: #f9fafb;
   color: #d1d5db;
   cursor: not-allowed;
-}
-
-.page-dots {
-  color: #9ca3af;
-  padding: 0 8px;
 }
 
 .loading {

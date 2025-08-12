@@ -15,17 +15,26 @@
       <p>{{ currentMessage }}</p>
     </div>
 
-    <!-- AI 신문 생성 섹션 -->
-    <div v-if="shouldShowAINewsButton" class="ai-news-section">
+    <!-- AI 신문 생성 섹션 (UserROle이 ADMIN일 때만 표시) -->
+    <div v-if="userRole === 'ADMIN'" class="ai-news-section">
       <div class="ai-news-card">
         <div class="ai-news-content">
           <div class="ai-news-icon">📰</div>
           <h3>이번 달 도전을 AI 신문으로 만들어보세요!</h3>
-          <p>완료된 도전과제들을 바탕으로 특별한 신문을 생성할 수 있습니다.</p>
         </div>
-        <button @click="goToAINews" class="btn-ai-news" :disabled="creatingAINews">
-          {{ creatingAINews ? '🤖 AI 신문 생성 중...' : '✨ AI 신문 생성하기' }}
-        </button>
+        <div class="ai-news-action">
+          <button 
+            @click="goToAINews" 
+            class="btn-ai-news" 
+            :disabled="creatingAINews || !isAINewsButtonEnabled"
+            :title="getAINewsButtonTooltip"
+          >
+            {{ creatingAINews ? '🤖 AI 신문 생성 중...' : '✨ AI 신문 생성하기' }}
+          </button>
+          <p class="ai-news-status" :class="{ 'disabled': !isAINewsButtonEnabled }">
+            {{ getAINewsDescription }}
+          </p>
+        </div>
       </div>
     </div>
      
@@ -57,10 +66,17 @@
               <h2>{{ getDisplayTitle(challenge, index) }}</h2>
               <!-- 기존 수정/삭제 버튼 또는 새로운 생성 버튼 -->
               <div v-if="shouldShowActionButtons(challenge, index)" class="action-buttons">
-                <!-- 도전이 있을 때: 수정/삭제 버튼 -->
+                <!-- 도전이 있을 때: 수정/삭제 버튼 (완료된 경우 수정 버튼만 숨김) -->
                 <template v-if="!challenge.isEmpty">
-                  <button class="edit-btn" @click.stop="editChallenge(index)">수정</button>
-                  <button class="delete-btn" @click.stop="showDeleteConfirm(index)">삭제</button>
+                  <!-- 완료되지 않은 도전: 수정 + 삭제 버튼 -->
+                  <template v-if="!isCompleted(challenge)">
+                    <button class="edit-btn" @click.stop="editChallenge(index)">수정</button>
+                    <button class="delete-btn" @click.stop="showDeleteConfirm(index)">삭제</button>
+                  </template>
+                  <!-- 완료된 도전: 삭제 버튼만 -->
+                  <template v-else>
+                    <button class="delete-btn" @click.stop="showDeleteConfirm(index)">삭제</button>
+                  </template>
                 </template>
                 <!-- 도전이 없을 때: 생성 버튼 -->
                 <template v-else>
@@ -95,7 +111,13 @@
         
         <!-- 모달 내 이미지 표시 -->
         <div v-if="selectedChallenge.challengeImage" class="modal-image">
-          <img :src="selectedChallenge.challengeImage" :alt="selectedChallenge.challengeTitle" />
+          <img 
+            :src="getChallengeImage(selectedChallenge)" 
+            :alt="selectedChallenge.challengeTitle"
+            crossorigin="anonymous"
+            @error="onImageError($event, selectedChallenge)"
+            @load="onImageLoad($event, selectedChallenge)"
+          />
         </div>
         
         <button 
@@ -252,14 +274,31 @@ const getDisplayDescription = (challenge, index) => {
 }
 
 const shouldShowActionButtons = (challenge, index) => {
-  // ADMIN이고 3,4번째 칸(커스텀 도전과제)인 경우에만 버튼 표시
+  // ADMIN이고 3,4번째 칸(커스텀 도전과제)인 경우 버튼 표시
+  // 완료 여부와 관계없이 삭제는 가능하도록 함
   return userRole.value === 'ADMIN' && index >= 2
 }
 
-// AI 신문 버튼 표시 조건
-const shouldShowAINewsButton = computed(() => {
-  // 완료된 도전이 1개 이상 있을 때 AI 신문 버튼 표시
+// AI 신문 버튼 활성화 조건
+const isAINewsButtonEnabled = computed(() => {
+  // 완료된 도전이 1개 이상 있을 때만 활성화
   return count.value > 0
+})
+
+// AI 신문 버튼 툴팁 메시지
+const getAINewsButtonTooltip = computed(() => {
+  if (count.value === 0) {
+    return '미션을 하나라도 인증해야 활성화됩니다'
+  }
+  return `완료된 ${count.value}개의 도전과제로 AI 신문을 생성합니다`
+})
+
+// AI 신문 설명 텍스트
+const getAINewsDescription = computed(() => {
+  if (count.value === 0) {
+    return '미션을 한 개라도 인증해야 AI 신문을 생성할 수 있습니다.'
+  }
+  return '완료된 도전과제들을 바탕으로 특별한 신문을 생성할 수 있습니다.'
 })
 
 // 기존 핵심 기능 함수들 
@@ -277,7 +316,7 @@ const getButtonText = (challenge) => {
   if (isCompleted(challenge)) {
     return '완료'
   } else {
-    return '미완료'
+    return '도전 인증하기'
   }
 }
 
@@ -357,6 +396,17 @@ const fetchChallenges = async () => {
 
     const data = response.data
     console.log('data:', data)
+
+    console.log('=== 각 도전과제별 이미지 확인 ===')
+    challenges.value.forEach((challenge, index) => {
+      console.log(`Challenge ${index + 1}:`, {
+        id: challenge.id,
+        title: challenge.challengeTitle,
+        hasImage: !!challenge.challengeImage,
+        imageUrl: challenge.challengeImage,
+        imageType: typeof challenge.challengeImage
+      })
+    })
     
     // 현재 월 업데이트
     if (data.month) {
@@ -613,6 +663,12 @@ const moveToFinish = () => {
 }
 
 const goToAINews = async () => {
+  // 완료된 도전이 없으면 실행하지 않음
+  if (!isAINewsButtonEnabled.value) {
+    alert('미션을 하나라도 인증해야 AI 신문을 생성할 수 있습니다.')
+    return
+  }
+  
   // AI 신문 생성 API 호출
   creatingAINews.value = true
   
@@ -680,10 +736,6 @@ onMounted(async () => {
 })
 
 watch(percent, updateMessage)
-watch(() => router.currentRoute.value, async () => {
-  await fetchChallenges()
-  updateCompletedCount()
-}, { immediate: true })
 </script>
 
 <style>
@@ -806,6 +858,27 @@ watch(() => router.currentRoute.value, async () => {
         gap: 20px;
     }
 
+    .ai-news-action {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .ai-news-status {
+        font-size: 13px;
+        color: var(--dark-gray);
+        text-align: center;
+        margin: 0;
+        max-width: 200px;
+        line-height: 1.4;
+    }
+
+    .ai-news-status.disabled {
+        color: #ef4444;
+        font-weight: 500;
+    }
+
     .ai-news-icon {
         font-size: 48px;
         color: var(--primary-orange);
@@ -840,10 +913,24 @@ watch(() => router.currentRoute.value, async () => {
         min-width: 180px;
     }
 
-    .btn-ai-news:hover {
+    .btn-ai-news:hover:not(:disabled) {
         background: #e55a2b;
         transform: translateY(-1px);
         box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+    }
+
+    .btn-ai-news:disabled {
+        background: #9ca3af;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+        opacity: 0.6;
+    }
+
+    .btn-ai-news:disabled:hover {
+        background: #9ca3af;
+        transform: none;
+        box-shadow: none;
     }
 
     /* 도전과제 컨테이너 */
@@ -1252,6 +1339,10 @@ watch(() => router.currentRoute.value, async () => {
             text-align: center;
         }
 
+        .ai-news-action {
+            width: 100%;
+        }
+
         .ai-news-icon {
             font-size: 40px;
         }
@@ -1268,6 +1359,10 @@ watch(() => router.currentRoute.value, async () => {
             width: 100%;
             min-width: auto;
             padding: 14px 20px;
+        }
+
+        .ai-news-status {
+            max-width: 100%;
         }
     }
 
