@@ -51,9 +51,9 @@
               </div>
             </div>
           </td>
-          <td class="text-center">{{ center.trotPoint.toLocaleString() }}</td>
-          <td class="text-center">{{ center.missionPoint.toLocaleString() }}</td>
-          <td class="text-blue text-center">{{ center.monthlyPoint.toLocaleString() }}</td>
+          <td class="text-center">{{ center.trotPoint ?? 0}}</td>
+          <td class="text-center">{{ center.missionPoint ?? 0 }}</td>
+          <td class="text-blue text-center">{{ center.monthlyPoint ?? 0}}</td>
         </tr>
       </tbody>
     </table>
@@ -80,45 +80,58 @@
         <h2>{{ selectedCenter.seniorCenterName }} 도전</h2>
 
         <div class="challenge-grid">
-          <div 
-            v-for="challengeId in [1, 2, 3, 4]" 
-            :key="challengeId" 
-            class="challenge-card"
-          >
-            <template v-if="getChallengeById(challengeId)">
+          <div v-for="(m, idx) in modalChallenges" :key="'slot-' + (idx+1)" class="challenge-card">
+            <template v-if="m">
               <div class="image-placeholder">
-                <img
-                  v-if="getChallengeById(challengeId).challengeImage"
-                  :src="getChallengeById(challengeId).challengeImage"
-                  class="challenge-img"
-                  alt="미션 이미지"
-                />
+                <img v-if="m.challengeImage" :src="m.challengeImage" class="challenge-img" alt="미션 이미지" />
               </div>
               <div class="card-text">
                 <h3 class="card-title">
-                  {{ getChallengeById(challengeId).challengeTitle }}
-                  <span :class="getChallengeById(challengeId).isSuccess ? 'check-icon' : 'fail-icon'">
-                    {{ getChallengeById(challengeId).isSuccess ? '✅' : '❌' }}
+                  {{ m.challengeTitle }}
+                  <span :class="m.isSuccess ? 'check-icon' : 'fail-icon'">
+                    {{ m.isSuccess ? '✅' : '❌' }}
                   </span>
                 </h3>
-                <p class="card-description">
-                  {{ truncateText(getChallengeById(challengeId).description) }}
-                </p>
-                <p class="card-subtext">📍 {{ getChallengeById(challengeId).challengePlace }}</p>
-                <p class="card-point">💎 {{ getChallengeById(challengeId).point }}점</p>
-                <p class="more-info" @click="openDetailModal(challengeId)">더보기 →</p>
+                <p class="card-description">{{ truncateText(m.description) }}</p>
+                <p class="card-subtext">📍 {{ m.challengePlace }}</p>
+                <p class="card-point">💎 {{ m.point }}점</p>
+                <button class="more-info" @click="openDetailModal(m.id)">더보기 →</button>
               </div>
             </template>
             <template v-else>
-              <div class="image-placeholder">
-                <span style="color: #999">🕳</span>
-              </div>
+              <div class="image-placeholder"><span style="color:#999">🕳</span></div>
               <div class="card-text">
                 <h3 class="card-title">미션이 등록되지 않았습니다</h3>
               </div>
             </template>
           </div>
         </div>
+    <div class="modal-overlay" v-if="showDetailModal" @click.self="closeDetailModal">
+      <div class="modal-content">
+        <h2>도전 상세</h2>
+        <div v-if="selectedChallenge">
+          <div class="detail-body">
+            <div class="image-placeholder" v-if="selectedChallenge.image">
+              <img :src="selectedChallenge.image" class="challenge-img" alt="상세 이미지" />
+            </div>
+            <h3 class="card-title" style="margin-top:12px">
+              {{ selectedChallenge.title }}
+              <span :class="selectedChallenge.isSuccess ? 'check-icon' : 'fail-icon'">
+                {{ selectedChallenge.isSuccess ? '✅' : '❌' }}
+              </span>
+            </h3>
+            <p class="card-description" style="white-space:pre-line">{{ selectedChallenge.description }}</p>
+            <p class="card-subtext">📍 {{ selectedChallenge.place }}</p>
+            <p class="card-point">💎 {{ selectedChallenge.point }}점</p>
+          </div>
+
+          <div class="detail-actions">
+            <button class="report-btn" @click="reportChallenge">신고하기</button>
+            <button class="close-btn" @click="closeDetailModal">닫기</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
         <button class="close-btn" @click="closeModal">닫기</button>
       </div>
@@ -136,6 +149,15 @@ const pageSize = 10
 const totalPages = ref(1)
 const searchQuery = ref('')
 const selectedCenter = ref(null)
+const showDetailModal = ref(false)
+const selectedChallenge = ref(null)
+
+const sortChallenges = list =>
+  [...(list || [])].sort((a, b) => {
+    if ((a.year ?? 0) !== (b.year ?? 0)) return (a.year ?? 0) - (b.year ?? 0)
+    if ((a.month ?? 0) !== (b.month ?? 0)) return (a.month ?? 0) - (b.month ?? 0)
+    return (a.id ?? 0) - (b.id ?? 0)
+  })
 
 const filteredCenters = computed(() => {
   if (!searchQuery.value.trim()) return centers.value
@@ -168,28 +190,58 @@ const goToPage = (page) => {
   currentPage.value = page
 }
 
+// const normalizeChallenges = (challenges) => {
+//   const result = []
+//   for (let id = 1; id <= 4; id++) {
+//     const found = challenges.find(c => c.id === id)
+//     result.push(found || null)
+//   }
+//   return result
+// }
+
 const normalizeChallenges = (challenges) => {
-  const result = []
-  for (let id = 1; id <= 4; id++) {
-    const found = challenges.find(c => c.id === id)
-    result.push(found || null)
-  }
-  return result
+  const list = Array.isArray(challenges) ? challenges : []
+  return sortChallenges(list)
+    .map(c => ({
+      id: c.id ?? c.challengeId ?? c.challenge_id ?? c.slot ?? null,
+      challengeImage: c.challengeImage ?? c.image ?? null,
+      challengeTitle: c.challengeTitle ?? c.title ?? '',
+      description: c.description ?? '',
+      challengePlace: c.challengePlace ?? c.place ?? '',
+      point: c.point ?? 0,
+      isSuccess: c.isSuccess ?? c.is_success ?? false
+    }))
+    .filter(c => c.id != null) // null 제거
 }
 
 const openModal = async (centerId) => {
   try {
     const res = await api.get(`/api/v1/rankings/senior-center/${centerId}/challenges`)
     const data = res.data
+    // selectedCenter.value = {
+    //   ...data,
+    //   challenges: normalizeChallenges(data.challenges)
+    // }
+
+    const centerInList = centers.value.find(c => c.id === centerId)
     selectedCenter.value = {
-      ...data,
+      seniorCenterId: data.seniorCenterId ?? centerId,
+      seniorCenterName: data.seniorCenterName ?? centerInList?.centerName ?? '',
       challenges: normalizeChallenges(data.challenges)
     }
+
   } catch (err) {
     console.error('도전 미션 로딩 실패:', err)
   }
 }
 
+// 모달에서 표시할 4칸: 데이터 0~4개 + 나머지는 null(미등록)
+const modalChallenges = computed(() => {
+  const list = selectedCenter.value?.challenges ?? []
+  const out = [...list.slice(0, 4)]
+  while (out.length < 4) out.push(null)
+  return out
+})
 
 const closeModal = () => {
   selectedCenter.value = null
@@ -211,8 +263,11 @@ onMounted(async () => {
       missionPoint: center.challengePoint,
       monthlyPoint: center.totalPoint,
       challenges: center.challenges,
-      challengeStatuses: center.challenges.slice(0, 4).map((c) =>
-        c.isSuccess ? 'success' : 'fail'
+      // challengeStatuses: center.challenges.slice(0, 4).map((c) =>
+      //   c.isSuccess ? 'success' : 'fail'
+      // )
+      challengeStatuses: (center.challenges ?? []).slice(0, 4).map(c =>
+        (c.isSuccess ?? c.is_success) ? 'success' : 'fail'
       )
     }))
     normalized.sort((a, b) => b.monthlyPoint - a.monthlyPoint)
@@ -222,30 +277,78 @@ onMounted(async () => {
   }
 })
 
-const getChallengeById = (id) => {
-  return selectedCenter.value?.challenges?.find(c => c.id === id)
-}
+// const getChallengeById = (id) => {
+//   return selectedCenter.value?.challenges?.find(c => c.id === id)
+// }
+
+// const getChallengeById = (id) => {
+//   const arr = selectedCenter.value?.challenges || []
+//   return arr.find(c => c && c.id === id) || null
+// }
 
 const truncateText = (text, maxLength = 30) => {
   if (!text) return ''
   return text.length > maxLength ? text.slice(0, maxLength) + '...' : text
 }
 
-const openDetailModal = async (challengeId) => {
-  const centerId = selectedCenter.value?.seniorCenterId
-  if (!centerId) return
+// const openDetailModal = async (challengeId) => {
+//   const centerId = selectedCenter.value?.seniorCenterId
+//   if (!centerId) return
 
+//   try {
+//     const res = await api.get(`/api/v1/rankings/senior-center/${centerId}/challenges/${challengeId}`)
+//     const challenge = res.data
+//     // 모달 띄우는 로직 구현 위치
+//     console.log('✅ 상세 미션:', challenge)
+//     // 예: 상세 모달 상태로 따로 띄우거나, selectedChallenge.value = challenge;
+//   } catch (err) {
+//     console.error('상세 미션 불러오기 실패:', err)
+//   }
+// }
+
+const openDetailModal = async (challengePk) => {
+  const centerId = selectedCenter.value?.seniorCenterId
+  if (!centerId || !challengePk) return
   try {
-    const res = await api.get(`/api/v1/rankings/senior-center/${centerId}/challenges/${challengeId}`)
-    const challenge = res.data
-    // 모달 띄우는 로직 구현 위치
-    console.log('✅ 상세 미션:', challenge)
-    // 예: 상세 모달 상태로 따로 띄우거나, selectedChallenge.value = challenge;
+    const { data } = await api.get(`/api/v1/rankings/senior-center/${centerId}/challenges/${challengePk}`)
+    // 필요한 필드만 통일
+    selectedChallenge.value = {
+      id: data.id ?? data.challengeId,
+      title: data.challengeTitle ?? data.title ?? '',
+      description: data.description ?? '',
+      place: data.challengePlace ?? data.place ?? '',
+      point: data.point ?? 0,
+      image: data.challengeImage ?? data.image ?? null,
+      isSuccess: data.isSuccess ?? data.is_success ?? false,
+      year: data.year, month: data.month
+    }
+    showDetailModal.value = true
   } catch (err) {
     console.error('상세 미션 불러오기 실패:', err)
   }
 }
 
+const closeDetailModal = () => {
+  showDetailModal.value = false
+  selectedChallenge.value = null
+}
+
+// 신고하기(페이로드 확정 필요)
+const reportChallenge = async () => {
+  if (!selectedCenter.value?.seniorCenterId || !selectedChallenge.value?.id) return
+  if (!confirm('해당 인증을 신고하시겠습니까?')) return
+  try {
+    // 백엔드 요구 스펙 확인 필요: body에 {challengeId, reason} 등?
+    await api.post(`/api/v1/rankings/${selectedCenter.value.seniorCenterId}`, {
+      challengeId: selectedChallenge.value.id
+    })
+    alert('신고가 접수되었습니다.')
+    closeDetailModal()
+  } catch (e) {
+    console.error('신고 실패:', e)
+    alert('신고에 실패했습니다.')
+  }
+}
 </script>
 
 <style scoped>
@@ -444,6 +547,7 @@ const openDetailModal = async (challengeId) => {
   flex-direction: column;
   align-items: center;
   text-align: left;
+  position: relative;
 }
 .image-placeholder {
   width: 100%;
@@ -490,4 +594,62 @@ const openDetailModal = async (challengeId) => {
   font-size: 16px;
   margin: 30px 0;
 }
+
+/* ── 카드 내부 텍스트 영역을 컬럼으로, '더보기'를 우하단으로 ───────────────── */
+.card-text {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.more-info {
+  margin-top: auto;          /* 내용 밑으로 밀기 */
+  align-self: flex-end;      /* 우측 정렬 */
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #007bff;
+  font-weight: 600;
+  padding: 0;
+}
+.more-info:hover { text-decoration: underline; }
+
+/* ── 상세 모달 액션 버튼 우하단 정렬 ───────────────────────────────────────── */
+.detail-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+.report-btn {
+  background: #dc3545;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.report-btn:hover { filter: brightness(0.95); }
+
+/* ── 모달 스크롤/사이즈 보강 ──────────────────────────────────────────────── */
+.modal-overlay .modal-content {
+  max-height: 80vh;     /* 긴 내용이면 내부 스크롤 */
+  overflow-y: auto;
+}
+
+/* 상세 모달이(두 번째 모달) 첫 모달 위로 올라오도록 z-index 살짝 높임
+   (현재 상세 모달이 첫 모달 안쪽에 렌더되어도 확실히 위에 보이게) */
+.challenge-modal .modal-overlay {
+  z-index: 1001;
+}
+
+/* 선택: 상세 모달 폭을 조금 좁게 (원하면 유지하세요) */
+.challenge-modal .modal-overlay .modal-content {
+  max-width: 720px;
+}
+
+/* ── 카드/그리드 자잘한 간격 다듬기(선택) ───────────────────────────────── */
+.challenge-grid { gap: 18px; }
+.card-title { margin-bottom: 4px; }
+.card-point { font-weight: 600; }
 </style>

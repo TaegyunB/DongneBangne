@@ -42,6 +42,7 @@ public class User extends BaseEntity {
     private UserRole userRole;
 
     @Column(name = "personal_point")
+    @Builder.Default
     private Long personalPoint = 0L;
 
     @ManyToOne(fetch = FetchType.LAZY)

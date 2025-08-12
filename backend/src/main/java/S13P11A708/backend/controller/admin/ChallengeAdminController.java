@@ -27,6 +27,7 @@ import S13P11A708.backend.dto.response.challenge.CreateChallengeResponseDto;
 import S13P11A708.backend.dto.response.challenge.UpdateChallengeResponseDto;
 import S13P11A708.backend.security.CustomOAuth2User;
 import S13P11A708.backend.service.ChallengeService;
+import S13P11A708.backend.service.MonthlyChallengeService;
 import S13P11A708.backend.service.S3Service;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +40,7 @@ import lombok.extern.slf4j.Slf4j;
 public class ChallengeAdminController {
 
     private final ChallengeService challengeService;
+    private final MonthlyChallengeService monthlyChallengeService;
     private final S3Service s3Service;
 
     /**
@@ -208,4 +210,6 @@ public class ChallengeAdminController {
         CancelCompletedChallengeResponseDto response = challengeService.cancelChallengeCompletion(challengeId, adminId);
         return ResponseEntity.ok(response);
     }
+
+
 }

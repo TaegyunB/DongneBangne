@@ -29,6 +29,7 @@ public class GameRoomUser extends BaseEntity {
     private User userId;
 
     @Column(name = "ready", nullable = false)
+    @Builder.Default
     private boolean ready = false;
 
     @Builder

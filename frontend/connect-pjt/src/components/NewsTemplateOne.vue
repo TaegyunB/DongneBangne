@@ -25,7 +25,7 @@
 </template>
 
 <script setup>
-import { defineProps, ref, defineExpose } from 'vue'
+import { ref } from 'vue'
 import NewsHeader from '@/components/NewsHeader.vue'
 
 const props = defineProps({

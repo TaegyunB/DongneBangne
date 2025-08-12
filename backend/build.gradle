@@ -88,6 +88,9 @@ dependencies {
 	testImplementation("org.mockito:mockito-junit-jupiter:5.11.0")
 	testImplementation("org.mockito:mockito-inline:5.2.0")
 	testImplementation 'org.testcontainers:junit-jupiter'
+
+	// JSON
+	implementation 'org.json:json:20240303'
 }
 
 test {

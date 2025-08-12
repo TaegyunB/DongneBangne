@@ -1,14 +1,24 @@
 package S13P11A708.backend.domain;
 
+import java.time.LocalDateTime;
+
 import S13P11A708.backend.domain.common.BaseEntity;
-import jakarta.persistence.*;
+import S13P11A708.backend.domain.enums.ChallengeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Entity
 @Getter
@@ -50,6 +60,11 @@ public class Challenge extends BaseEntity {
     @Builder.Default
     @Column(name = "is_success")
     private Boolean isSuccess = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "challenge_type")
+    @Builder.Default
+    private ChallengeType challengeType = ChallengeType.CUSTOM;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "senior_center_id")

@@ -1,13 +1,14 @@
 package S13P11A708.backend.repository;
 
-import S13P11A708.backend.domain.AiNews;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-import java.util.Optional;
+import S13P11A708.backend.domain.AiNews;
 
 @Repository
 public interface AiNewsRepository extends JpaRepository<AiNews, Long> {
@@ -16,7 +17,7 @@ public interface AiNewsRepository extends JpaRepository<AiNews, Long> {
      * 특정 경로당의 AI 신문 목록 조회 (최신순)
      */
     @Query("SELECT an FROM AiNews an WHERE an.seniorCenter.id = :seniorCenterId ORDER BY an.createdAt DESC")
-    List<AiNews> findAiNewsBySeniorCenterIdOrderByCreatedAtDesc(
+    List<AiNews> findBySeniorCenterIdOrderByCreatedAtDesc(
             @Param("seniorCenterId") Long seniorCenterId);
 
     /**
@@ -27,5 +28,4 @@ public interface AiNewsRepository extends JpaRepository<AiNews, Long> {
             @Param("seniorCenterId") Long seniorCenterId,
             @Param("year") Integer year,
             @Param("month") Integer month);
-
 }

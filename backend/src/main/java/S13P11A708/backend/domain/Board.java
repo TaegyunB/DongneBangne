@@ -42,6 +42,15 @@ public class Board extends BaseEntity {
 
     //== Setter 메서드 ==//
     /**
+     * 게시글 수정
+     */
+    public void updateBoard(String title, String content, BoardCategory category) {
+        this.title = title;
+        this.content = content;
+        this.category = category;
+    }
+
+    /**
      * 이미지 업로드 setter
      */
     public void updateBoardImage(String boardImage) {

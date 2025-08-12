@@ -1,6 +1,7 @@
 package S13P11A708.backend.dto.response.challenge;
 
 import S13P11A708.backend.domain.Challenge;
+import S13P11A708.backend.domain.enums.ChallengeType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -22,6 +23,7 @@ public class ChallengeResponseDto {
     private String challengeImage;
     private String imageDescription;
     private String aiDescription;
+    private ChallengeType challengeType;
     private Boolean isSuccess;
     private String seniorCenterName;
 
@@ -37,6 +39,7 @@ public class ChallengeResponseDto {
                 .challengeImage(challenge.getChallengeImage())
                 .imageDescription(challenge.getImageDescription())
                 .aiDescription(challenge.getAiDescription())
+                .challengeType(challenge.getChallengeType())
                 .isSuccess(challenge.getIsSuccess())
                 .seniorCenterName(challenge.getSeniorCenter().getCenterName())
                 .build();

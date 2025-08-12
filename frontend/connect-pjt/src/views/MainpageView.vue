@@ -29,7 +29,7 @@
         <div class="card-desc">함께라서 더 의미있는 도전<br />매달 다양한 도전을 해보세요!</div>
         <img src="@/assets/mainpage/assignment.png" alt="도전 아이콘" class="card-icon" />
       </div>
-      <div class="main-card two" @click="goTo('/admin/games')">
+      <div class="main-card two" @click="goTo('/games')">
         <div class="card-title">게임</div>
         <div class="card-desc">다른 경로당과 다양한 게임을<br />즐겨보세요!</div>
         <img src="@/assets/mainpage/joystick.png" alt="게임 아이콘" class="card-icon" />
@@ -56,12 +56,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useUserStore } from '@/stores/user'
+import { useUserStore } from '@/stores/user.js'
 
 const router = useRouter()
 const userStore = useUserStore()
+
+console.log("UserStore 정보:", userStore)
 
 // userRole을 백에서 가져오기
 const fetchUserInfo = async () => {
