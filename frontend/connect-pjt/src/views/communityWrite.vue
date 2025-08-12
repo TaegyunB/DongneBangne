@@ -67,6 +67,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { getAccessToken } from '@/utils/token'
 import api from '@/api/axios' // ✅ 전역 axios 인스턴스만 사용
 
 const router = useRouter()
@@ -134,12 +135,15 @@ const uploadImageIfNeeded = async () => {
   const raw = import.meta.env.VITE_IMAGE_PRESIGN_URL || import.meta.env.VITE_IMAGE_PRESIGN_PATH
   const presignEndpoint = resolvePresignEndpoint(String(raw || ''))
 
+  const token = getAccessToken()
+
   // 1) presign 요청 (백 규격 예: { uploadUrl, fileUrl, method?, fields? })
   const filename = `${crypto.randomUUID?.() || Date.now()}_${imageFile.value.name}`
-  const { data: presign } = await api.post(presignEndpoint, {
-    filename,
-    contentType: imageFile.value.type,
-  })
+  const { data: presign } = await api.post(
+    presignEndpoint,
+    { filename, contentType: imageFile.value.type },
+    { headers: { Authorization: `Bearer ${token}` } }
+  )
 
   // 2) S3 업로드
   const finalUrl = await uploadToS3(presign, imageFile.value)
@@ -186,6 +190,14 @@ const submitPost = async () => {
 
   submitting.value = true
   try {
+
+    const token = getAccessToken()
+    if (!token) {
+      alert('로그인이 필요합니다. 다시 로그인해 주세요.')
+      // 로그인 페이지 라우팅(사용 중인 라우트 이름으로 수정 가능)
+      router.push({ name: 'onboarding' })
+      return
+    }
     // 이미지 있으면 업로드 → URL 획득
     const imageUrl = await uploadImageIfNeeded()   // ← 추가
 
@@ -196,7 +208,9 @@ const submitPost = async () => {
       imageFile: imageUrl ?? null, // 백 스펙: URL 넘김
     }
 
-    await api.post('/api/v1/boards', body, { headers: { 'Content-Type': 'application/json' } })
+    await api.post('/api/v1/boards', body, {
+    headers: { Authorization: `Bearer ${token}` }
+    })
 
     alert('글이 등록되었습니다.')
     router.push({ name: 'boards', query: { category: body.boardCategory } })
