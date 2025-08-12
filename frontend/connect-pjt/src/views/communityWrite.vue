@@ -91,7 +91,63 @@ onMounted(() => {
   if (q && map[q]) form.value.category = map[q]
 })
 
-// 이미지 파일 선택 처리
+// [ADD] presign URL/path를 baseURL와 안전하게 합쳐주는 도우미
+const resolvePresignEndpoint = (raw) => {
+  const base = (api?.defaults?.baseURL || '').replace(/\/$/, '')
+  if (!raw) return `${base}/v1/uploads/presign`   // 디폴트 경로
+  if (/^https?:\/\//i.test(raw)) return raw       // 풀 URL
+  if (raw.startsWith('/')) return `${base}${raw}` // 경로만 온 경우
+  return `${base}/${raw.replace(/^\//, '')}`
+}
+
+// [ADD] S3로 실제 업로드 수행 (POST policy or PUT presign 둘 다 지원)
+const uploadToS3 = async (presign, file) => {
+  // POST 정책 방식
+  if (presign?.fields && presign?.uploadUrl) {
+    const fd = new FormData()
+    Object.entries(presign.fields).forEach(([k, v]) => fd.append(k, String(v)))
+    fd.append('file', file) // 필드명은 'file' 고정
+    const res = await fetch(presign.uploadUrl, { method: 'POST', body: fd })
+    if (!res.ok) throw new Error(`S3 POST 업로드 실패: ${res.status}`)
+    return presign.fileUrl || (presign.uploadUrl.replace(/\/$/, '') + '/' + presign.fields.key)
+  }
+
+  // PUT 방식
+  if (presign?.uploadUrl) {
+    const res = await fetch(presign.uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type },
+      body: file,
+    })
+    if (!res.ok) throw new Error(`S3 PUT 업로드 실패: ${res.status}`)
+    return presign.fileUrl || presign.uploadUrl.split('?')[0]
+  }
+
+  throw new Error('presign 응답에 uploadUrl이 없음')
+}
+
+ // [ADD] 필요하면 presign → S3 업로드 → 최종 URL 반환 (쿠키 인증만 사용)
+ const uploadImageIfNeeded = async () => {
+   if (!imageFile.value) return null
+
+   // presign 엔드포인트 결정
+   const raw = import.meta.env.VITE_IMAGE_PRESIGN_URL || import.meta.env.VITE_IMAGE_PRESIGN_PATH
+   const presignEndpoint = resolvePresignEndpoint(String(raw || ''))
+
+   // 1) presign 요청 (백 응답 예: { uploadUrl, fileUrl, fields? })
+   const filename = `${crypto.randomUUID?.() || Date.now()}_${imageFile.value.name}`
+   const { data: presign } = await api.post(
+     presignEndpoint,
+     { filename, contentType: imageFile.value.type }
+     // 헤더는 추가하지 않음: 세션 쿠키(withCredentials)로 인증
+   )
+
+   // 2) S3 업로드
+   const finalUrl = await uploadToS3(presign, imageFile.value)
+   return finalUrl
+ }
+// 업로드 오류 수정
+// 이미지 미리보기만 처리
 const onFileChange = (e) => {
   const file = e.target.files?.[0]
   if (!file) { 
@@ -212,7 +268,6 @@ const submitPost = async () => {
   } finally {
     submitting.value = false
   }
-}
 
 const goBack = () => {
   // 미리보기 URL 정리
@@ -230,6 +285,7 @@ onMounted(() => {
     }
   }
 })
+}
 </script>
 
 <style scoped>
