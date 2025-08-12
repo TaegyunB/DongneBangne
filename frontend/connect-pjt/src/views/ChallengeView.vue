@@ -277,7 +277,7 @@ const getButtonText = (challenge) => {
   if (isCompleted(challenge)) {
     return '완료'
   } else {
-    return '미완료'
+    return '도전 인증하기'
   }
 }
 
@@ -357,6 +357,17 @@ const fetchChallenges = async () => {
 
     const data = response.data
     console.log('data:', data)
+
+    console.log('=== 각 도전과제별 이미지 확인 ===')
+    challenges.value.forEach((challenge, index) => {
+      console.log(`Challenge ${index + 1}:`, {
+        id: challenge.id,
+        title: challenge.challengeTitle,
+        hasImage: !!challenge.challengeImage,
+        imageUrl: challenge.challengeImage,
+        imageType: typeof challenge.challengeImage
+      })
+    })
     
     // 현재 월 업데이트
     if (data.month) {
