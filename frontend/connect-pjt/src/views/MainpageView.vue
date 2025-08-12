@@ -94,14 +94,14 @@ defineExpose({
   font-style: normal;
 }
 /* 회색 버전 */
-/* .main-landing {
+.main-landing {
   width: 100%;
   min-height: 100vh;
   background: #f8f9fadc;
   padding: 60px 0;
-} */
+}
 
-.main-landing {
+/* .main-landing {
   width: 100%;
   min-height: 100vh;
   background-image: url('@/assets/background/back3.png');
@@ -109,7 +109,7 @@ defineExpose({
   background-position: center;
   background-repeat: no-repeat;
   padding: 60px 0;
-}
+} */
 
 /* 헤더 섹션 - 제목과 로고를 함께 배치 */
 .header-section {
@@ -220,7 +220,7 @@ defineExpose({
 
 /* 그라데이션 배경 */
 .main-card.one {
-  background: linear-gradient(135deg,#f5efba 0%, #ffef5f 100%);
+  background: linear-gradient(135deg,#f5efba 0%, #ffdc72 100%);
 }
 
 .main-card.two {

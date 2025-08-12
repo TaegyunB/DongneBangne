@@ -699,11 +699,18 @@ watch(() => router.currentRoute.value, async () => {
         background-color: #f8f9fa;
         color: #333;
         line-height: 1.6;
+    }
+    
+    /* body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background-color: #f8f9fa;
+        color: #333;
+        line-height: 1.6;
         background-image: url('@/assets/background/back3.jpg');
         background-size: cover;
         background-position: center;
         background-repeat: no-repeat;
-    }
+    } */
 
     /* 메인 컬러 변수 */
     :root {
