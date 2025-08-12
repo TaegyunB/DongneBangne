@@ -45,10 +45,13 @@
             </button>
         </div>
         
-        <!-- 확인 모달 -->
+<!-- 확인 모달 -->
         <div v-if="showConfirmModal" class="modal" @click="closeConfirmModal">
             <div class="modal-content" @click.stop>
                 <h2>도전 인증 내용을 확인해주세요</h2>
+                <div class="warning-message">
+                    <p>⚠️ 도전을 인증하면 수정이 불가합니다</p>
+                </div>
                 <div class="confirm-content">
                     <div class="form-group">
                         <label>도전 상세:</label>
@@ -62,7 +65,7 @@
                     </div>
                 </div>
                 <div class="modal-buttons">
-                    <button @click="closeConfirmModal" class="btn-modal-cancel">수정하기</button>
+                    <button @click="closeConfirmModal" class="btn-modal-cancel">취소</button>
                     <button @click="confirmSubmit" class="btn-modal-confirm" :disabled="confirming">
                         {{ confirming ? '제출 중...' : '확인' }}
                     </button>
@@ -362,6 +365,22 @@ const goToChallenge = () => {
 .btn-modal-cancel { background: #f5f5f5; color: #666; }
 .btn-modal-cancel:hover { background: #e0e0e0; }
 .btn-modal-confirm:disabled { background: #ccc; cursor: not-allowed; }
+
+.warning-message {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 20px 0;
+    text-align: center;
+}
+
+.warning-message p {
+    margin: 0;
+    color: #856404;
+    font-size: 16px;
+    font-weight: bold;
+}
 
 @media (max-width: 768px) {
     .content { flex-direction: column; gap: 20px; }
