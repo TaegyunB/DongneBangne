@@ -10,7 +10,7 @@
       <div class="table-header">
         <div class="col-month">발간 월</div>
         <div class="col-date">발간일자</div>
-        <div class="col-action">액션</div>
+        <div class="col-action">PDF</div>
       </div>
       
       <div class="table-body">
@@ -29,7 +29,7 @@
           </div>
           
           <div class="col-date">
-            {{ news.year }}.{{ String(news.month).padStart(2, '0') }}.{{ getLastDay(news.year, news.month) }}
+            {{ formatPublishDate(news) }}
           </div>
           
           <div class="col-action">
@@ -224,9 +224,24 @@ const getNewsDescription = (news) => {
   return '이번 달의 도전과제 활동 내용입니다.'
 }
 
-// 해당 월의 마지막 날 구하기
-const getLastDay = (year, month) => {
-  return new Date(year, month, 0).getDate()
+// 발간일자 포맷팅 (현재 날짜 기준)
+const formatPublishDate = (news) => {
+  // 신문이 생성된 날짜가 있으면 그 날짜를 사용, 없으면 현재 날짜 사용
+  let publishDate
+  
+  if (news.createdAt) {
+    // API에서 생성일시를 제공하는 경우
+    publishDate = new Date(news.createdAt)
+  } else {
+    // 생성일시가 없으면 현재 날짜 사용
+    publishDate = new Date()
+  }
+  
+  const year = publishDate.getFullYear()
+  const month = String(publishDate.getMonth() + 1).padStart(2, '0')
+  const day = String(publishDate.getDate()).padStart(2, '0')
+  
+  return `${year}.${month}.${day}`
 }
 
 // 완료된 도전과제가 있는지 확인
