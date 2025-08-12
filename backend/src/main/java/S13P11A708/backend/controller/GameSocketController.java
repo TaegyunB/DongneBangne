@@ -1,6 +1,8 @@
 package S13P11A708.backend.controller;
 
+import S13P11A708.backend.dto.webSocket.GameAnsRequestMessage;
 import S13P11A708.backend.dto.webSocket.GameAnsSocketMessage;
+import S13P11A708.backend.dto.webSocket.GameHintRequestMessage;
 import S13P11A708.backend.dto.webSocket.GameHintSocketMessage;
 import S13P11A708.backend.security.CustomOAuth2User;
 import S13P11A708.backend.service.GameService;
@@ -19,15 +21,14 @@ public class GameSocketController {
 
     private final GameService gameService;
 
-
     /**
      * 정답 제출, 인증 처리
      */
     @MessageMapping("/games/answer")
-    public void submitAnswer(GameAnsSocketMessage message, Principal principal) {
+    public void submitAnswer(GameAnsRequestMessage message, Principal principal) {
         Long userId = extractUserIdFromPrincipal(principal);
         Long roomId = message.getRoomId();
-        String answer = message.getPayload();
+        String answer = message.getSubmitAnswer();
 
         log.info("[ANSWER_SUBMIT] roomId: {}, userId: {}, answer: {}", roomId, userId, answer);
 
@@ -38,7 +39,7 @@ public class GameSocketController {
      * 힌트 요청, 힌트 보여주기 처리
      */
     @MessageMapping("/games/hint")
-    public void requestHint(GameHintSocketMessage message, Principal principal){
+    public void requestHint(GameHintRequestMessage message, Principal principal){
         Long userId = extractUserIdFromPrincipal(principal);
         Long roomId = message.getRoomId();
 
@@ -46,7 +47,6 @@ public class GameSocketController {
 
         gameService.handleHint(roomId, userId);
     }
-
 
     /**
      * 인증 유저 정보 추출
