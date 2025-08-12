@@ -76,7 +76,7 @@ export default {
       mouseY: 0,
       lensSize: 400, // 2배로 확대
       zoomLevel: 2,
-      excludedRoutes: ['/games', '/webrtc','/','login'],
+      excludedRoutes: ['/games', '/webrtc'],
       showPopup: false,
       popupTimer: null,
       domObserver: null,
@@ -92,8 +92,9 @@ export default {
       );
     },
     isMainPage() {
-    return this.$route?.path === '/mainpage';
-    },
+    const p = this.$route?.path || ''
+    return p === '/mainpage' || p === '/'   // 둘 다 메인으로 취급
+  },
     
     lensStyle() {
       return {
@@ -124,7 +125,7 @@ export default {
       // 돋보기 버튼 근처에 팝업 표시
       return {
         right: '90px', // 버튼 왼쪽에 표시
-        bottom: '80px'
+        bottom: '25px'
       }
     }
   },

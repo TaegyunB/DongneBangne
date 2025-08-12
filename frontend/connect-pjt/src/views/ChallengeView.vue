@@ -15,27 +15,16 @@
       <p>{{ currentMessage }}</p>
     </div>
 
-    <!-- AI 신문 생성 섹션 (UserROle이 ADMIN일 때만 표시) -->
-    <div v-if="userRole === 'ADMIN'" class="ai-news-section">
-      <div class="ai-news-card">
-        <div class="ai-news-content">
-          <div class="ai-news-icon">📰</div>
-          <h3>이번 달 도전을 AI 신문으로 만들어보세요!</h3>
-        </div>
-        <div class="ai-news-action">
-          <button 
-            @click="goToAINews" 
-            class="btn-ai-news" 
-            :disabled="creatingAINews || !isAINewsButtonEnabled"
-            :title="getAINewsButtonTooltip"
-          >
-            {{ creatingAINews ? '🤖 AI 신문 생성 중...' : '✨ AI 신문 생성하기' }}
-          </button>
-          <p class="ai-news-status" :class="{ 'disabled': !isAINewsButtonEnabled }">
-            {{ getAINewsDescription }}
-          </p>
-        </div>
-      </div>
+    <!-- AI 신문 생성 섹션을 우측 상단으로 이동 -->
+    <div v-if="userRole === 'ADMIN'" class="ai-news-section-top">
+      <button 
+        @click="goToAINews" 
+        class="btn-ai-news-compact" 
+        :disabled="creatingAINews || !isAINewsButtonEnabled"
+        :title="getAINewsButtonTooltip"
+      >
+        {{ creatingAINews ? ' AI 신문 생성 중...' : '✨ AI 신문 생성하기' }}
+      </button>
     </div>
      
     <!-- 도전과제 목록 -->
@@ -49,12 +38,13 @@
       >
         <!-- 이미지 영역 -->
         <div class="challenge-image">
-          <!-- 인증되지 않은 도전: 텍스트 표시 -->
+          <!-- 인증되지 않은 도전: 역할별 텍스트 표시 -->
           <div 
             v-if="!challenge.isEmpty && !isCompleted(challenge)" 
             class="challenge-placeholder"
           >
-            <p>도전 인증을 해주세요!</p>
+            <p v-if="userRole === 'ADMIN'">도전 인증을 해주세요!</p>
+            <p v-else>도전 인증은 관리자만 가능합니다</p>
           </div>
           <!-- 인증된 도전 또는 빈 도전: 이미지 표시 -->
           <img 
@@ -82,7 +72,10 @@
                     <button class="edit-btn" @click.stop="editChallenge(index)">수정</button>
                     <button class="delete-btn" @click.stop="showDeleteConfirm(index)">삭제</button>
                   </template>
-                  <!-- 완료된 도전: 버튼 숨김 -->
+                  <!-- 완료된 도전: 삭제 버튼만 -->
+                  <template v-else>
+                    <button class="delete-btn" @click.stop="showDeleteConfirm(index)">삭제</button>
+                  </template>
                 </template>
                 <!-- 도전이 없을 때: 생성 버튼 -->
                 <template v-else>
@@ -750,11 +743,34 @@ watch(percent, updateMessage)
 </script>
 
 <style>
-    /* 기본 스타일 */
+ /* 글꼴 정의 */
+    @font-face {
+      font-family: 'KoddiUD';
+      src: url('@/assets/fonts/KoddiUDOnGothic-Regular.ttf') format('truetype');
+      font-weight: 400;
+      font-style: normal;
+    }
+
+    @font-face {
+      font-family: 'KoddiUD';
+      src: url('@/assets/fonts/KoddiUDOnGothic-Bold.ttf') format('truetype');
+      font-weight: 700;
+      font-style: normal;
+    }
+
+    @font-face {
+      font-family: 'KoddiUD';
+      src: url('@/assets/fonts/KoddiUDOnGothic-ExtraBold.ttf') format('truetype');
+      font-weight: 800;
+      font-style: normal;
+    }
+
+/* 기본 스타일 */
     * {
         margin: 0;
         padding: 0;
         box-sizing: border-box;
+        font-family: 'KoddiUD', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
 
     body {
@@ -786,6 +802,8 @@ watch(percent, updateMessage)
         --dark-gray: #666;
         --text-black: #333;
         --border-light: #e0e0e0;
+        --pastel-yellow: #FFF9C4;
+        --sky-blue: #87CEEB;
     }
 
     /* 헤더 */
@@ -795,6 +813,7 @@ watch(percent, updateMessage)
         font-size: 32px;
         font-weight: 700;
         color: var(--text-black);
+        font-family: 'KoddiUD', sans-serif;
     }
 
     /* 진행률 섹션 */
@@ -809,6 +828,7 @@ watch(percent, updateMessage)
         padding: 25px;
         border-radius: 16px;
         box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+        position: relative;
     }
 
     .progress-container h3 {
@@ -816,6 +836,7 @@ watch(percent, updateMessage)
         font-weight: 600;
         color: var(--text-black);
         min-width: 80px;
+        font-family: 'KoddiUD', sans-serif;
     }
 
     .progress-bar {
@@ -829,7 +850,7 @@ watch(percent, updateMessage)
     .inner-bar {
         height: 100%;
         border-radius: 8px;
-        background: linear-gradient(90deg, var(--primary-orange), var(--primary-blue));
+        background: linear-gradient(90deg, var(--pastel-yellow), var(--sky-blue));
         transition: width 0.3s ease;
     }
 
@@ -838,121 +859,59 @@ watch(percent, updateMessage)
         max-width: 800px;
         width: 90%;
         margin: 20px auto;
-        color: var(--primary-blue);
+        color: rgb(0, 0, 0);
         font-weight: 600;
         text-align: center;
         padding: 20px;
-        background: var(--secondary-blue);
+        background: rgba(248, 205, 104, 0.225);
         border-radius: 16px;
         font-size: 18px;
-        border: 2px solid rgba(74, 144, 226, 0.1);
-    }
-
-    /* AI 신문 생성 섹션 */
-    .ai-news-section {
-        max-width: 800px;
-        width: 90%;
-        margin: 20px auto;
-    }
-
-    .ai-news-card {
-        background: white;
-        border-radius: 16px;
-        padding: 25px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
         border: 2px solid var(--primary-orange);
         box-shadow: 0 4px 16px rgba(255, 107, 53, 0.15);
-        transition: all 0.3s ease;
+        font-family: 'KoddiUD', sans-serif;
     }
 
-    .ai-news-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 24px rgba(255, 107, 53, 0.25);
-        border-color: #e55a2b;
+    /* AI 신문 생성 섹션 - 우측 상단 배치 */
+    .ai-news-section-top {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 100;
     }
 
-    .ai-news-content {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        gap: 20px;
-    }
-
-    .ai-news-action {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .ai-news-status {
-        font-size: 13px;
-        color: var(--dark-gray);
-        text-align: center;
-        margin: 0;
-        max-width: 200px;
-        line-height: 1.4;
-    }
-
-    .ai-news-status.disabled {
-        color: #ef4444;
-        font-weight: 500;
-    }
-
-    .ai-news-icon {
-        font-size: 48px;
-        color: var(--primary-orange);
-        filter: drop-shadow(0 2px 4px rgba(255, 107, 53, 0.3));
-    }
-
-    .ai-news-content h3 {
-        font-size: 22px;
-        font-weight: 700;
-        margin: 0 0 8px 0;
-        color: var(--text-black);
-    }
-
-    .ai-news-content p {
-        font-size: 16px;
-        margin: 0;
-        color: var(--dark-gray);
-        line-height: 1.5;
-    }
-
-    .btn-ai-news {
+    .btn-ai-news-compact {
         background: var(--primary-orange);
         color: white;
         border: none;
-        padding: 14px 28px;
+        padding: 12px 20px;
         border-radius: 12px;
-        font-size: 16px;
+        font-size: 14px;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s ease;
         white-space: nowrap;
-        min-width: 180px;
+        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+        font-family: 'KoddiUD', sans-serif;
     }
 
-    .btn-ai-news:hover:not(:disabled) {
+    .btn-ai-news-compact:hover:not(:disabled) {
         background: #e55a2b;
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+        box-shadow: 0 6px 16px rgba(255, 107, 53, 0.4);
     }
 
-    .btn-ai-news:disabled {
+    .btn-ai-news-compact:disabled {
         background: #9ca3af;
         cursor: not-allowed;
         transform: none;
-        box-shadow: none;
+        box-shadow: 0 2px 8px rgba(156, 163, 175, 0.3);
         opacity: 0.6;
     }
 
-    .btn-ai-news:disabled:hover {
+    .btn-ai-news-compact:disabled:hover {
         background: #9ca3af;
         transform: none;
-        box-shadow: none;
+        box-shadow: 0 2px 8px rgba(156, 163, 175, 0.3);
     }
 
     /* 도전과제 컨테이너 */
@@ -963,6 +922,7 @@ watch(percent, updateMessage)
         width: 90%;
         margin: 30px auto;
         gap: 24px;
+        padding-top: 60px; /* 우측 상단 버튼과의 간격 확보 */
     }
 
     .single-challenge {
@@ -1008,6 +968,7 @@ watch(percent, updateMessage)
         justify-content: center;
         background: linear-gradient(135deg, var(--secondary-blue), var(--secondary-orange));
         color: var(--text-black);
+        font-family: 'KoddiUD', sans-serif;
     }
 
     .challenge-placeholder p {
@@ -1046,6 +1007,7 @@ watch(percent, updateMessage)
         flex: 1;
         color: var(--text-black);
         line-height: 1.3;
+        font-family: 'KoddiUD', sans-serif;
     }
 
     .action-buttons {
@@ -1063,6 +1025,7 @@ watch(percent, updateMessage)
         cursor: pointer;
         color: white;
         transition: all 0.2s ease;
+        font-family: 'KoddiUD', sans-serif;
     }
 
     .edit-btn {
@@ -1095,6 +1058,7 @@ watch(percent, updateMessage)
         font-weight: 400;
         line-height: 1.5;
         color: var(--dark-gray);
+        font-family: 'KoddiUD', sans-serif;
     }
 
     /* 완료 버튼 */
@@ -1115,6 +1079,7 @@ watch(percent, updateMessage)
         justify-content: center;
         background-color: var(--dark-gray);
         transition: all 0.2s ease;
+        font-family: 'KoddiUD', sans-serif;
     }
 
     .challenge-complete-btn.completed {
@@ -1175,6 +1140,7 @@ watch(percent, updateMessage)
         font-weight: 700;
         margin-bottom: 16px;
         color: var(--text-black);
+        font-family: 'KoddiUD', sans-serif;
     }
 
     .modal-description {
@@ -1182,6 +1148,7 @@ watch(percent, updateMessage)
         line-height: 1.6;
         margin-bottom: 20px;
         color: var(--dark-gray);
+        font-family: 'KoddiUD', sans-serif;
     }
 
     .modal-place {
@@ -1191,6 +1158,7 @@ watch(percent, updateMessage)
         padding: 12px;
         background: var(--neutral-gray);
         border-radius: 12px;
+        font-family: 'KoddiUD', sans-serif;
     }
 
     .modal-image {
@@ -1220,6 +1188,7 @@ watch(percent, updateMessage)
         font-size: 18px;
         font-weight: 600;
         margin: 0;
+        font-family: 'KoddiUD', sans-serif;
     }
 
     .modal-button {
@@ -1232,6 +1201,7 @@ watch(percent, updateMessage)
         border: none;
         cursor: pointer;
         transition: all 0.2s ease;
+        font-family: 'KoddiUD', sans-serif;
     }
 
     .modal-button:hover {
@@ -1247,12 +1217,19 @@ watch(percent, updateMessage)
         font-size: 16px;
         font-weight: 600;
         border: 2px solid rgba(74, 144, 226, 0.2);
+        font-family: 'KoddiUD', sans-serif;
     }
 
     /* 수정 모달 */
     .edit-modal {
         max-width: 520px;
         text-align: left;
+    }
+
+    .edit-modal h1 {
+        font-family: 'KoddiUD', sans-serif;
+        text-align: center;
+        margin-bottom: 24px;
     }
 
     .form-group {
@@ -1265,6 +1242,7 @@ watch(percent, updateMessage)
         font-weight: 600;
         color: var(--text-black);
         font-size: 16px;
+        font-family: 'KoddiUD', sans-serif;
     }
 
     .form-input, .form-textarea {
@@ -1274,7 +1252,7 @@ watch(percent, updateMessage)
         border-radius: 12px;
         font-size: 16px;
         transition: border-color 0.3s ease;
-        font-family: inherit;
+        font-family: 'KoddiUD', sans-serif;
     }
 
     .form-input:focus, .form-textarea:focus {
@@ -1303,6 +1281,7 @@ watch(percent, updateMessage)
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s ease;
+        font-family: 'KoddiUD', sans-serif;
     }
 
     .btn-cancel {
@@ -1334,6 +1313,10 @@ watch(percent, updateMessage)
         max-width: 400px;
     }
 
+    .delete-modal h2 {
+        font-family: 'KoddiUD', sans-serif;
+    }
+
     .delete-confirm-btn {
         width: 140px;
     }
@@ -1362,6 +1345,7 @@ watch(percent, updateMessage)
         .challenge-container {
             grid-template-columns: 1fr;
             gap: 16px;
+            padding-top: 20px; /* 모바일에서는 패딩 줄임 */
         }
 
         .title-with-buttons {
@@ -1384,43 +1368,21 @@ watch(percent, updateMessage)
         }
 
         /* AI 신문 섹션 반응형 */
-        .ai-news-card {
-            flex-direction: column;
+        .ai-news-section-top {
+            position: relative;
+            top: auto;
+            right: auto;
+            margin: 20px auto;
             text-align: center;
-            gap: 20px;
-            padding: 20px;
+            width: 90%;
+            max-width: 800px;
         }
 
-        .ai-news-content {
-            flex-direction: column;
-            gap: 15px;
-            text-align: center;
-        }
-
-        .ai-news-action {
-            width: 100%;
-        }
-
-        .ai-news-icon {
-            font-size: 40px;
-        }
-
-        .ai-news-content h3 {
-            font-size: 20px;
-        }
-
-        .ai-news-content p {
-            font-size: 15px;
-        }
-
-        .btn-ai-news {
+        .btn-ai-news-compact {
             width: 100%;
             min-width: auto;
             padding: 14px 20px;
-        }
-
-        .ai-news-status {
-            max-width: 100%;
+            font-size: 16px;
         }
 
         .challenge-placeholder p {
@@ -1451,7 +1413,7 @@ watch(percent, updateMessage)
             border: 2px solid var(--text-black);
         }
         
-        .ai-news-card {
+        .ai-news-section-top .btn-ai-news-compact {
             border: 2px solid var(--text-black);
         }
         
