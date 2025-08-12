@@ -67,7 +67,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { getAccessToken } from '@/utils/token'
 import api from '@/api/axios' // ✅ 전역 axios 인스턴스만 사용
 
 const router = useRouter()
@@ -127,28 +126,26 @@ const uploadToS3 = async (presign, file) => {
   throw new Error('presign 응답에 uploadUrl이 없음')
 }
 
-// [ADD] 필요하면 presign → S3 업로드 → 최종 URL 반환
-const uploadImageIfNeeded = async () => {
-  if (!imageFile.value) return null
+ // [ADD] 필요하면 presign → S3 업로드 → 최종 URL 반환 (쿠키 인증만 사용)
+ const uploadImageIfNeeded = async () => {
+   if (!imageFile.value) return null
 
-  // presign 엔드포인트 결정
-  const raw = import.meta.env.VITE_IMAGE_PRESIGN_URL || import.meta.env.VITE_IMAGE_PRESIGN_PATH
-  const presignEndpoint = resolvePresignEndpoint(String(raw || ''))
+   // presign 엔드포인트 결정
+   const raw = import.meta.env.VITE_IMAGE_PRESIGN_URL || import.meta.env.VITE_IMAGE_PRESIGN_PATH
+   const presignEndpoint = resolvePresignEndpoint(String(raw || ''))
 
-  const token = getAccessToken()
+   // 1) presign 요청 (백 응답 예: { uploadUrl, fileUrl, fields? })
+   const filename = `${crypto.randomUUID?.() || Date.now()}_${imageFile.value.name}`
+   const { data: presign } = await api.post(
+     presignEndpoint,
+     { filename, contentType: imageFile.value.type }
+     // 헤더는 추가하지 않음: 세션 쿠키(withCredentials)로 인증
+   )
 
-  // 1) presign 요청 (백 규격 예: { uploadUrl, fileUrl, method?, fields? })
-  const filename = `${crypto.randomUUID?.() || Date.now()}_${imageFile.value.name}`
-  const { data: presign } = await api.post(
-    presignEndpoint,
-    { filename, contentType: imageFile.value.type },
-    { headers: { Authorization: `Bearer ${token}` } }
- )
-
-  // 2) S3 업로드
-  const finalUrl = await uploadToS3(presign, imageFile.value)
-  return finalUrl
-}
+   // 2) S3 업로드
+   const finalUrl = await uploadToS3(presign, imageFile.value)
+   return finalUrl
+ }
 
 // 이미지 미리보기만 처리
 const onFileChange = (e) => {
@@ -191,13 +188,13 @@ const submitPost = async () => {
   submitting.value = true
   try {
 
-    const token = getAccessToken()
-    if (!token) {
-      alert('로그인이 필요합니다. 다시 로그인해 주세요.')
-      // 로그인 페이지 라우팅(사용 중인 라우트 이름으로 수정 가능)
-      router.push({ name: 'onboarding' })
-      return
-    }
+    // const token = getAccessToken()
+    // if (!token) {
+    //   alert('로그인이 필요합니다. 다시 로그인해 주세요.')
+    //   // 로그인 페이지 라우팅(사용 중인 라우트 이름으로 수정 가능)
+    //   router.push({ name: 'onboarding' })
+    //   return
+    // }
     // 이미지 있으면 업로드 → URL 획득
     const imageUrl = await uploadImageIfNeeded()   // ← 추가
 
@@ -207,16 +204,28 @@ const submitPost = async () => {
       boardCategory: uiToApiLower[form.value.category] || 'chat', // 소문자
       imageFile: imageUrl ?? null, // 백 스펙: URL 넘김
     }
-
+    // 토큰이 있으면 헤더에 붙이고, 없으면 withCredentials 쿠키로 진행
+    const headers = {}
+    try {
+      const { getAccessToken } = await import('@/utils/token')
+      const t = getAccessToken?.()
+      if (t) headers.Authorization = `Bearer ${t}`
+    } catch (e) { /* 토큰 유틸 없거나 에러면 무시하고 쿠키로 진행 */ }
+    
     await api.post('/api/v1/boards', body, {
-    headers: { Authorization: `Bearer ${token}` }
+    headers
     })
 
     alert('글이 등록되었습니다.')
     router.push({ name: 'boards', query: { category: body.boardCategory } })
   } catch (err) {
     console.error('등록 실패:', err)
+    if (err?.response?.status === 401) {
+      alert('세션이 만료되었어요. 다시 로그인해 주세요.')
+      router.push({ name: 'onboarding' })
+    } else {
     alert('등록에 실패했습니다. 잠시 후 다시 시도해 주세요.')
+    }
   } finally {
     submitting.value = false
   }

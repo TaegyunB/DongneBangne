@@ -58,16 +58,17 @@ const loading = ref(true)
 const submitting = ref(false)
 
 const form = ref({
-  category: '잡담',   // UI 라벨
+  category: '잡담',
   title: '',
   content: '',
-  boardImage: null,  // 현재 이미지 URL (표시용)
+  boardImage: null,
 })
 
 // 상세 원본 + 소유자 판별용
 const detail = ref(null)
 const me = ref(null)
 
+// 토큰이 있으면 헤더에 추가(없으면 쿠키로만 요청)
 const headersWithToken = () => {
   const token = getAccessToken?.()
   return token ? { Authorization: `Bearer ${token}` } : {}
@@ -83,11 +84,17 @@ const isOwner = computed(() => {
   return false
 })
 
+const canDecideOwnership = computed(() => {
+  const b = detail.value
+  if (!b) return false
+  return ('isOwner' in b) || ('mine' in b) || (b.userId && me.value?.userId) || (b.nickname && me.value?.nickname)
+})
+
 const fetchMe = async () => {
   try {
     const { data } = await api.get('/api/v1/users/me', { headers: headersWithToken() })
     me.value = data
-  } catch { /* 미제공 시 무시 */ }
+  } catch { /* 미제공/비로그인 시 무시 */ }
 }
 
 const fetchDetail = async () => {
@@ -103,20 +110,16 @@ const fetchDetail = async () => {
   }
 }
 
-const guardOwnerOrExit = () => {
-  if (!isOwner.value) {
-    alert('수정 권한이 없습니다.')
-    router.replace({ name: 'communityDetail', params: { boardId: boardId.value }, query: route.query })
-    return false
-  }
-  return true
-}
-
 onMounted(async () => {
   loading.value = true
   try {
     await Promise.all([fetchMe(), fetchDetail()])
-    if (!guardOwnerOrExit()) return
+    // 소유자 여부를 판단할 근거가 있을 때만 선제 차단
+    if (canDecideOwnership.value && !isOwner.value) {
+      alert('수정 권한이 없습니다.')
+      router.replace({ name: 'communityDetail', params: { boardId: boardId.value }, query: route.query })
+      return
+    }
   } catch (e) {
     const s = e?.response?.status
     if (s === 401) {
@@ -139,7 +142,6 @@ onMounted(async () => {
 
 const submitEdit = async () => {
   if (submitting.value) return
-  if (!guardOwnerOrExit()) return
 
   // 간단 검증
   if (!form.value.title?.trim() || !form.value.content?.trim()) {

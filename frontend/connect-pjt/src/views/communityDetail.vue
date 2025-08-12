@@ -80,7 +80,7 @@ const error = ref(false)
 
 const board = ref({
   boardId: null,
-  userId: null,            // 백이 주면 정확하게 소유자 판별에 사용
+  userId: null,
   nickname: '',
   seniorCenterName: '',
   title: '',
@@ -98,18 +98,20 @@ const likeCount = ref(0)
 const deleting = ref(false)
 const showConfirm = ref(false)
 
-const me = ref(null) // 선택: 내 정보
+const me = ref(null)
 
+// 토큰이 있으면 헤더에 추가(없으면 쿠키로만 요청)
 const headersWithToken = () => {
   const token = getAccessToken?.()
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
+// 선택: 내 정보
 const fetchMe = async () => {
   try {
     const { data } = await api.get('/api/v1/users/me', { headers: headersWithToken() })
-    me.value = data // {userId, nickname, ...} 가정
-  } catch { /* 없으면 무시 */ }
+    me.value = data
+  } catch { /* 미제공/비로그인 시 무시 */ }
 }
 
 // 카테고리
@@ -155,7 +157,7 @@ const normalize = (raw) => ({
   likeCount: Number(raw?.likeCount ?? 0),
 })
 
-// 작성자 판별
+// 작성자 판별(가능한 정보로만)
 const isOwner = computed(() => {
   const b = board.value
   if ('isOwner' in b) return !!b.isOwner
@@ -193,28 +195,18 @@ const fetchDetail = async () => {
 const toggleLike = async () => {
   if (likeBusy.value) return
   likeBusy.value = true
-  const tokenHeaders = headersWithToken()
-  if (!tokenHeaders.Authorization) {
-    alert('로그인이 필요합니다.')
-    likeBusy.value = false
-    router.push({ name: 'onboarding' })
-    return
-  }
+
+  // 낙관적 업데이트
   const prevLiked = liked.value
   const prevCount = likeCount.value
-  // 낙관적 업데이트
-  if (liked.value) {
-    liked.value = false
-    likeCount.value = Math.max(0, likeCount.value - 1)
-  } else {
-    liked.value = true
-    likeCount.value = likeCount.value + 1
-  }
+  liked.value = !prevLiked
+  likeCount.value = prevLiked ? Math.max(0, prevCount - 1) : prevCount + 1
+
   try {
     if (prevLiked) {
-      await api.delete(`/api/v1/boards/${boardId.value}/like`, { headers: tokenHeaders })
+      await api.delete(`/api/v1/boards/${boardId.value}/like`, { headers: headersWithToken() })
     } else {
-      await api.post(`/api/v1/boards/${boardId.value}/like`, null, { headers: tokenHeaders })
+      await api.post(`/api/v1/boards/${boardId.value}/like`, null, { headers: headersWithToken() })
     }
   } catch (e) {
     // 실패 시 롤백
@@ -249,13 +241,7 @@ const confirmDelete = async () => {
   if (deleting.value) return
   deleting.value = true
   try {
-    const tokenHeaders = headersWithToken()
-    if (!tokenHeaders.Authorization) {
-      alert('로그인이 필요합니다.')
-      router.push({ name: 'onboarding' })
-      return
-    }
-    await api.delete(`/api/v1/boards/${boardId.value}`, { headers: tokenHeaders })
+    await api.delete(`/api/v1/boards/${boardId.value}`, { headers: headersWithToken() })
     alert('삭제되었습니다.')
     closeConfirm()
     goBack()
