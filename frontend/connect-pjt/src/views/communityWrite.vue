@@ -205,15 +205,17 @@ const submitPost = async () => {
       imageFile: imageUrl ?? null, // 백 스펙: URL 넘김
     }
     // 토큰이 있으면 헤더에 붙이고, 없으면 withCredentials 쿠키로 진행
-    const headers = {}
-    try {
-      const { getAccessToken } = await import('@/utils/token')
-      const t = getAccessToken?.()
-      if (t) headers.Authorization = `Bearer ${t}`
-    } catch (e) { /* 토큰 유틸 없거나 에러면 무시하고 쿠키로 진행 */ }
+    // const headers = {}
+    // try {
+    //   const { getAccessToken } = await import('@/utils/token')
+    //   const t = getAccessToken?.()
+    //   if (t) headers.Authorization = `Bearer ${t}`
+    // } catch (e) { /* 토큰 유틸 없거나 에러면 무시하고 쿠키로 진행 */ }
     
     await api.post('/api/v1/boards', body, {
-    headers
+    // headers
+      withCredentials: true,
+      
     })
 
     alert('글이 등록되었습니다.')
