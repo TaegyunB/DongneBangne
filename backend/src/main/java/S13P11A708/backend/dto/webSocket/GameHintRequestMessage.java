@@ -1,16 +1,18 @@
 package S13P11A708.backend.dto.webSocket;
 
 import S13P11A708.backend.domain.enums.GameMessageType;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class GameAnsSocketMessage {
+public class GameHintRequestMessage {
     private GameMessageType type;
     private Long roomId;
+    private Long userId;
     private String payload;
-    private boolean isCorrect;
 }
