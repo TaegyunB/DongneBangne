@@ -21,7 +21,19 @@
       </svg>
     </div>
 
-    <!-- 안내 팝업 -->
+    <!-- 메인페이지에서만 표시되는 초기 안내 팝업 -->
+    <div 
+      v-if="showInitialGuide && shouldShowMagnifier && !isActive && isMainPage"
+      class="help-popup initial-guide"
+      :style="popupStyle"
+    >
+      <div class="popup-content">
+        <span>돋보기를 클릭해보세요</span>
+        <div class="popup-arrow"></div>
+      </div>
+    </div>
+
+    <!-- 활성화 후 안내 팝업 -->
     <div 
       v-if="showPopup && isActive"
       class="help-popup"
@@ -63,8 +75,9 @@ export default {
       mouseY: 0,
       lensSize: 400, // 2배로 확대
       zoomLevel: 2,
-      excludedRoutes: ['/games', '/webrtc'],
+      excludedRoutes: ['/games', '/webrtc','/','login'],
       showPopup: false,
+      showInitialGuide: true, // 초기 안내 메시지 표시 여부
       popupTimer: null,
       domObserver: null,
       updateTimer: null
@@ -76,6 +89,11 @@ export default {
       return !this.excludedRoutes.some(route => 
         currentPath.startsWith(route)
       );
+    },
+
+    isMainPage() {
+      const currentPath = this.$route?.path || '';
+      return currentPath === '/mainpage' || currentPath.startsWith('/mainpage');
     },
     
     lensStyle() {
@@ -116,14 +134,17 @@ export default {
     toggleMagnifier() {
       this.isActive = !this.isActive;
       
+      // 메인페이지에서 돋보기를 처음 클릭하면 초기 안내 메시지 숨김
+      if (this.isMainPage && this.showInitialGuide) {
+        this.showInitialGuide = false;
+      }
+      
       if (this.isActive) {
         this.startMagnifier();
         this.showHelpPopup();
-        // localStorage 저장 제거 - 페이지별로 새로 시작
       } else {
         this.stopMagnifier();
         this.hideHelpPopup();
-        // localStorage 제거도 불필요
       }
     },
 
@@ -185,7 +206,6 @@ export default {
         this.isActive = false;
         this.stopMagnifier();
         this.hideHelpPopup();
-        // localStorage 제거 불필요
       }
     },
     
@@ -332,8 +352,12 @@ export default {
     },
     
     initializeMagnifier() {
-      // 페이지 로드 시에는 돋보기를 자동으로 켜지 않음 (노인 사용성 개선)
-      // 사용자가 명시적으로 각 페이지에서 활성화해야 함
+      // 메인페이지에 처음 들어왔을 때만 초기 안내 메시지 표시
+      if (this.isMainPage) {
+        this.showInitialGuide = true;
+      } else {
+        this.showInitialGuide = false;
+      }
     }
   },
   
@@ -358,12 +382,19 @@ export default {
   
   watch: {
     '$route'() {
-      // 페이지 전환 시 돋보기 자동 해제 (노인 사용성 개선)
+      // 페이지 전환 시 돋보기 자동 해제
       if (this.isActive) {
         this.isActive = false;
         this.stopMagnifier();
         this.hideHelpPopup();
       }
+      
+      // 메인페이지로 이동할 때만 초기 안내 메시지 다시 표시
+      // if (this.isMainPage) {
+      //   this.showInitialGuide = true;
+      // } else {
+      //   this.showInitialGuide = false;
+      // }
     },
     
     // 돋보기가 활성화되면 내용 업데이트
@@ -476,6 +507,21 @@ export default {
   animation: fadeInUp 0.3s ease-out;
 }
 
+/* 초기 안내 메시지 스타일 (메인페이지 전용) */
+.help-popup.initial-guide {
+  animation: fadeInUp 0.5s ease-out, gentlePulse 3s ease-in-out infinite 0.5s;
+}
+
+.help-popup.initial-guide .popup-content {
+  background: rgba(76, 175, 80, 0.9); /* 초록색 배경 */
+  color: white;
+  border: 2px solid rgba(76, 175, 80, 1);
+}
+
+.help-popup.initial-guide .popup-arrow {
+  border-left-color: rgba(76, 175, 80, 0.9);
+}
+
 .popup-content {
   background: rgba(0, 0, 0, 0.85);
   color: white;
@@ -507,6 +553,17 @@ export default {
   100% {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes gentlePulse {
+  0%, 100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translateY(-2px) scale(1.02);
   }
 }
 
