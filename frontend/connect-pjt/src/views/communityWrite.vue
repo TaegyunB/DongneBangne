@@ -146,7 +146,7 @@ const uploadToS3 = async (presign, file) => {
    const finalUrl = await uploadToS3(presign, imageFile.value)
    return finalUrl
  }
-
+// 업로드 오류 수정
 // 이미지 미리보기만 처리
 const onFileChange = (e) => {
   const file = e.target.files?.[0]
