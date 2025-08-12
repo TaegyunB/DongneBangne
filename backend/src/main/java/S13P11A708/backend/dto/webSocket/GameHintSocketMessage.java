@@ -14,5 +14,6 @@ public class GameHintSocketMessage {
     private GameMessageType type;
     private Long roomId;
     private Long userId;
+    private boolean canUse;
     private String payload;
 }

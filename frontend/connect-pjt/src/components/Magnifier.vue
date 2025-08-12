@@ -225,8 +225,46 @@ export default {
           el.style.pointerEvents = 'none';
         });
         
+        // 페이지의 전체 크기 계산 (스크롤 영역 포함)
+        const documentHeight = Math.max(
+          document.body.scrollHeight,
+          document.body.offsetHeight,
+          document.documentElement.clientHeight,
+          document.documentElement.scrollHeight,
+          document.documentElement.offsetHeight
+        );
+        
+        const documentWidth = Math.max(
+          document.body.scrollWidth,
+          document.body.offsetWidth,
+          document.documentElement.clientWidth,
+          document.documentElement.scrollWidth,
+          document.documentElement.offsetWidth
+        );
+        
+        // 복사된 콘텐츠의 크기를 전체 문서 크기로 설정
+        const clonedHtml = htmlClone;
+        const clonedBody = htmlClone.querySelector('body');
+        
+        if (clonedHtml) {
+          clonedHtml.style.width = documentWidth + 'px';
+          clonedHtml.style.height = documentHeight + 'px';
+          clonedHtml.style.overflow = 'visible';
+        }
+        
+        if (clonedBody) {
+          clonedBody.style.width = documentWidth + 'px';
+          clonedBody.style.height = documentHeight + 'px';
+          clonedBody.style.overflow = 'visible';
+          clonedBody.style.position = 'relative';
+        }
+        
         // 내용 교체
-        content.innerHTML = htmlClone.outerHTML;
+        content.innerHTML = clonedHtml.outerHTML;
+        
+        // 돋보기 콘텐츠 컨테이너의 크기도 조정
+        content.style.width = documentWidth + 'px';
+        content.style.height = documentHeight + 'px';
       });
     },
 
@@ -386,11 +424,12 @@ export default {
 }
 
 .magnifier-content {
-  width: 100vw;
-  height: 100vh;
   position: absolute;
   overflow: hidden;
   pointer-events: none;
+  /* 크기는 JavaScript에서 동적으로 설정 */
+  min-width: 100vw;
+  min-height: 100vh;
 }
 
 /* 돋보기 내부 요소들의 상호작용 차단 */

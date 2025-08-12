@@ -86,7 +86,7 @@ public class GameHandleHintTest {
                 List.of(10L), quiz(10L, "사랑해", "url"));
 
         when(messageFactory.createHintMessage(
-                eq(GameMessageType.HINT_RESPONSE), eq(roomId), eq(u1), any(String.class)
+                eq(GameMessageType.HINT_RESPONSE), eq(roomId), eq(u1),true, any(String.class)
         )).thenAnswer(inv ->
                 info(GameMessageType.HINT_RESPONSE, roomId, inv.getArgument(3, String.class))
         );
@@ -112,7 +112,7 @@ public class GameHandleHintTest {
                 List.of(99L), quiz(99L, "정답", "url"));
 
         when(messageFactory.createHintMessage(
-                eq(GameMessageType.HINT_REJECTED), eq(roomId), anyLong(), any(String.class)
+                eq(GameMessageType.HINT_REJECTED), eq(roomId), anyLong(), true, any(String.class)
         )).thenAnswer(inv ->
                 info(GameMessageType.HINT_REJECTED, roomId, inv.getArgument(3, String.class))
         );
@@ -127,7 +127,7 @@ public class GameHandleHintTest {
         assertEquals(0, s1.getUser1().getHintUsedCount());
 
         when(messageFactory.createHintMessage(
-                eq(GameMessageType.HINT_RESPONSE), eq(roomId), eq(u2), any(String.class)
+                eq(GameMessageType.HINT_RESPONSE), eq(roomId), eq(u2), true, any(String.class)
         )).thenAnswer(inv ->
                 info(GameMessageType.HINT_RESPONSE, roomId, inv.getArgument(3, String.class))
         );
