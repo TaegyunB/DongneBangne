@@ -20,8 +20,15 @@
         </div>
       </div>
 
+      <!-- 이미지 표시 개선 -->
       <div v-if="board.boardImage" class="image">
-        <img :src="board.boardImage" alt="게시글 이미지" />
+        <img 
+          :src="getBoardImage(board)" 
+          alt="게시글 이미지" 
+          crossorigin="anonymous"
+          @error="onImageError($event, board)"
+          @load="onImageLoad($event, board)"
+        />
       </div>
 
       <div class="content">{{ board.content }}</div>
@@ -70,6 +77,7 @@ import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/api/axios'
 import { getAccessToken } from '@/utils/token'
+import defaultImage from '@/assets/default_image.png'
 
 const route = useRoute()
 const router = useRouter()
@@ -99,6 +107,50 @@ const deleting = ref(false)
 const showConfirm = ref(false)
 
 const me = ref(null)
+
+// 이미지 처리 함수들 추가
+const getBoardImage = (boardData) => {
+  console.log('=== 게시글 이미지 디버깅 ===')
+  console.log('Board 객체:', boardData)
+  console.log('Board Image URL:', boardData.boardImage)
+  
+  if (!boardData.boardImage) {
+    console.log('📷 게시글 이미지 URL 없음 - 기본 이미지 사용')
+    return defaultImage
+  }
+  
+  if (boardData.boardImage.includes('amazonaws.com') || 
+      boardData.boardImage.includes('s3')) {
+    console.log('✅ 게시글 S3 URL 감지:', boardData.boardImage)
+  }
+  
+  return boardData.boardImage
+}
+
+// 이미지 에러 핸들링
+const onImageError = (event, boardData) => {
+  console.error('❌ 게시글 이미지 로드 실패:', {
+    src: event.target.src,
+    boardId: boardData.boardId,
+    boardImage: boardData.boardImage,
+    error: event,
+    errorType: event.target.src.includes('s3') ? 'S3 CORS/권한 문제' : '기타 오류'
+  })
+  
+  if (event.target.src.includes('s3') || event.target.src.includes('amazonaws')) {
+    console.warn('🔒 게시글 S3 이미지 로드 실패 - CORS 또는 권한 문제일 가능성')
+  }
+  
+  // 기본 이미지로 대체
+  event.target.src = defaultImage
+}
+
+const onImageLoad = (event, boardData) => {
+  console.log('✅ 게시글 이미지 로드 성공:', {
+    src: event.target.src,
+    boardId: boardData.boardId
+  })
+}
 
 // 토큰이 있으면 헤더에 추가(없으면 쿠키로만 요청)
 const headersWithToken = () => {
@@ -203,21 +255,33 @@ const toggleLike = async () => {
   likeCount.value = prevLiked ? Math.max(0, prevCount - 1) : prevCount + 1
 
   try {
-    if (prevLiked) {
-      await api.delete(`/api/v1/boards/${boardId.value}/like`, { headers: headersWithToken() })
-    } else {
-      await api.post(`/api/v1/boards/${boardId.value}/like`, null, { headers: headersWithToken() })
+    // 백엔드가 POST 토글 방식이므로 항상 POST만 사용
+    const { data } = await api.post(`/api/v1/boards/${boardId.value}/like`, null, { 
+      headers: headersWithToken() 
+    })
+    
+    // 백엔드 응답으로 실제 상태 동기화
+    if (data) {
+      liked.value = data.isLiked ?? data.liked ?? !prevLiked
+      likeCount.value = data.likeCount ?? data.like_count ?? likeCount.value
     }
+    
   } catch (e) {
     // 실패 시 롤백
     liked.value = prevLiked
     likeCount.value = prevCount
+    
     const status = e?.response?.status
     if (status === 401) {
       alert('로그인이 필요합니다.')
       router.push({ name: 'onboarding' })
     } else {
       console.error('좋아요 처리 실패:', e)
+      console.error('에러 상세:', {
+        status,
+        data: e?.response?.data,
+        config: e?.config
+      })
       alert('좋아요 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.')
     }
   } finally {
