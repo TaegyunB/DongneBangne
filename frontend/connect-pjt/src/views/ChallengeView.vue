@@ -11,20 +11,22 @@
       <h3>{{percent}}%</h3>
     </div>
      
-    <div class="message-box">
-      <p>{{ currentMessage }}</p>
-    </div>
+    <div class="message-and-ai-container">
+      <div class="message-box">
+        <p>{{ currentMessage }}</p>
+      </div>
 
-    <!-- AI 신문 생성 섹션을 우측 상단으로 이동 -->
-    <div v-if="userRole === 'ADMIN'" class="ai-news-section-top">
-      <button 
-        @click="goToAINews" 
-        class="btn-ai-news-compact" 
-        :disabled="creatingAINews || !isAINewsButtonEnabled"
-        :title="getAINewsButtonTooltip"
-      >
-        {{ creatingAINews ? ' AI 신문 생성 중...' : '✨ AI 신문 생성하기' }}
-      </button>
+      <!-- AI 신문 생성 버튼을 메시지 박스 우측에 배치 -->
+      <div v-if="userRole === 'ADMIN'" class="ai-news-section">
+        <button 
+          @click="goToAINews" 
+          class="btn-ai-news" 
+          :disabled="creatingAINews || !isAINewsButtonEnabled"
+          :title="getAINewsButtonTooltip"
+        >
+          {{ creatingAINews ? ' AI 신문 생성 중...' : '✨ AI 신문 생성하기' }}
+        </button>
+      </div>
     </div>
      
     <!-- 도전과제 목록 -->
@@ -854,11 +856,19 @@ watch(percent, updateMessage)
         transition: width 0.3s ease;
     }
 
-    /* 메시지 박스 */
-    .message-box {
+    /* 메시지 박스와 AI 신문 버튼 컨테이너 */
+    .message-and-ai-container {
         max-width: 800px;
         width: 90%;
-        margin: 20px auto;
+        margin: 15px auto;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+
+    /* 메시지 박스 */
+    .message-box {
+        flex: 1;
         color: rgb(0, 0, 0);
         font-weight: 600;
         text-align: center;
@@ -869,21 +879,23 @@ watch(percent, updateMessage)
         border: 2px solid var(--primary-orange);
         box-shadow: 0 4px 16px rgba(255, 107, 53, 0.15);
         font-family: 'KoddiUD', sans-serif;
+        margin: 0;
     }
 
-    /* AI 신문 생성 섹션 - 우측 상단 배치 */
-    .ai-news-section-top {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 100;
+    .message-box p {
+        margin: 0;
     }
 
-    .btn-ai-news-compact {
+    /* AI 신문 생성 섹션 - 메시지 박스 우측 */
+    .ai-news-section {
+        flex-shrink: 0;
+    }
+
+    .btn-ai-news {
         background: var(--primary-orange);
         color: white;
         border: none;
-        padding: 12px 20px;
+        padding: 14px 20px;
         border-radius: 12px;
         font-size: 14px;
         font-weight: 600;
@@ -894,13 +906,13 @@ watch(percent, updateMessage)
         font-family: 'KoddiUD', sans-serif;
     }
 
-    .btn-ai-news-compact:hover:not(:disabled) {
+    .btn-ai-news:hover:not(:disabled) {
         background: #e55a2b;
         transform: translateY(-1px);
         box-shadow: 0 6px 16px rgba(255, 107, 53, 0.4);
     }
 
-    .btn-ai-news-compact:disabled {
+    .btn-ai-news:disabled {
         background: #9ca3af;
         cursor: not-allowed;
         transform: none;
@@ -908,7 +920,7 @@ watch(percent, updateMessage)
         opacity: 0.6;
     }
 
-    .btn-ai-news-compact:disabled:hover {
+    .btn-ai-news:disabled:hover {
         background: #9ca3af;
         transform: none;
         box-shadow: 0 2px 8px rgba(156, 163, 175, 0.3);
@@ -920,9 +932,8 @@ watch(percent, updateMessage)
         grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         max-width: 1200px;
         width: 90%;
-        margin: 30px auto;
-        gap: 24px;
-        padding-top: 60px; /* 우측 상단 버튼과의 간격 확보 */
+        margin: 20px auto;
+        gap: 20px;
     }
 
     .single-challenge {
@@ -1342,10 +1353,24 @@ watch(percent, updateMessage)
             min-width: auto;
         }
 
+        .message-and-ai-container {
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .ai-news-section {
+            width: 100%;
+        }
+
+        .btn-ai-news {
+            width: 100%;
+            padding: 14px 20px;
+            font-size: 16px;
+        }
+
         .challenge-container {
             grid-template-columns: 1fr;
             gap: 16px;
-            padding-top: 20px; /* 모바일에서는 패딩 줄임 */
         }
 
         .title-with-buttons {
@@ -1368,19 +1393,17 @@ watch(percent, updateMessage)
         }
 
         /* AI 신문 섹션 반응형 */
-        .ai-news-section-top {
-            position: relative;
-            top: auto;
-            right: auto;
-            margin: 20px auto;
-            text-align: center;
-            width: 90%;
-            max-width: 800px;
+        .message-and-ai-container {
+            flex-direction: column;
+            gap: 15px;
         }
 
-        .btn-ai-news-compact {
+        .ai-news-section {
             width: 100%;
-            min-width: auto;
+        }
+
+        .btn-ai-news {
+            width: 100%;
             padding: 14px 20px;
             font-size: 16px;
         }
@@ -1413,7 +1436,7 @@ watch(percent, updateMessage)
             border: 2px solid var(--text-black);
         }
         
-        .ai-news-section-top .btn-ai-news-compact {
+        .ai-news-section .btn-ai-news {
             border: 2px solid var(--text-black);
         }
         
