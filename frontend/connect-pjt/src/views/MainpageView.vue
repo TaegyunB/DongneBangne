@@ -2,9 +2,7 @@
   <div class="main-landing">
     <!-- 제목과 로고를 함께 배치하는 헤더 섹션 -->
     <div class="header-section">
-      <!-- <img src="@/assets/logo.png" alt="동네방네 로고" class="logo-icon left"/> -->
       <div class="section-title">이야기하고, 도전하고, 함께하는 동네방네</div>
-      <!-- <img src="@/assets/logo.png" alt="동네방네 로고" class="logo-icon right"/> -->
     </div>
     
     <!-- Admin,member UI 공통 -->
@@ -98,7 +96,7 @@ defineExpose({
   width: 100%;
   min-height: 100vh;
   background: #f8f9fadc;
-  padding: 60px 0;
+  padding: 40px 0;
 }
 
 /* .main-landing {
@@ -116,12 +114,12 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 60px;
+  margin-bottom: 40px;
   gap: 40px;
 }
 
 .section-title {
-  font-size: 45px;
+  font-size: 40px;
   font-weight: 750;
   text-align: center;
   color: #1e1e1e;
@@ -141,7 +139,7 @@ defineExpose({
   width: 1400px;
   max-width: 1300px;
   margin: 0 auto;
-  margin-bottom: 50px;
+  margin-bottom: 30px;
 }
 
 .main-card-grid-two {
@@ -156,7 +154,7 @@ defineExpose({
 
 .main-card {
   position: relative;
-  height: 280px;
+  height: 250px;
   background: #fff;
   border-radius: 17px;
   box-shadow: 0 4px 16px rgba(44,66,90,0.3);
