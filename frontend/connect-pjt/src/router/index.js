@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import ChallengeView from '../views/ChallengeView.vue'
+import ChallengeView from '@/views/ChallengeView.vue'
 import Start from '@/views/start.vue'
 import Onboarding from '@/views/onboarding.vue'
 import ChallengeCreateView from '@/views/ChallengeCreateView.vue'
@@ -8,6 +8,9 @@ import SeniorCenter from '@/views/seniorCenter.vue'
 import SeniorCenterProfile from '@/views/seniorCenterProfile.vue'
 import MainPage from '@/views/MainpageView.vue'
 import CommunityBoards from '@/views/communityBoards.vue'
+import CommunityDetail from '@/views/communityDetail.vue'
+import CommunityEdit from '@/views/communityEdit.vue'
+import CommunityWrite from '@/views/communityWrite.vue'
 import RankingBoard from '@/views/rankingBoard.vue'
 import GameView from '@/views/GameView.vue'
 import WebRTCTestView from '@/views/WebRTCTestView.vue'
@@ -60,8 +63,25 @@ const router = createRouter({
       path: '/boards',
       name: 'boards',
       component: CommunityBoards,
+      props: route => ({ category: route.query.category || 'all' })
     },
-    
+    {
+      path: '/boards/:boardId',  
+      name: 'communityDetail',
+      component: CommunityDetail,
+      props: true
+    },
+    {
+      path: '/boards/edit/:boardId', 
+      name: 'communityEdit',
+      component: CommunityEdit,
+      props: true
+    },
+    {
+      path: '/boards/write', 
+      name: 'communityWrite',
+      component: CommunityWrite,
+    },
     {
       path: '/admin/challenges',
       name: 'challengeCreate',

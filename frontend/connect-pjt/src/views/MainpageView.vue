@@ -2,9 +2,7 @@
   <div class="main-landing">
     <!-- 제목과 로고를 함께 배치하는 헤더 섹션 -->
     <div class="header-section">
-      <!-- <img src="@/assets/logo.png" alt="동네방네 로고" class="logo-icon left"/> -->
       <div class="section-title">이야기하고, 도전하고, 함께하는 동네방네</div>
-      <!-- <img src="@/assets/logo.png" alt="동네방네 로고" class="logo-icon right"/> -->
     </div>
     
     <!-- Admin,member UI 공통 -->

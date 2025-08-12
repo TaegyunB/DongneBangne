@@ -21,7 +21,7 @@
       </svg>
     </div>
 
-    <!-- 안내 팝업 -->
+    <!-- 안내 팝업 (렌즈 ON: 해제 안내) -->
     <div 
       v-if="showPopup && isActive"
       class="help-popup"
@@ -32,6 +32,19 @@
         <div class="popup-arrow"></div>
       </div>
     </div>
+
+    <!-- 안내 팝업 (렌즈 OFF: 메인페이지 전용 클릭 유도) -->
+    <div
+      v-if="isMainPage && !isActive && shouldShowMagnifier"
+      class="help-popup"
+      :style="popupStyle"
+    >
+      <div class="popup-content">
+        <span>돋보기를 클릭해주세요</span>
+        <div class="popup-arrow"></div>
+      </div>
+    </div>
+
 
     <!-- 돋보기 렌즈 -->
     <div 
@@ -63,11 +76,12 @@ export default {
       mouseY: 0,
       lensSize: 400, // 2배로 확대
       zoomLevel: 2,
-      excludedRoutes: ['/games', '/webrtc'],
+      excludedRoutes: ['/games', '/webrtc','/','login'],
       showPopup: false,
       popupTimer: null,
       domObserver: null,
-      updateTimer: null
+      updateTimer: null,
+      showClickGuide:false
     }
   },
   computed: {
@@ -76,6 +90,9 @@ export default {
       return !this.excludedRoutes.some(route => 
         currentPath.startsWith(route)
       );
+    },
+    isMainPage() {
+    return this.$route?.path === '/mainpage';
     },
     
     lensStyle() {
