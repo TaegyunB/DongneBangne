@@ -10,12 +10,12 @@
       <div class="table-header">
         <div class="col-month">발간 월</div>
         <div class="col-date">발간일자</div>
-        <div class="col-action">보기</div>
+        <div class="col-action">액션</div>
       </div>
       
       <div class="table-body">
         <div 
-          v-for="news in sortedNewsList" 
+          v-for="news in displayNewsList" 
           :key="news.id"
           class="table-row"
         >
@@ -33,30 +33,57 @@
           </div>
           
           <div class="col-action">
+            <!-- PDF가 생성된 경우: 보기 버튼 -->
             <button 
               v-if="news.pdfUrl"
-              @click="viewNews(news.id)"
+              @click="viewNewsPdf(news.id)"
               class="action-btn view-btn"
             >
-              보기
+              PDF 보기
             </button>
+            
+            <!-- AI 기사는 생성되었지만 PDF가 없는 경우: PDF 생성 버튼 -->
             <button 
-              v-else
-              @click="publishNews(news)"
-              :disabled="publishingIds.includes(news.id) || !canPublishNews(news)"
-              class="action-btn publish-btn"
-              :title="getPublishButtonTooltip(news)"
+              v-else-if="!news.pdfUrl && hasCompletedChallenges(news)"
+              @click="showPdfGenerator(news)"
+              class="action-btn generate-pdf-btn"
             >
-              {{ getPublishButtonText(news) }}
+              PDF 생성하기
             </button>
+            
+            <!-- 완료된 도전과제가 없는 경우 -->
+            <span 
+              v-else 
+              class="no-content-label"
+              title="이번 달은 완료된 도전과제가 없어 PDF를 생성할 수 없습니다."
+            >
+              PDF 생성 불가
+            </span>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- PDF 생성 모달 -->
+    <div v-if="showPdfModal" class="modal-overlay" @click.self="closePdfModal">
+      <div class="modal-content pdf-modal">
+        <button class="modal-close-btn" @click="closePdfModal">×</button>
+        <h2>AI 신문 PDF 생성</h2>
+        <p>{{ selectedNews?.year }}년 {{ selectedNews?.month }}월 AI 신문을 PDF로 생성합니다.</p>
+        
+        <!-- PDF 생성 컴포넌트 -->
+        <AINewsPDFGenerator 
+          v-if="selectedNews"
+          :newsData="selectedNews"
+          @pdf-generated="handlePdfGenerated"
+        />
+      </div>
+    </div>
+
     <!-- 데이터가 없는 경우 -->
-    <div v-if="!loading && newsList.length === 0" class="no-data">
+    <div v-if="!loading && displayNewsList.length === 0" class="no-data">
       <p>아직 생성된 신문이 없습니다.</p>
+      <p>도전과제를 완료하고 AI 신문을 생성해보세요!</p>
     </div>
 
     <!-- 페이지네이션 -->
@@ -78,16 +105,6 @@
         {{ page }}
       </button>
       
-      <span v-if="totalPages > 5" class="page-dots">...</span>
-      
-      <button
-        v-if="totalPages > 5"
-        @click="changePage(totalPages)"
-        :class="['page-btn', { active: currentPage === totalPages }]"
-      >
-        {{ totalPages }}
-      </button>
-      
       <button 
         @click="changePage(currentPage + 1)"
         :disabled="currentPage === totalPages"
@@ -106,17 +123,22 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import axios from 'axios'
+import { useRouter, useRoute } from 'vue-router'
+import api from '@/api/axios'
+import AINewsPDFGenerator from '@/components/AINewsPDFGenerator.vue'
 
 const router = useRouter()
+const route = useRoute()
 
 const loading = ref(false)
 const newsList = ref([])
-const seniorCenterName = ref('AI 신문')
-const publishingIds = ref([])
+const seniorCenterName = ref('경로당')
 const currentPage = ref(1)
 const itemsPerPage = 10
+
+// PDF 생성 모달 관련
+const showPdfModal = ref(false)
+const selectedNews = ref(null)
 
 // 신문 목록 조회
 const fetchNews = async () => {
@@ -124,57 +146,56 @@ const fetchNews = async () => {
   try {
     console.log('API 요청 시작: /api/v1/ai-news')
     
-    // 명시적으로 HTTP URL 사용
-    const response = await axios.get('/api/v1/ai-news', {
-      withCredentials: true,
-      timeout: 10000
-    })
+    const response = await api.get('/api/v1/ai-news')
     
-    newsList.value = response.data
+    newsList.value = response.data || []
     console.log('신문 목록 로드 완료:', response.data)
     
+    // 센터명 업데이트 (첫 번째 신문에서 가져오기)
+    if (response.data && response.data.length > 0 && response.data[0].centerName) {
+      seniorCenterName.value = response.data[0].centerName
+    }
+    
   } catch (error) {
-    console.error('상세 에러 정보:', error)
-    // 기존 에러 처리 코드...
+    console.error('신문 목록 로드 실패:', error)
+    newsList.value = [] // 에러 시 빈 배열로 초기화
+    
+    let errorMessage = '신문 목록을 불러오는데 실패했습니다.'
+    
+    if (error.response) {
+      const status = error.response.status
+      if (status === 403) {
+        errorMessage = '신문을 볼 권한이 없습니다.'
+      } else if (status === 404) {
+        errorMessage = '신문 데이터를 찾을 수 없습니다.'
+      }
+    } else if (error.request) {
+      errorMessage = '서버와 연결할 수 없습니다.'
+    }
+    
+    console.error(errorMessage)
   } finally {
     loading.value = false
   }
 }
 
-// 신문 리스트 정렬 및 페이지네이션 적용
-const sortedNewsList = computed(() => {
-  const sorted = [...newsList.value].sort((a, b) => {
+// 표시할 신문 목록 (실제로 생성된 신문만)
+const displayNewsList = computed(() => {
+  // API에서 받은 신문 목록을 년-월 내림차순으로 정렬
+  const sortedNews = [...newsList.value].sort((a, b) => {
     if (a.year !== b.year) return b.year - a.year
     return b.month - a.month
   })
-  
-  // 중복 제거 (id 기준)
-  const uniqueNews = sorted.filter((news, index, self) => 
-    index === self.findIndex(n => n.id === news.id)
-  )
   
   // 페이지네이션 적용
   const startIndex = (currentPage.value - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
-  return uniqueNews.slice(startIndex, endIndex)
+  return sortedNews.slice(startIndex, endIndex)
 })
 
-// 전체 데이터에서 중복 제거 후 총 페이지 계산
-const totalItems = computed(() => {
-  const sorted = [...newsList.value].sort((a, b) => {
-    if (a.year !== b.year) return b.year - a.year
-    return b.month - a.month
-  })
-  
-  const uniqueNews = sorted.filter((news, index, self) => 
-    index === self.findIndex(n => n.id === news.id)
-  )
-  
-  return uniqueNews.length
-})
+// 페이지네이션 계산 (실제 신문 개수 기준)
+const totalPages = computed(() => Math.ceil(newsList.value.length / itemsPerPage))
 
-// 페이지네이션 계산
-const totalPages = computed(() => Math.ceil(totalItems.value / itemsPerPage))
 const visiblePages = computed(() => {
   const pages = []
   const start = Math.max(1, currentPage.value - 2)
@@ -186,15 +207,21 @@ const visiblePages = computed(() => {
   return pages
 })
 
-// 신문 설명 생성 (challengeName과 challengeTitle 둘 다 지원)
+// 신문 설명 생성
 const getNewsDescription = (news) => {
   if (news.challenges && news.challenges.length > 0) {
-    const challengeNames = news.challenges.map(c => 
-      c.challengeName || c.challengeTitle || '활동'
-    ).join(', ')
-    return `${challengeNames} 활동을 하며 하하호호 추억을 나누...`
+    const challengeNames = news.challenges
+      .filter(c => c.challengeName || c.challengeTitle)
+      .map(c => c.challengeName || c.challengeTitle)
+      .slice(0, 3) // 최대 3개까지만 표시
+      .join(', ')
+    
+    if (challengeNames) {
+      return `${challengeNames} 활동을 하며 추억을 나누...`
+    }
   }
-  return '다 같이 근처 계곡으로 놀러가..'
+  
+  return '이번 달의 도전과제 활동 내용입니다.'
 }
 
 // 해당 월의 마지막 날 구하기
@@ -202,99 +229,61 @@ const getLastDay = (year, month) => {
   return new Date(year, month, 0).getDate()
 }
 
-// 신문 발간 가능 여부 확인
-const canPublishNews = (news) => {
-  // 이미 발간된 경우 false
-  if (news.pdfUrl) return false
-  
-  // 도전과제가 없으면 발간 불가
-  if (!news.challenges || news.challenges.length === 0) return false
-  
-  // 도전과제가 있으면 발간 가능 (isSuccess는 항상 true인 데이터만 온다고 가정)
-  return true
+// 완료된 도전과제가 있는지 확인
+const hasCompletedChallenges = (news) => {
+  return news.challenges && news.challenges.some(challenge => 
+    challenge.isSuccess && challenge.aiDescription
+  )
 }
 
-// 발간하기 버튼 텍스트
-const getPublishButtonText = (news) => {
-  if (publishingIds.value.includes(news.id)) {
-    return 'AI 신문 발간중...'
-  }
-  
-  if (!canPublishNews(news)) {
-    return '도전과제 없음'
-  }
-  
-  return 'AI 신문 발간하기'
-}
-
-// 발간하기 버튼 툴팁
-const getPublishButtonTooltip = (news) => {
-  if (!canPublishNews(news)) {
-    return '이번 달에 수행된 도전과제가 없어 신문을 발간할 수 없습니다.'
-  }
-  return ''
-}
-
-// 신문 발간하기 (현재 달의 신문 생성)
-const publishNews = async (news) => {
-  // 발간 가능 여부 재확인
-  if (!canPublishNews(news)) {
-    alert('이 신문을 발간할 수 없습니다. 도전과제가 필요합니다.')
-    return
-  }
-
-  publishingIds.value.push(news.id)
-  
+// PDF 생성 모달 열기
+const showPdfGenerator = async (news) => {
   try {
-    console.log(`${news.year}년 ${news.month}월 AI 신문 발간 시작`)
+    // 신문 상세 정보 가져오기 (도전과제 포함)
+    const response = await api.get(`/api/v1/ai-news/${news.id}`)
+    selectedNews.value = response.data
+    showPdfModal.value = true
+  } catch (error) {
+    console.error('신문 상세 정보 로드 실패:', error)
+    alert('신문 정보를 불러오는데 실패했습니다.')
+  }
+}
+
+// PDF 생성 모달 닫기
+const closePdfModal = () => {
+  showPdfModal.value = false
+  selectedNews.value = null
+}
+
+// PDF 생성 완료 처리
+const handlePdfGenerated = (result) => {
+  console.log('PDF 생성 완료:', result)
+  closePdfModal()
+  fetchNews() // 신문 목록 새로고침
+}
+
+// PDF 보기
+const viewNewsPdf = async (newsId) => {
+  try {
+    const response = await api.get(`/api/v1/admin/ai-news/${newsId}/pdf`)
+    const pdfUrl = response.data.pdfUrl
     
-    // 현재는 전체 센터의 최신 신문을 생성하는 API를 호출
-    // 향후 특정 월의 신문 발간 API가 필요할 수 있음
-    const response = await axios.post('/api/v1/admin/ai-news/create', {
-      year: news.year,
-      month: news.month
-    }, {
-      withCredentials: true
-    })
-    
-    // 성공시 뉴스 목록 새로고침
-    await fetchNews()
-    
-    console.log('AI 신문 발간 완료:', response.data)
-    alert(`${news.year}년 ${news.month}월 AI 신문이 성공적으로 발간되었습니다!`)
+    // 새 탭에서 PDF 열기
+    window.open(pdfUrl, '_blank')
     
   } catch (error) {
-    console.error('AI 신문 발간 실패:', error)
+    console.error('PDF 조회 실패:', error)
     
-    let errorMessage = 'AI 신문 발간에 실패했습니다.'
+    let errorMessage = 'PDF를 불러오는데 실패했습니다.'
     
-    if (error.response) {
-      const status = error.response.status
-      const message = error.response.data?.message || '서버 오류'
-      
-      if (status === 400) {
-        errorMessage = `발간 조건이 맞지 않습니다: ${message}`
-      } else if (status === 403) {
-        errorMessage = 'AI 신문을 발간할 권한이 없습니다.'
-      } else if (status === 409) {
-        errorMessage = '이미 발간된 신문이거나 중복된 요청입니다.'
-      } else {
-        errorMessage = `AI 신문 발간에 실패했습니다: ${message}`
-      }
-    } else if (error.request) {
-      errorMessage = 'AI 신문 발간에 실패했습니다: 서버와 연결할 수 없습니다.'
+    if (error.response?.status === 404) {
+      errorMessage = 'PDF 파일을 찾을 수 없습니다. PDF를 먼저 생성해주세요.'
+    } else if (error.response?.status === 403) {
+      errorMessage = 'PDF를 볼 권한이 없습니다.'
     }
     
     alert(errorMessage)
-  } finally {
-    // 발간 중 상태 제거
-    publishingIds.value = publishingIds.value.filter(id => id !== news.id)
   }
-}
-
-// 신문 보기
-const viewNews = (newsId) => {
-  router.push(`/news/${newsId}`)
 }
 
 // 페이지 변경
@@ -304,8 +293,18 @@ const changePage = (page) => {
   }
 }
 
-onMounted(() => {
-  fetchNews()
+onMounted(async () => {
+  await fetchNews()
+  
+  // URL 쿼리에서 PDF 생성 요청 확인
+  const generatePdfId = route.query.generatePdf
+  
+  if (generatePdfId) {
+    const news = newsList.value.find(n => n.id == generatePdfId)
+    if (news && !news.pdfUrl) {
+      showPdfGenerator(news)
+    }
+  }
 })
 </script>
 
@@ -446,20 +445,24 @@ onMounted(() => {
   transform: translateY(-1px);
 }
 
-.publish-btn {
+.generate-pdf-btn {
   background-color: #10b981;
   color: white;
 }
 
-.publish-btn:hover:not(:disabled) {
+.generate-pdf-btn:hover:not(:disabled) {
   background-color: #059669;
   transform: translateY(-1px);
 }
 
-.publish-btn:disabled {
-  background-color: #9ca3af;
-  cursor: not-allowed;
-  transform: none;
+.no-content-label {
+  font-size: 12px;
+  color: #9ca3af;
+  background-color: #f3f4f6;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  cursor: help;
 }
 
 .no-data {
@@ -513,16 +516,63 @@ onMounted(() => {
   cursor: not-allowed;
 }
 
-.page-dots {
-  color: #9ca3af;
-  padding: 0 8px;
-}
-
 .loading {
   text-align: center;
   padding: 60px 20px;
   color: #6b7280;
   font-size: 16px;
+}
+
+.pdf-modal {
+  max-width: 600px;
+  min-height: 400px;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: white;
+  border-radius: 20px;
+  padding: 32px;
+  width: 90%;
+  max-width: 480px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  text-align: center;
+  z-index: 1001;
+  position: relative;
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s ease;
+}
+
+.modal-close-btn:hover {
+  background-color: #f3f4f6;
 }
 
 @media (max-width: 768px) {
