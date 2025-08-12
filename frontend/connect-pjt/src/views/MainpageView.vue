@@ -9,17 +9,17 @@
     <div class="main-card-grid-one">
       <div class="main-card one" @click="goTo('/challenges')">
         <div class="card-title_2">도전 과제</div>
-        <div class="card-desc">매달 다양한 도전을 해보세요!</div>
+        <div class="card-desc">매달 다양한 도전을 <br />수행해보세요!</div>
         <img src="@/assets/mainpage_2/challenge.png" alt="도전 아이콘" class="card-icon_2" />
       </div>
       <div class="main-card two" @click="goTo('/games')">
-        <div class="card-title_2">게임</div>
-        <div class="card-desc">다른 경로당과<br />트로트 게임을 즐겨보세요!</div>
+        <div class="card-title_2">트로트 게임</div>
+        <div class="card-desc">다른 경로당과<br />게임을 즐겨보세요!</div>
         <img src="@/assets/mainpage_2/game.png" alt="게임 아이콘" class="card-icon_2" />
       </div>
       <div class="main-card five" @click="goTo('/news')">
         <div class="card-title_2">AI 신문</div>
-        <div class="card-desc">매달 우리만의 특별한 소식지</div>
+        <div class="card-desc">매달 우리만의 <br />특별한 소식지</div>
         <img src="@/assets/mainpage_2/news.png" alt="신문 아이콘" class="card-icon_2" />
       </div>
     </div>
@@ -149,12 +149,12 @@ defineExpose({
   width: 1400px;
   max-width: 1300px;
   margin: 0 auto;
-  margin-bottom: 50px;
+  margin-bottom: 30px;
 }
 
 .main-card {
   position: relative;
-  height: 250px;
+  height: 240px;
   background: #fff;
   border-radius: 17px;
   box-shadow: 0 4px 16px rgba(44,66,90,0.3);
