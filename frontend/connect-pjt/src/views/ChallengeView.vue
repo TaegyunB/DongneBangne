@@ -16,12 +16,11 @@
     </div>
 
     <!-- AI 신문 생성 섹션 (항상 표시) -->
-    <div v-if="userRole === 'ADMIN'" class="ai-news-section">
+    <div class="ai-news-section">
       <div class="ai-news-card">
         <div class="ai-news-content">
           <div class="ai-news-icon">📰</div>
           <h3>이번 달 도전을 AI 신문으로 만들어보세요!</h3>
-          <p>완료된 도전과제들을 바탕으로 특별한 신문을 생성할 수 있습니다.</p>
         </div>
         <div class="ai-news-action">
           <button 
@@ -67,10 +66,17 @@
               <h2>{{ getDisplayTitle(challenge, index) }}</h2>
               <!-- 기존 수정/삭제 버튼 또는 새로운 생성 버튼 -->
               <div v-if="shouldShowActionButtons(challenge, index)" class="action-buttons">
-                <!-- 도전이 있을 때: 수정/삭제 버튼 -->
+                <!-- 도전이 있을 때: 수정/삭제 버튼 (완료된 경우 수정 버튼만 숨김) -->
                 <template v-if="!challenge.isEmpty">
-                  <button class="edit-btn" @click.stop="editChallenge(index)">수정</button>
-                  <button class="delete-btn" @click.stop="showDeleteConfirm(index)">삭제</button>
+                  <!-- 완료되지 않은 도전: 수정 + 삭제 버튼 -->
+                  <template v-if="!isCompleted(challenge)">
+                    <button class="edit-btn" @click.stop="editChallenge(index)">수정</button>
+                    <button class="delete-btn" @click.stop="showDeleteConfirm(index)">삭제</button>
+                  </template>
+                  <!-- 완료된 도전: 삭제 버튼만 -->
+                  <template v-else>
+                    <button class="delete-btn" @click.stop="showDeleteConfirm(index)">삭제</button>
+                  </template>
                 </template>
                 <!-- 도전이 없을 때: 생성 버튼 -->
                 <template v-else>
@@ -105,7 +111,13 @@
         
         <!-- 모달 내 이미지 표시 -->
         <div v-if="selectedChallenge.challengeImage" class="modal-image">
-          <img :src="selectedChallenge.challengeImage" :alt="selectedChallenge.challengeTitle" />
+          <img 
+            :src="getChallengeImage(selectedChallenge)" 
+            :alt="selectedChallenge.challengeTitle"
+            crossorigin="anonymous"
+            @error="onImageError($event, selectedChallenge)"
+            @load="onImageLoad($event, selectedChallenge)"
+          />
         </div>
         
         <button 
@@ -262,7 +274,8 @@ const getDisplayDescription = (challenge, index) => {
 }
 
 const shouldShowActionButtons = (challenge, index) => {
-  // ADMIN이고 3,4번째 칸(커스텀 도전과제)인 경우에만 버튼 표시
+  // ADMIN이고 3,4번째 칸(커스텀 도전과제)인 경우 버튼 표시
+  // 완료 여부와 관계없이 삭제는 가능하도록 함
   return userRole.value === 'ADMIN' && index >= 2
 }
 

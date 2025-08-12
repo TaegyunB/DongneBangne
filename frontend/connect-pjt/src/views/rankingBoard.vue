@@ -83,7 +83,16 @@
           <div v-for="(m, idx) in modalChallenges" :key="'slot-' + (idx+1)" class="challenge-card">
             <template v-if="m">
               <div class="image-placeholder">
-                <img v-if="m.challengeImage" :src="m.challengeImage" class="challenge-img" alt="미션 이미지" />
+                <img 
+                  v-if="m.challengeImage" 
+                  :src="getChallengeImage(m)" 
+                  class="challenge-img" 
+                  alt="미션 이미지"
+                  crossorigin="anonymous"
+                  @error="onImageError($event, m)"
+                  @load="onImageLoad($event, m)"
+                />
+                <span v-else style="color:#999">🖼️</span>
               </div>
               <div class="card-text">
                 <h3 class="card-title">
@@ -106,13 +115,26 @@
             </template>
           </div>
         </div>
+
+        <button class="close-btn" @click="closeModal">닫기</button>
+      </div>
+    </div>
+
+    <!-- 상세 모달 -->
     <div class="modal-overlay" v-if="showDetailModal" @click.self="closeDetailModal">
       <div class="modal-content">
         <h2>도전 상세</h2>
         <div v-if="selectedChallenge">
           <div class="detail-body">
             <div class="image-placeholder" v-if="selectedChallenge.image">
-              <img :src="selectedChallenge.image" class="challenge-img" alt="상세 이미지" />
+              <img 
+                :src="getChallengeImageFromSelected(selectedChallenge)" 
+                class="challenge-img" 
+                alt="상세 이미지"
+                crossorigin="anonymous"
+                @error="onImageErrorSelected($event, selectedChallenge)"
+                @load="onImageLoadSelected($event, selectedChallenge)"
+              />
             </div>
             <h3 class="card-title" style="margin-top:12px">
               {{ selectedChallenge.title }}
@@ -132,16 +154,13 @@
         </div>
       </div>
     </div>
-
-        <button class="close-btn" @click="closeModal">닫기</button>
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import api from '@/api/axios'
+import defaultImage from '@/assets/default_image.png'
 
 const centers = ref([])
 const currentPage = ref(1)
@@ -151,6 +170,87 @@ const searchQuery = ref('')
 const selectedCenter = ref(null)
 const showDetailModal = ref(false)
 const selectedChallenge = ref(null)
+
+// 이미지 처리 함수들
+const getChallengeImage = (challenge) => {
+  console.log('=== 랭킹 이미지 디버깅 ===')
+  console.log('Challenge 객체:', challenge)
+  console.log('Challenge Image URL:', challenge.challengeImage)
+  
+  if (!challenge.challengeImage) {
+    console.log('📷 이미지 URL 없음 - 기본 이미지 사용')
+    return defaultImage
+  }
+  
+  if (challenge.challengeImage.includes('amazonaws.com') || 
+      challenge.challengeImage.includes('s3')) {
+    console.log('✅ S3 URL 감지:', challenge.challengeImage)
+  }
+  
+  return challenge.challengeImage
+}
+
+const getChallengeImageFromSelected = (challenge) => {
+  console.log('=== 선택된 도전 이미지 디버깅 ===')
+  console.log('Selected Challenge:', challenge)
+  console.log('Image URL:', challenge.image)
+  
+  if (!challenge.image) {
+    console.log('📷 선택된 도전 이미지 URL 없음 - 기본 이미지 사용')
+    return defaultImage
+  }
+  
+  if (challenge.image.includes('amazonaws.com') || 
+      challenge.image.includes('s3')) {
+    console.log('✅ 선택된 도전 S3 URL 감지:', challenge.image)
+  }
+  
+  return challenge.image
+}
+
+// 이미지 에러 핸들링
+const onImageError = (event, challenge) => {
+  console.error('❌ 랭킹 이미지 로드 실패:', {
+    src: event.target.src,
+    challengeId: challenge.id,
+    challengeImage: challenge.challengeImage,
+    error: event,
+    errorType: event.target.src.includes('s3') ? 'S3 CORS/권한 문제' : '기타 오류'
+  })
+  
+  if (event.target.src.includes('s3') || event.target.src.includes('amazonaws')) {
+    console.warn('🔒 랭킹 S3 이미지 로드 실패 - CORS 또는 권한 문제일 가능성')
+  }
+  
+  // 기본 이미지로 대체
+  event.target.src = defaultImage
+}
+
+const onImageLoad = (event, challenge) => {
+  console.log('✅ 랭킹 이미지 로드 성공:', {
+    src: event.target.src,
+    challengeId: challenge.id
+  })
+}
+
+// 선택된 도전 이미지 에러 핸들링
+const onImageErrorSelected = (event, challenge) => {
+  console.error('❌ 선택된 도전 이미지 로드 실패:', {
+    src: event.target.src,
+    challengeId: challenge.id,
+    image: challenge.image,
+    error: event
+  })
+  
+  event.target.src = defaultImage
+}
+
+const onImageLoadSelected = (event, challenge) => {
+  console.log('✅ 선택된 도전 이미지 로드 성공:', {
+    src: event.target.src,
+    challengeId: challenge.id
+  })
+}
 
 const sortChallenges = list =>
   [...(list || [])].sort((a, b) => {
@@ -190,15 +290,6 @@ const goToPage = (page) => {
   currentPage.value = page
 }
 
-// const normalizeChallenges = (challenges) => {
-//   const result = []
-//   for (let id = 1; id <= 4; id++) {
-//     const found = challenges.find(c => c.id === id)
-//     result.push(found || null)
-//   }
-//   return result
-// }
-
 const normalizeChallenges = (challenges) => {
   const list = Array.isArray(challenges) ? challenges : []
   return sortChallenges(list)
@@ -218,10 +309,6 @@ const openModal = async (centerId) => {
   try {
     const res = await api.get(`/api/v1/rankings/senior-center/${centerId}/challenges`)
     const data = res.data
-    // selectedCenter.value = {
-    //   ...data,
-    //   challenges: normalizeChallenges(data.challenges)
-    // }
 
     const centerInList = centers.value.find(c => c.id === centerId)
     selectedCenter.value = {
@@ -263,9 +350,6 @@ onMounted(async () => {
       missionPoint: center.challengePoint,
       monthlyPoint: center.totalPoint,
       challenges: center.challenges,
-      // challengeStatuses: center.challenges.slice(0, 4).map((c) =>
-      //   c.isSuccess ? 'success' : 'fail'
-      // )
       challengeStatuses: (center.challenges ?? []).slice(0, 4).map(c =>
         (c.isSuccess ?? c.is_success) ? 'success' : 'fail'
       )
@@ -277,34 +361,10 @@ onMounted(async () => {
   }
 })
 
-// const getChallengeById = (id) => {
-//   return selectedCenter.value?.challenges?.find(c => c.id === id)
-// }
-
-// const getChallengeById = (id) => {
-//   const arr = selectedCenter.value?.challenges || []
-//   return arr.find(c => c && c.id === id) || null
-// }
-
 const truncateText = (text, maxLength = 30) => {
   if (!text) return ''
   return text.length > maxLength ? text.slice(0, maxLength) + '...' : text
 }
-
-// const openDetailModal = async (challengeId) => {
-//   const centerId = selectedCenter.value?.seniorCenterId
-//   if (!centerId) return
-
-//   try {
-//     const res = await api.get(`/api/v1/rankings/senior-center/${centerId}/challenges/${challengeId}`)
-//     const challenge = res.data
-//     // 모달 띄우는 로직 구현 위치
-//     console.log('✅ 상세 미션:', challenge)
-//     // 예: 상세 모달 상태로 따로 띄우거나, selectedChallenge.value = challenge;
-//   } catch (err) {
-//     console.error('상세 미션 불러오기 실패:', err)
-//   }
-// }
 
 const openDetailModal = async (challengePk) => {
   const centerId = selectedCenter.value?.seniorCenterId
