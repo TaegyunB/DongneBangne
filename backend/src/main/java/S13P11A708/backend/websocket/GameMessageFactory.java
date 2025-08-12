@@ -18,19 +18,20 @@ public class GameMessageFactory {
                 .build();
     }
 
-    public static GameAnsSocketMessage createAnsMessage(GameMessageType type, Long roomId, String payload) {
+    public static GameAnsSocketMessage createAnsMessage(GameMessageType type, Long roomId, boolean isCorrect) {
         return GameAnsSocketMessage.builder()
                 .type(type)
                 .roomId(roomId)
-                .payload(payload)
+                .isCorrect(isCorrect)
                 .build();
     }
 
-    public static GameHintSocketMessage createHintMessage(GameMessageType type, Long roomId, Long userId, String payload) {
+    public static GameHintSocketMessage createHintMessage(GameMessageType type, Long roomId, Long userId, boolean canUse, String payload) {
         return GameHintSocketMessage.builder()
                 .type(type)
                 .roomId(roomId)
                 .userId(userId)
+                .canUse(canUse)
                 .payload(payload)
                 .build();
     }
