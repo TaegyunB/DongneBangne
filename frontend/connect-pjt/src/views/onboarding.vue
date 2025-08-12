@@ -3,13 +3,14 @@
     <Swiper
       class="onboarding-swiper"
       :modules="modules"
+      :autoplay="{ delay: 5000, disableOnInteraction: false, pauseOnMouseEnter: true }"
       :slides-per-view="1"
       :space-between="0"
       :pagination="{ clickable: true }"
       :navigation="true"
       :mousewheel="true"
       :keyboard="{ enabled: true }"
-      :loop="false"
+      :loop="true"
       :a11y="{ enabled: true }"
       @swiper="onSwiper"
       @slideChange="onSlideChange"
@@ -81,7 +82,7 @@ import api from '@/api/axios'
 
 // Swiper
 import { Swiper, SwiperSlide } from 'swiper/vue'
-import { Pagination, Navigation, Mousewheel, Keyboard, A11y } from 'swiper/modules'
+import { Autoplay, Pagination, Navigation, Mousewheel, Keyboard, A11y } from 'swiper/modules'
 import 'swiper/css'
 import 'swiper/css/pagination'
 import 'swiper/css/navigation'
@@ -92,24 +93,9 @@ import onboarding4 from '@/assets/onboarding/onboarding4.png'
 import onboarding5 from '@/assets/onboarding/onboarding5.png'
 import onboarding6 from '@/assets/onboarding/onboarding6.png'
 
-const modules = [Pagination, Navigation, Mousewheel, Keyboard, A11y]
+const modules = [Autoplay, Pagination, Navigation, Mousewheel, Keyboard, A11y]
 const route = useRoute()
 const router = useRouter()
-
-// AB 테스트: 안내문구 노출 여부
-// const showLoginNote = ref(true)
-// function resolveABBucket() {
-//   const fromQuery = typeof route.query.ab === 'string' ? route.query.ab : null
-//   if (fromQuery === 'note_on' || fromQuery === 'note_off') {
-//     localStorage.setItem('onboarding_ab', fromQuery)
-//   }
-//   let bucket = localStorage.getItem('onboarding_ab')
-//   if (!bucket) {
-//     bucket = Math.random() < 0.5 ? 'note_on' : 'note_off'
-//     localStorage.setItem('onboarding_ab', bucket)
-//   }
-//   showLoginNote.value = bucket === 'note_on'
-// }
 const showLoginNote = ref(true)
 
 function resolveABBucket() {
@@ -163,7 +149,7 @@ onMounted(async () => {
     return
   }
 
-  // ✅ code 없을 때만 첫 방문 여부 기록 (온보딩 화면에서만 찍힘)
+  // code 없을 때만 첫 방문 여부 기록 (온보딩 화면에서만 찍힘)
   resolveABBucket()
 })
 
@@ -242,11 +228,13 @@ const handleKakaoLogin = () => {
   position: relative;
   justify-content: center;
   text-align: center;
+  transform:translateY(-4vh);
 }
-
+@media (min-width:1280px){ .onboarding-content{ transform:translateY(-6vh) } }
+@media (max-width:768px){ .onboarding-content{ transform:translateY(-2vh) } }
 @media (min-width: 1024px){
   .onboarding-content{
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1.1fr .9fr;
     gap: 64px;
     text-align: left;
   }
@@ -262,7 +250,7 @@ const handleKakaoLogin = () => {
 
 .image-box { width: 100%; display: flex; justify-content: center; align-items: center }
 .image-box img {
-  max-width: min(560px, 90%);
+  max-width:min(640px,95%);
   width: 100%;
   height: auto;
   object-fit: contain;
@@ -272,13 +260,13 @@ const handleKakaoLogin = () => {
 
 .title{
   font-weight: 800;
-  font-size: clamp(22px, 5vw, 40px);
-  line-height: 1.25;
+  font-size:clamp(28px,5.2vw,56px);
+  line-height: 1.2;
   letter-spacing: -0.02em;
 }
 .subtitle{
   margin-top: 12px;
-  font-size: clamp(16px, 2.5vw, 20px);
+  font-size:clamp(18px,2.2vw,22px);
   color: #444;
   line-height: 1.7;
 }

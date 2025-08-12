@@ -212,7 +212,6 @@ const submitPost = async () => {
   } finally {
     submitting.value = false
   }
-}
 
 const goBack = () => {
   // 미리보기 URL 정리
