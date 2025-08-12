@@ -4,6 +4,7 @@ import S13P11A708.backend.controller.GameSocketController;
 import S13P11A708.backend.domain.User;
 import S13P11A708.backend.domain.enums.GameMessageType;
 import S13P11A708.backend.domain.enums.UserRole;
+import S13P11A708.backend.dto.webSocket.GameAnsRequestMessage;
 import S13P11A708.backend.dto.webSocket.GameAnsSocketMessage;
 import S13P11A708.backend.security.CustomOAuth2User;
 import S13P11A708.backend.security.UserDto;
@@ -55,7 +56,7 @@ public class SocketSecurityTest {
                 new CustomOAuth2User(dto), "N/A", List.of()
         );
 
-        controller.submitAnswer(new GameAnsSocketMessage(GameMessageType.ANSWER_SUBMIT, roomId, answer), principal);
+        controller.submitAnswer(new GameAnsRequestMessage(GameMessageType.ANSWER_SUBMIT, roomId, answer), principal);
 
         // ✅ 정확히 한 번, 정확한 인자
         verify(gameService, times(1)).handleAnswer(roomId, userId, answer);
@@ -65,7 +66,7 @@ public class SocketSecurityTest {
     @Test
     void submitAnswer_throws_when_principal_missing() {
         var ex = assertThrows(IllegalStateException.class, () ->
-                controller.submitAnswer(new GameAnsSocketMessage(GameMessageType.ANSWER_RESULT, 1L, "고향역"), null)
+                controller.submitAnswer(new GameAnsRequestMessage(GameMessageType.ANSWER_RESULT, 1L, "고향역"), null)
         );
         System.out.println(ex.getMessage());
         assertTrue(ex.getMessage().contains("없습니다"));

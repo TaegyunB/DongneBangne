@@ -1,5 +1,6 @@
 package S13P11A708.backend.controller;
 
+import S13P11A708.backend.dto.webSocket.GameAnsRequestMessage;
 import S13P11A708.backend.dto.webSocket.GameAnsSocketMessage;
 import S13P11A708.backend.dto.webSocket.GameHintRequestMessage;
 import S13P11A708.backend.dto.webSocket.GameHintSocketMessage;
@@ -24,10 +25,10 @@ public class GameSocketController {
      * 정답 제출, 인증 처리
      */
     @MessageMapping("/games/answer")
-    public void submitAnswer(GameAnsSocketMessage message, Principal principal) {
+    public void submitAnswer(GameAnsRequestMessage message, Principal principal) {
         Long userId = extractUserIdFromPrincipal(principal);
         Long roomId = message.getRoomId();
-        String answer = message.getPayload();
+        String answer = message.getSubmitAnswer();
 
         log.info("[ANSWER_SUBMIT] roomId: {}, userId: {}, answer: {}", roomId, userId, answer);
 

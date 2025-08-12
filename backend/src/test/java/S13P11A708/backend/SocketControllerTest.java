@@ -6,6 +6,7 @@ import S13P11A708.backend.domain.enums.GameMessageType;
 import S13P11A708.backend.domain.enums.UserRole;
 import S13P11A708.backend.domain.game.GameStatusRedis;
 import S13P11A708.backend.domain.game.PlayerStatus;
+import S13P11A708.backend.dto.webSocket.GameAnsRequestMessage;
 import S13P11A708.backend.dto.webSocket.GameAnsSocketMessage;
 import S13P11A708.backend.repository.TrotQuizRepository;
 import S13P11A708.backend.security.CustomOAuth2User;
@@ -89,7 +90,7 @@ public class SocketControllerTest {
         // 브로드캐스트는 실제 송신 말고 그냥 통과
         doNothing().when(messagingTemplate).convertAndSend(anyString(), any(Object.class));
 
-        controller.submitAnswer(new GameAnsSocketMessage(GameMessageType.ANSWER_SUBMIT, 1L, "고향역"), principal);
+        controller.submitAnswer(new GameAnsRequestMessage(GameMessageType.ANSWER_SUBMIT, 1L, "고향역"), principal);
 
         verify(gameService, timeout(1000)).handleAnswer(1L, 101L, "고향역");
     }

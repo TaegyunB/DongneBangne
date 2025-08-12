@@ -18,12 +18,11 @@ public class GameMessageFactory {
                 .build();
     }
 
-    public static GameAnsSocketMessage createAnsMessage(GameMessageType type, Long roomId, boolean isCorrect, String payload) {
+    public static GameAnsSocketMessage createAnsMessage(GameMessageType type, Long roomId, boolean isCorrect) {
         return GameAnsSocketMessage.builder()
                 .type(type)
                 .roomId(roomId)
                 .isCorrect(isCorrect)
-                .payload(payload)
                 .build();
     }
 

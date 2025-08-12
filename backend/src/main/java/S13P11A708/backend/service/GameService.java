@@ -117,7 +117,7 @@ public class GameService {
 
         if (!isCorrect) {
             broadcaster.broadcastAns(roomId,
-                    messageFactory.createAnsMessage(GameMessageType.ANSWER_REJECTED, roomId, false, "오답"));
+                    messageFactory.createAnsMessage(GameMessageType.ANSWER_REJECTED, roomId, false));
             log.info("[FLOW] 오답 → 라운드 유지");
             return;
         }
@@ -125,7 +125,7 @@ public class GameService {
         //4. 정답 처리
         gameRedisService.increaseCount(roomId, senderId);
         broadcaster.broadcastAns(roomId,
-                messageFactory.createAnsMessage(GameMessageType.ANSWER_RESULT, roomId, true, "정답"));
+                messageFactory.createAnsMessage(GameMessageType.ANSWER_RESULT, roomId, true));
         log.info("[5] 정답자 카운트 증가");
 
         //5. 다음 라운드 진행

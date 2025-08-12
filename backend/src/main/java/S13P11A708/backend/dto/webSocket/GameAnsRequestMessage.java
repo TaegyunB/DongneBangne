@@ -8,8 +8,8 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class GameAnsSocketMessage {
+public class GameAnsRequestMessage {
     private GameMessageType type;
     private Long roomId;
-    private boolean isCorrect;
+    private String submitAnswer;
 }
