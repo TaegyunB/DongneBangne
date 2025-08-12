@@ -63,6 +63,7 @@ const router = createRouter({
       path: '/boards',
       name: 'boards',
       component: CommunityBoards,
+      props: route => ({ category: route.query.category || 'all' })
     },
     {
       path: '/boards/:boardId',  
