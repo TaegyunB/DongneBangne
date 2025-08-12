@@ -88,10 +88,14 @@ export default {
     },
     
     contentStyle() {
-      // CSS transform으로 실시간 확대
+      // 현재 스크롤 위치 고려
+      const scrollX = window.scrollX || document.documentElement.scrollLeft || 0;
+      const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+      
+      // CSS transform으로 실시간 확대 + 스크롤 위치 반영
       // 마우스 위치가 렌즈 중앙에 오도록 계산
-      const offsetX = -this.mouseX * this.zoomLevel + this.lensSize/2;
-      const offsetY = -this.mouseY * this.zoomLevel + this.lensSize/2;
+      const offsetX = -(this.mouseX + scrollX) * this.zoomLevel + this.lensSize/2;
+      const offsetY = -(this.mouseY + scrollY) * this.zoomLevel + this.lensSize/2;
       
       return {
         transform: `scale(${this.zoomLevel}) translate(${offsetX/this.zoomLevel}px, ${offsetY/this.zoomLevel}px)`,
@@ -139,6 +143,7 @@ export default {
     startMagnifier() {
       document.addEventListener('mousemove', this.handleMouseMove);
       document.addEventListener('contextmenu', this.handleRightClick);
+      document.addEventListener('scroll', this.handleScroll, { passive: true });
       // 커서를 완전히 숨기고 중요도를 높임
       document.body.style.setProperty('cursor', 'none', 'important');
       document.documentElement.style.setProperty('cursor', 'none', 'important');
@@ -153,6 +158,7 @@ export default {
     stopMagnifier() {
       document.removeEventListener('mousemove', this.handleMouseMove);
       document.removeEventListener('contextmenu', this.handleRightClick);
+      document.removeEventListener('scroll', this.handleScroll);
       // 커서 복원
       document.body.style.removeProperty('cursor');
       document.documentElement.style.removeProperty('cursor');
@@ -187,6 +193,12 @@ export default {
       // 실시간으로 마우스 위치 업데이트
       this.mouseX = event.clientX;
       this.mouseY = event.clientY;
+    },
+
+    handleScroll() {
+      // 스크롤할 때 돋보기 내용 실시간 업데이트
+      // 이미 contentStyle에서 스크롤 위치를 반영하므로 
+      // 별도 처리는 필요 없지만, 필요시 여기서 추가 로직 가능
     },
     
     createMagnifierContent() {
@@ -294,6 +306,16 @@ export default {
   beforeUnmount() {
     this.stopMagnifier();
     this.hideHelpPopup();
+    
+    // DOM 옵저버 정리
+    if (this.domObserver) {
+      this.domObserver.disconnect();
+    }
+    
+    // 타이머 정리
+    if (this.updateTimer) {
+      clearTimeout(this.updateTimer);
+    }
   },
   
   watch: {
