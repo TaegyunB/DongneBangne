@@ -89,7 +89,6 @@ public class GameService {
         log.info("[FLOW] ===== handleAnswer START =====");
         log.info("[1] 방 ID={}, 제출자 ID={}, 제출 답안='{}'", roomId, senderId, answer);
 
-
         //1. 현재 게임상태 불러오기
         GameStatusRedis game = gameRedisService.getGameStatusRedis(roomId);
         if(game == null) throw new RuntimeException("게임 상태를 찾을 수 없습니다.");
@@ -125,6 +124,8 @@ public class GameService {
 
         //4. 정답 처리
         gameRedisService.increaseCount(roomId, senderId);
+        broadcaster.broadcastToRoom(roomId,
+                messageFactory.createInfoMessage(GameMessageType.ANSWER_RESULT, roomId, "정답입니다"));
         log.info("[5] 정답자 카운트 증가");
 
         //5. 다음 라운드 진행

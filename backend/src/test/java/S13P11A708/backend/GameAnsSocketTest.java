@@ -119,7 +119,7 @@ public class GameAnsSocketTest {
                     }
                 });
 
-                // ★ 트리거: 서비스 메서드 직접 호출(WS 입력 경로 대신)
+                // 트리거: 서비스 메서드 직접 호출(WS 입력 경로 대신)
                 System.out.println("▶ [TEST] TRIGGER handleAnswer()");
                 gameService.handleAnswer(roomId, user1, correct);
             }

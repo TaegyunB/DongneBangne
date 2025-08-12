@@ -19,7 +19,6 @@ public class GameSocketController {
 
     private final GameService gameService;
 
-
     /**
      * 정답 제출, 인증 처리
      */
@@ -46,7 +45,6 @@ public class GameSocketController {
 
         gameService.handleHint(roomId, userId);
     }
-
 
     /**
      * 인증 유저 정보 추출
