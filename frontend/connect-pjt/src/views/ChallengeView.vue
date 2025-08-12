@@ -16,7 +16,7 @@
     </div>
 
     <!-- AI 신문 생성 섹션 (항상 표시) -->
-    <div class="ai-news-section">
+    <div v-if="userRole === 'ADMIN'" class="ai-news-section">
       <div class="ai-news-card">
         <div class="ai-news-content">
           <div class="ai-news-icon">📰</div>
