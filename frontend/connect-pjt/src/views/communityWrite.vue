@@ -143,7 +143,7 @@ const uploadImageIfNeeded = async () => {
     presignEndpoint,
     { filename, contentType: imageFile.value.type },
     { headers: { Authorization: `Bearer ${token}` } }
-  )
+ )
 
   // 2) S3 업로드
   const finalUrl = await uploadToS3(presign, imageFile.value)
