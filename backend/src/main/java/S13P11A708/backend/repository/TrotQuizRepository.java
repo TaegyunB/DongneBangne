@@ -11,14 +11,10 @@ public interface TrotQuizRepository extends JpaRepository<TrotQuiz, Long> {
 
     @Query(value = """
         SELECT * FROM trot_quiz 
-        WHERE (:musicEra IS NULL OR music_era = :musicEra)
-          AND (:category IS NULL OR category = :category)
         ORDER BY RAND()
         LIMIT :roundCount
     """, nativeQuery = true)
-    List<TrotQuiz> findRandomQuestionsByCondition(
-            @Param("musicEra") String musicEra,
-            @Param("category") String category,
+    List<TrotQuiz> findRandomQuestions(
             @Param("roundCount") int roundCount
     );
 }
