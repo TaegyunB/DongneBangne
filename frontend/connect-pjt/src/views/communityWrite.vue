@@ -36,7 +36,7 @@
       <p v-if="errors.content" class="error">{{ errors.content }}</p>
     </div>
 
-    <!-- 이미지 업로드 (지금은 미리보기만, 전송 X) -->
+    <!-- 이미지 업로드 -->
     <div class="form-group">
       <label for="image">이미지 (선택)</label>
       <input
@@ -79,7 +79,7 @@ const uiToApiLower = { 잡담: 'chat', 나눔: 'share', 취미: 'hobby', 정보:
 
 // 폼 상태
 const form = ref({ category: '', title: '', content: '' })
-const imageFile = ref(null)   // 지금은 서버로 전송하지 않음(미리보기만)
+const imageFile = ref(null)   // File 객체 저장
 const previewUrl = ref('')
 const submitting = ref(false)
 const errors = ref({ category: '', title: '', content: '', image: '' })
@@ -150,83 +150,141 @@ const uploadToS3 = async (presign, file) => {
 // 이미지 미리보기만 처리
 const onFileChange = (e) => {
   const file = e.target.files?.[0]
-  if (!file) { clearImage(); return }
+  if (!file) { 
+    clearImage()
+    return 
+  }
+  
   if (!file.type.startsWith('image/')) {
     errors.value.image = '이미지 파일만 업로드 가능합니다.'
     e.target.value = ''
     return
   }
+  
   if (file.size > 5 * 1024 * 1024) {
     errors.value.image = '파일 크기는 5MB 이하여야 합니다.'
     e.target.value = ''
     return
   }
+  
   errors.value.image = ''
   imageFile.value = file
   previewUrl.value = URL.createObjectURL(file)
 }
+
 const clearImage = () => {
   imageFile.value = null
-  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
+  if (previewUrl.value) {
+    URL.revokeObjectURL(previewUrl.value)
+  }
   previewUrl.value = ''
+  // 파일 input 초기화
+  const fileInput = document.getElementById('image')
+  if (fileInput) fileInput.value = ''
 }
 
 const validate = () => {
   errors.value = { category: '', title: '', content: '', image: '' }
   let ok = true
-  if (!form.value.category) { errors.value.category = '카테고리를 선택해 주세요.'; ok = false }
-  if (!form.value.title || form.value.title.length < 2) { errors.value.title = '제목을 2자 이상 입력해 주세요.'; ok = false }
-  if (!form.value.content || form.value.content.length < 2) { errors.value.content = '내용을 2자 이상 입력해 주세요.'; ok = false }
+  
+  if (!form.value.category) { 
+    errors.value.category = '카테고리를 선택해 주세요.'
+    ok = false 
+  }
+  
+  if (!form.value.title || form.value.title.length < 2) { 
+    errors.value.title = '제목을 2자 이상 입력해 주세요.'
+    ok = false 
+  }
+  
+  if (!form.value.content || form.value.content.length < 2) { 
+    errors.value.content = '내용을 2자 이상 입력해 주세요.'
+    ok = false 
+  }
+  
   return ok
 }
 
-// [UPDATE] submitPost: 이미지 URL 먼저 얻고 body에 넣기
+// FormData 방식으로 게시글 등록
 const submitPost = async () => {
   if (submitting.value) return
   if (!validate()) return
 
   submitting.value = true
+  
   try {
-
-    // const token = getAccessToken()
-    // if (!token) {
-    //   alert('로그인이 필요합니다. 다시 로그인해 주세요.')
-    //   // 로그인 페이지 라우팅(사용 중인 라우트 이름으로 수정 가능)
-    //   router.push({ name: 'onboarding' })
-    //   return
-    // }
-    // 이미지 있으면 업로드 → URL 획득
-    const imageUrl = await uploadImageIfNeeded()   // ← 추가
-
-    const body = {
-      title: form.value.title,
-      content: form.value.content,
-      boardCategory: uiToApiLower[form.value.category] || 'chat', // 소문자
-      imageFile: imageUrl ?? null, // 백 스펙: URL 넘김
+    // FormData 생성
+    const formData = new FormData()
+    formData.append('title', form.value.title)
+    formData.append('content', form.value.content)
+    formData.append('boardCategory', uiToApiLower[form.value.category] || 'chat')
+    
+    // 이미지 파일이 있으면 추가
+    if (imageFile.value) {
+      formData.append('imageFile', imageFile.value)
     }
-    // 토큰이 있으면 헤더에 붙이고, 없으면 withCredentials 쿠키로 진행
+
+    // Authorization 헤더 처리 (선택적)
     const headers = {}
     try {
       const { getAccessToken } = await import('@/utils/token')
-      const t = getAccessToken?.()
-      if (t) headers.Authorization = `Bearer ${t}`
-    } catch (e) { /* 토큰 유틸 없거나 에러면 무시하고 쿠키로 진행 */ }
+      const token = getAccessToken?.()
+      if (token) {
+        headers.Authorization = `Bearer ${token}`
+      }
+    } catch (e) { 
+      // 토큰 유틸이 없거나 에러가 나면 쿠키 인증으로 진행
+      console.log('토큰 처리 건너뜀:', e.message)
+    }
     
-    await api.post('/api/v1/boards', body, {
-    headers
+    // FormData 전송 (Content-Type은 자동으로 multipart/form-data)
+    const response = await api.post('/api/v1/boards', formData, {
+      headers
     })
 
+    console.log('등록 성공:', response.data)
     alert('글이 등록되었습니다.')
-    router.push({ name: 'boards', query: { category: body.boardCategory } })
+    
+    // 등록된 카테고리로 게시판 목록 페이지로 이동
+    const categoryParam = uiToApiLower[form.value.category] || 'chat'
+    router.push({ 
+      name: 'boards', 
+      query: { category: categoryParam } 
+    })
+    
   } catch (err) {
-    console.error(err)
-    alert('등록 실패')
+    console.error('등록 실패:', err)
+    
+    if (err?.response?.status === 401) {
+      alert('세션이 만료되었어요. 다시 로그인해 주세요.')
+      router.push({ name: 'onboarding' })
+    } else if (err?.response?.status === 400) {
+      alert('입력한 정보를 다시 확인해 주세요.')
+    } else if (err?.response?.status === 413) {
+      alert('파일 크기가 너무 큽니다. 5MB 이하의 이미지를 선택해 주세요.')
+    } else {
+      alert('등록에 실패했습니다. 잠시 후 다시 시도해 주세요.')
+    }
+  } finally {
+    submitting.value = false
   }
 
-  // 더미 처리용
-  alert('글이 등록되었습니다.')
-  router.push('/boards')
+const goBack = () => {
+  // 미리보기 URL 정리
+  if (previewUrl.value) {
+    URL.revokeObjectURL(previewUrl.value)
+  }
+  router.back()
 }
+
+// 컴포넌트 언마운트 시 URL 정리
+onMounted(() => {
+  return () => {
+    if (previewUrl.value) {
+      URL.revokeObjectURL(previewUrl.value)
+    }
+  }
+})
 </script>
 
 <style scoped>
