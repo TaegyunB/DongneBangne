@@ -3,6 +3,7 @@
     <h2 class="page-title">게시글 수정</h2>
 
     <div v-if="loading" class="hint">불러오는 중...</div>
+
     <div v-else>
       <div class="form-group">
         <label for="category">카테고리</label>
@@ -21,7 +22,7 @@
         <textarea id="content" v-model.trim="form.content" :disabled="submitting"></textarea>
       </div>
 
-      <!-- (선택) 이미지 변경은 나중에: 미리보기만 -->
+      <!-- (선택) 이미지 변경은 보류: 미리보기만 표시 -->
       <div class="form-group" v-if="form.boardImage">
         <label>현재 이미지</label>
         <div class="preview">
@@ -43,6 +44,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/api/axios'
+import { getAccessToken } from '@/utils/token'
 
 const route = useRoute()
 const router = useRouter()
@@ -62,48 +64,121 @@ const form = ref({
   boardImage: null,  // 현재 이미지 URL (표시용)
 })
 
-const fetchDetail = async () => {
-  loading.value = true
+// 상세 원본 + 소유자 판별용
+const detail = ref(null)
+const me = ref(null)
+
+const headersWithToken = () => {
+  const token = getAccessToken?.()
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+const isOwner = computed(() => {
+  const b = detail.value
+  if (!b) return false
+  if ('isOwner' in b) return !!b.isOwner
+  if ('mine' in b) return !!b.mine
+  if (b.userId && me.value?.userId) return b.userId === me.value.userId
+  if (b.nickname && me.value?.nickname) return b.nickname === me.value.nickname
+  return false
+})
+
+const fetchMe = async () => {
   try {
-    const { data } = await api.get(`/api/v1/boards/${boardId.value}`)
-    form.value = {
-      category: apiToUi[String(data?.category || '').toUpperCase()] || '잡담',
-      title: data?.title || '',
-      content: data?.content || '',
-      boardImage: data?.boardImage || null,
-    }
-  } catch (e) {
-    console.error('상세 불러오기 실패:', e)
-    alert('게시글을 불러오지 못했습니다.')
-    goBack()
-  } finally {
-    loading.value = false
+    const { data } = await api.get('/api/v1/users/me', { headers: headersWithToken() })
+    me.value = data
+  } catch { /* 미제공 시 무시 */ }
+}
+
+const fetchDetail = async () => {
+  const { data } = await api.get(`/api/v1/boards/${boardId.value}`, {
+    headers: headersWithToken()
+  })
+  detail.value = data
+  form.value = {
+    category: apiToUi[String(data?.category || '').toUpperCase()] || '잡담',
+    title: data?.title || '',
+    content: data?.content || '',
+    boardImage: data?.boardImage || null,
   }
 }
 
+const guardOwnerOrExit = () => {
+  if (!isOwner.value) {
+    alert('수정 권한이 없습니다.')
+    router.replace({ name: 'communityDetail', params: { boardId: boardId.value }, query: route.query })
+    return false
+  }
+  return true
+}
+
+onMounted(async () => {
+  loading.value = true
+  try {
+    await Promise.all([fetchMe(), fetchDetail()])
+    if (!guardOwnerOrExit()) return
+  } catch (e) {
+    const s = e?.response?.status
+    if (s === 401) {
+      alert('로그인이 필요합니다.')
+      router.push({ name: 'onboarding' })
+      return
+    }
+    if (s === 404) {
+      alert('게시글을 찾을 수 없습니다.')
+      router.replace({ name: 'boards', query: route.query })
+      return
+    }
+    console.error('상세 불러오기 실패:', e)
+    alert('게시글을 불러오지 못했습니다.')
+    router.replace({ name: 'communityDetail', params: { boardId: boardId.value }, query: route.query })
+  } finally {
+    loading.value = false
+  }
+})
+
 const submitEdit = async () => {
   if (submitting.value) return
-  if (!form.value.title || !form.value.content) {
+  if (!guardOwnerOrExit()) return
+
+  // 간단 검증
+  if (!form.value.title?.trim() || !form.value.content?.trim()) {
     alert('제목과 내용을 입력해 주세요.')
     return
   }
 
   submitting.value = true
   try {
-    // 이미지 변경은 보류: 기존 이미지를 그대로 넘기거나(null 허용이면 생략)
     const body = {
-      title: form.value.title,
-      content: form.value.content,
-      boardCategory: uiToApiLower[form.value.category] || 'chat',
-      imageFile: form.value.boardImage || null, // 변경 기능 합칠 때 교체
+      title: form.value.title.trim(),
+      content: form.value.content.trim(),
+      boardCategory: uiToApiLower[form.value.category] || 'chat', // 소문자
+      imageFile: form.value.boardImage || null, // 이미지 변경은 보류
     }
-    await api.put(`/api/v1/boards/${boardId.value}`, body)
+
+    await api.put(`/api/v1/boards/${boardId.value}`, body, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...headersWithToken()
+      }
+    })
 
     alert('수정이 완료되었습니다.')
     router.push({ name:'communityDetail', params:{ boardId: boardId.value }, query: route.query })
   } catch (e) {
+    const s = e?.response?.status
+    if (s === 401) {
+      alert('로그인이 필요합니다.')
+      router.push({ name: 'onboarding' })
+      return
+    }
+    if (s === 403) {
+      alert('수정 권한이 없습니다.')
+      router.push({ name: 'communityDetail', params: { boardId: boardId.value }, query: route.query })
+      return
+    }
     console.error('수정 실패:', e)
-    alert('수정에 실패했습니다.')
+    alert('수정에 실패했습니다. 잠시 후 다시 시도해 주세요.')
   } finally {
     submitting.value = false
   }
@@ -112,8 +187,6 @@ const submitEdit = async () => {
 const goBack = () => {
   router.push({ name:'communityDetail', params:{ boardId: boardId.value }, query: route.query })
 }
-
-onMounted(fetchDetail)
 </script>
 
 <style scoped>
