@@ -1,4 +1,4 @@
-<!-- AINewsPDFGenerator.vue -->
+<!-- AINewsPDFGenerator.vue (개선된 버전) -->
 <template>
   <div class="pdf-generator">
     <!-- PDF 미리보기 및 생성 버튼 -->
@@ -6,6 +6,14 @@
       <button @click="generateAndUploadPDF" :disabled="generating" class="generate-pdf-btn">
         {{ generating ? 'PDF 생성 중...' : 'PDF 생성하기' }}
       </button>
+      
+      <!-- 진행 상태 표시 -->
+      <div v-if="generating" class="progress-info">
+        <p>{{ progressMessage }}</p>
+        <div v-if="imageProgress.total > 0" class="image-progress">
+          이미지 처리: {{ imageProgress.loaded }}/{{ imageProgress.total }}
+        </div>
+      </div>
     </div>
 
     <!-- PDF 템플릿 (숨김) -->
@@ -39,9 +47,13 @@
                 {{ challenge.aiDescription || challenge.description }}
               </div>
               
-              <!-- 이미지 -->
+              <!-- 이미지 (Base64로 변환된 이미지 사용) -->
               <div v-if="challenge.challengeImage" class="article-image">
-                <img :src="challenge.challengeImage" :alt="challenge.challengeTitle" />
+                <img 
+                  :src="challenge.base64Image || challenge.challengeImage" 
+                  :alt="challenge.challengeTitle"
+                  crossorigin="anonymous"
+                />
                 <div class="image-caption">{{ challenge.challengeTitle }} 활동 모습</div>
               </div>
             </div>
@@ -79,6 +91,8 @@ const emit = defineEmits(['pdf-generated'])
 const pdfTemplate = ref(null)
 const generating = ref(false)
 const pdfGenerated = ref(false)
+const progressMessage = ref('')
+const imageProgress = ref({ loaded: 0, total: 0 })
 
 // 완료된 도전과제만 필터링
 const completedChallenges = computed(() => {
@@ -98,6 +112,116 @@ const formatChallengeDate = (dateString) => {
   return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`
 }
 
+// 이미지를 Base64로 변환하는 함수
+const convertImageToBase64 = (url) => {
+  return new Promise((resolve, reject) => {
+    // CORS 문제를 해결하기 위해 프록시를 통해 이미지 가져오기
+    const proxyUrl = `/api/v1/images/proxy?url=${encodeURIComponent(url)}`
+    
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        
+        canvas.width = img.naturalWidth
+        canvas.height = img.naturalHeight
+        
+        ctx.drawImage(img, 0, 0)
+        
+        const base64 = canvas.toDataURL('image/jpeg', 0.8)
+        resolve(base64)
+      } catch (error) {
+        console.error('Base64 변환 실패:', error)
+        reject(error)
+      }
+    }
+    
+    img.onerror = (error) => {
+      console.error('이미지 로드 실패:', error)
+      // S3 이미지 로드 실패 시 원본 URL 그대로 사용
+      resolve(url)
+    }
+    
+    // 프록시 URL이 있으면 프록시로, 없으면 원본 URL로
+    img.src = proxyUrl
+  })
+}
+
+// 백엔드 프록시 없이 직접 처리하는 대안 함수
+const convertImageToBase64Direct = (url) => {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    
+    // CORS 허용 시도
+    img.crossOrigin = 'anonymous'
+    
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        
+        canvas.width = img.naturalWidth
+        canvas.height = img.naturalHeight
+        
+        ctx.drawImage(img, 0, 0)
+        
+        const base64 = canvas.toDataURL('image/jpeg', 0.8)
+        resolve(base64)
+      } catch (error) {
+        console.error('Base64 변환 실패:', error)
+        // Canvas 오염 등의 문제로 변환 실패 시 원본 URL 반환
+        resolve(url)
+      }
+    }
+    
+    img.onerror = (error) => {
+      console.error('이미지 로드 실패:', error)
+      // 로드 실패 시 원본 URL 반환 (PDF에서는 표시되지 않을 수 있음)
+      resolve(url)
+    }
+    
+    img.src = url
+  })
+}
+
+// 모든 이미지를 Base64로 미리 변환
+const convertAllImagesToBase64 = async () => {
+  const challenges = completedChallenges.value.filter(c => c.challengeImage)
+  
+  if (challenges.length === 0) return
+  
+  progressMessage.value = '이미지를 처리하고 있습니다...'
+  imageProgress.value = { loaded: 0, total: challenges.length }
+  
+  for (let i = 0; i < challenges.length; i++) {
+    const challenge = challenges[i]
+    try {
+      console.log(`이미지 변환 시작: ${challenge.challengeImage}`)
+      
+      // 프록시 사용 시도, 실패하면 직접 시도
+      let base64Image
+      try {
+        base64Image = await convertImageToBase64(challenge.challengeImage)
+      } catch (error) {
+        console.warn('프록시를 통한 변환 실패, 직접 시도:', error)
+        base64Image = await convertImageToBase64Direct(challenge.challengeImage)
+      }
+      
+      challenge.base64Image = base64Image
+      console.log(`이미지 변환 완료: ${challenge.id}`)
+      
+    } catch (error) {
+      console.error(`이미지 변환 실패 (${challenge.id}):`, error)
+      // 변환 실패 시 원본 URL 유지
+    }
+    
+    imageProgress.value.loaded = i + 1
+  }
+}
+
 // PDF 생성 및 업로드
 const generateAndUploadPDF = async () => {
   if (completedChallenges.value.length === 0) {
@@ -108,7 +232,14 @@ const generateAndUploadPDF = async () => {
   generating.value = true
 
   try {
-    // 1. HTML을 Canvas로 변환
+    // 1. 모든 이미지를 Base64로 변환
+    await convertAllImagesToBase64()
+    
+    // 짧은 대기 시간 (이미지 렌더링 완료 대기)
+    progressMessage.value = 'PDF를 생성하고 있습니다...'
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    // 2. HTML을 Canvas로 변환
     const element = pdfTemplate.value
     element.style.position = 'static'
     element.style.left = 'auto'
@@ -117,10 +248,16 @@ const generateAndUploadPDF = async () => {
     const canvas = await html2canvas(element, {
       scale: 2,
       useCORS: true,
-      allowTaint: true,
+      allowTaint: false, // 보안 모드 비활성화
       backgroundColor: '#ffffff',
-      width: 794, // A4 width in pixels at 96 DPI
-      height: 1123 // A4 height in pixels at 96 DPI
+      width: 794,
+      height: 1123,
+      logging: true, // 디버깅용
+      imageTimeout: 15000, // 이미지 로딩 타임아웃 증가
+      onclone: (clonedDoc) => {
+        // 클론된 문서에서 추가 처리 필요 시
+        console.log('Document cloned for canvas conversion')
+      }
     })
 
     // 다시 숨김
@@ -128,12 +265,14 @@ const generateAndUploadPDF = async () => {
     element.style.left = '-9999px'
     element.style.top = '-9999px'
 
-    // 2. Canvas를 PDF로 변환
+    // 3. Canvas를 PDF로 변환
+    progressMessage.value = 'PDF 파일을 생성하고 있습니다...'
+    
     const imgData = canvas.toDataURL('image/png')
     const pdf = new jsPDF('p', 'mm', 'a4')
     
-    const imgWidth = 210 // A4 width in mm
-    const pageHeight = 295 // A4 height in mm
+    const imgWidth = 210
+    const pageHeight = 295
     const imgHeight = (canvas.height * imgWidth) / canvas.width
     let heightLeft = imgHeight
 
@@ -151,10 +290,20 @@ const generateAndUploadPDF = async () => {
       heightLeft -= pageHeight
     }
 
-    // 3. PDF를 Blob으로 변환
+    // 4. PDF를 Blob으로 변환
     const pdfBlob = pdf.output('blob')
 
-    // 4. FormData로 백엔드에 업로드
+    // 파일 크기 체크
+    const fileSizeInMB = pdfBlob.size / (1024 * 1024)
+    console.log(`생성된 PDF 크기: ${fileSizeInMB.toFixed(2)}MB`)
+    
+    if (fileSizeInMB > 10) {
+      console.warn('PDF 크기가 큽니다. 압축을 고려해주세요.')
+    }
+
+    // 5. FormData로 백엔드에 업로드
+    progressMessage.value = 'PDF를 업로드하고 있습니다...'
+    
     const formData = new FormData()
     formData.append('pdfFile', pdfBlob, `${props.newsData.centerName}_${props.newsData.year}_${props.newsData.month}.pdf`)
     formData.append('newsId', props.newsData.id)
@@ -162,7 +311,8 @@ const generateAndUploadPDF = async () => {
     const response = await api.post('/api/v1/admin/ai-news/upload-pdf', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
-      }
+      },
+      timeout: 60000 // 60초 타임아웃
     })
 
     console.log('PDF 업로드 성공:', response.data)
@@ -173,9 +323,20 @@ const generateAndUploadPDF = async () => {
 
   } catch (error) {
     console.error('PDF 생성 실패:', error)
-    alert('PDF 생성에 실패했습니다.')
+    
+    let errorMessage = 'PDF 생성에 실패했습니다.'
+    
+    if (error.response?.status === 413) {
+      errorMessage = 'PDF 파일 크기가 너무 큽니다. 이미지 품질을 낮춰주세요.'
+    } else if (error.message?.includes('canvas')) {
+      errorMessage = 'PDF 변환 중 오류가 발생했습니다. 이미지 로딩을 확인해주세요.'
+    }
+    
+    alert(errorMessage)
   } finally {
     generating.value = false
+    progressMessage.value = ''
+    imageProgress.value = { loaded: 0, total: 0 }
   }
 }
 </script>
@@ -204,6 +365,21 @@ const generateAndUploadPDF = async () => {
 .generate-pdf-btn:disabled {
   background-color: #9ca3af;
   cursor: not-allowed;
+}
+
+.progress-info {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #f3f4f6;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #374151;
+}
+
+.image-progress {
+  margin-top: 5px;
+  font-size: 12px;
+  color: #6b7280;
 }
 
 /* PDF 템플릿 스타일 */
