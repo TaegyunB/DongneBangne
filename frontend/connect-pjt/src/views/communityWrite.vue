@@ -126,28 +126,26 @@ const uploadToS3 = async (presign, file) => {
   throw new Error('presign 응답에 uploadUrl이 없음')
 }
 
-// [ADD] 필요하면 presign → S3 업로드 → 최종 URL 반환
-const uploadImageIfNeeded = async () => {
-  if (!imageFile.value) return null
+ // [ADD] 필요하면 presign → S3 업로드 → 최종 URL 반환 (쿠키 인증만 사용)
+ const uploadImageIfNeeded = async () => {
+   if (!imageFile.value) return null
 
-  // presign 엔드포인트 결정
-  const raw = import.meta.env.VITE_IMAGE_PRESIGN_URL || import.meta.env.VITE_IMAGE_PRESIGN_PATH
-  const presignEndpoint = resolvePresignEndpoint(String(raw || ''))
+   // presign 엔드포인트 결정
+   const raw = import.meta.env.VITE_IMAGE_PRESIGN_URL || import.meta.env.VITE_IMAGE_PRESIGN_PATH
+   const presignEndpoint = resolvePresignEndpoint(String(raw || ''))
 
-  const token = getAccessToken()
+   // 1) presign 요청 (백 응답 예: { uploadUrl, fileUrl, fields? })
+   const filename = `${crypto.randomUUID?.() || Date.now()}_${imageFile.value.name}`
+   const { data: presign } = await api.post(
+     presignEndpoint,
+     { filename, contentType: imageFile.value.type }
+     // 헤더는 추가하지 않음: 세션 쿠키(withCredentials)로 인증
+   )
 
-  // 1) presign 요청 (백 규격 예: { uploadUrl, fileUrl, method?, fields? })
-  const filename = `${crypto.randomUUID?.() || Date.now()}_${imageFile.value.name}`
-  const { data: presign } = await api.post(
-    presignEndpoint,
-    { filename, contentType: imageFile.value.type },
-    { headers: { Authorization: `Bearer ${token}` } }
-  )
-
-  // 2) S3 업로드
-  const finalUrl = await uploadToS3(presign, imageFile.value)
-  return finalUrl
-}
+   // 2) S3 업로드
+   const finalUrl = await uploadToS3(presign, imageFile.value)
+   return finalUrl
+ }
 
 // 이미지 미리보기만 처리
 const onFileChange = (e) => {
