@@ -21,7 +21,7 @@
       </svg>
     </div>
 
-    <!-- 안내 팝업 -->
+    <!-- 안내 팝업 (렌즈 ON: 해제 안내) -->
     <div 
       v-if="showPopup && isActive"
       class="help-popup"
@@ -32,6 +32,19 @@
         <div class="popup-arrow"></div>
       </div>
     </div>
+
+    <!-- 안내 팝업 (렌즈 OFF: 메인페이지 전용 클릭 유도) -->
+    <div
+      v-if="isMainPage && !isActive && shouldShowMagnifier"
+      class="help-popup"
+      :style="popupStyle"
+    >
+      <div class="popup-content">
+        <span>돋보기를 클릭해주세요</span>
+        <div class="popup-arrow"></div>
+      </div>
+    </div>
+
 
     <!-- 돋보기 렌즈 -->
     <div 
@@ -67,7 +80,8 @@ export default {
       showPopup: false,
       popupTimer: null,
       domObserver: null,
-      updateTimer: null
+      updateTimer: null,
+      showClickGuide:false
     }
   },
   computed: {
@@ -77,6 +91,10 @@ export default {
         currentPath.startsWith(route)
       );
     },
+    isMainPage() {
+    const p = this.$route?.path || ''
+    return p === '/mainpage' || p === '/'   // 둘 다 메인으로 취급
+  },
     
     lensStyle() {
       return {
@@ -107,7 +125,7 @@ export default {
       // 돋보기 버튼 근처에 팝업 표시
       return {
         right: '90px', // 버튼 왼쪽에 표시
-        bottom: '80px'
+        bottom: '25px'
       }
     }
   },
