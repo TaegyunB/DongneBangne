@@ -1,4 +1,4 @@
-<!-- AINewsPDFGenerator.vue (개선된 버전) -->
+<!-- AINewsPDFGenerator.vue (최종 최적화 버전) -->
 <template>
   <div class="pdf-generator">
     <!-- PDF 미리보기 및 생성 버튼 -->
@@ -26,40 +26,68 @@
           <div class="center-name">{{ newsData.centerName }}</div>
         </div>
 
-        <!-- 도전과제별 기사 -->
+        <!-- 도전과제별 기사 (상하 2행 레이아웃) -->
         <div class="articles-container">
-          <div 
-            v-for="(challenge, index) in completedChallenges" 
-            :key="challenge.id"
-            class="article-section"
-          >
-            <div class="article-header">
-              <h2 class="article-title">{{ challenge.challengeTitle }}</h2>
-              <div class="article-meta">
-                <span class="article-date">{{ formatChallengeDate(challenge.completedAt) }}</span>
-                <span class="article-location">{{ challenge.challengePlace }}</span>
+          <!-- 상단 행 (첫 번째, 두 번째 미션) -->
+          <div class="articles-row">
+            <div 
+              v-for="(challenge, index) in completedChallenges.slice(0, 2)" 
+              :key="challenge.id"
+              class="article-item"
+            >
+              <div class="article-header">
+                <h2 class="article-title">{{ challenge.challengeTitle }}</h2>
+                <div class="article-meta">
+                  <span class="article-date">{{ formatChallengeDate(challenge.completedAt) }}</span>
+                  <span class="article-location">{{ challenge.challengePlace }}</span>
+                </div>
+              </div>
+
+              <div class="article-content">
+                <div v-if="challenge.challengeImage" class="article-image">
+                  <img 
+                    :src="challenge.base64Image || challenge.challengeImage" 
+                    :alt="challenge.challengeTitle"
+                    crossorigin="anonymous"
+                  />
+                </div>
+                
+                <div class="article-text">
+                  {{ challenge.aiDescription || challenge.description }}
+                </div>
               </div>
             </div>
+          </div>
 
-            <!-- 기사 본문 -->
-            <div class="article-content">
-              <div class="article-text">
-                {{ challenge.aiDescription || challenge.description }}
+          <!-- 하단 행 (세 번째, 네 번째 미션) -->
+          <div v-if="completedChallenges.length > 2" class="articles-row">
+            <div 
+              v-for="(challenge, index) in completedChallenges.slice(2, 4)" 
+              :key="challenge.id"
+              class="article-item"
+            >
+              <div class="article-header">
+                <h2 class="article-title">{{ challenge.challengeTitle }}</h2>
+                <div class="article-meta">
+                  <span class="article-date">{{ formatChallengeDate(challenge.completedAt) }}</span>
+                  <span class="article-location">{{ challenge.challengePlace }}</span>
+                </div>
               </div>
-              
-              <!-- 이미지 (Base64로 변환된 이미지 사용) -->
-              <div v-if="challenge.challengeImage" class="article-image">
-                <img 
-                  :src="challenge.base64Image || challenge.challengeImage" 
-                  :alt="challenge.challengeTitle"
-                  crossorigin="anonymous"
-                />
-                <div class="image-caption">{{ challenge.challengeTitle }} 활동 모습</div>
+
+              <div class="article-content">
+                <div v-if="challenge.challengeImage" class="article-image">
+                  <img 
+                    :src="challenge.base64Image || challenge.challengeImage" 
+                    :alt="challenge.challengeTitle"
+                    crossorigin="anonymous"
+                  />
+                </div>
+                
+                <div class="article-text">
+                  {{ challenge.aiDescription || challenge.description }}
+                </div>
               </div>
             </div>
-
-            <!-- 구분선 -->
-            <div v-if="index < completedChallenges.length - 1" class="article-divider"></div>
           </div>
         </div>
 
@@ -246,16 +274,15 @@ const generateAndUploadPDF = async () => {
     element.style.top = 'auto'
 
     const canvas = await html2canvas(element, {
-      scale: 2,
+      scale: 1.5,
       useCORS: true,
-      allowTaint: false, // 보안 모드 비활성화
+      allowTaint: false,
       backgroundColor: '#ffffff',
       width: 794,
       height: 1123,
-      logging: true, // 디버깅용
-      imageTimeout: 15000, // 이미지 로딩 타임아웃 증가
+      logging: false,
+      imageTimeout: 15000,
       onclone: (clonedDoc) => {
-        // 클론된 문서에서 추가 처리 필요 시
         console.log('Document cloned for canvas conversion')
       }
     })
@@ -272,22 +299,48 @@ const generateAndUploadPDF = async () => {
     const pdf = new jsPDF('p', 'mm', 'a4')
     
     const imgWidth = 210
-    const pageHeight = 295
+    const pageHeight = 297
     const imgHeight = (canvas.height * imgWidth) / canvas.width
-    let heightLeft = imgHeight
+    
+    console.log(`Canvas 크기: ${canvas.width} x ${canvas.height}`)
+    console.log(`PDF 이미지 크기: ${imgWidth} x ${imgHeight}mm`)
+    console.log(`A4 페이지 높이: ${pageHeight}mm`)
+    
+    // 이미지가 한 페이지에 들어가는지 확인
+    if (imgHeight <= pageHeight) {
+      // 한 페이지에 모두 들어감
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight)
+      console.log('한 페이지에 모든 내용이 들어감')
+    } else {
+      // 여러 페이지로 분할
+      let remainingHeight = imgHeight
+      let pageNumber = 1
 
-    let position = 0
+      while (remainingHeight > 0) {
+        if (pageNumber > 1) {
+          pdf.addPage()
+        }
 
-    // 첫 페이지
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-    heightLeft -= pageHeight
+        const heightForThisPage = Math.min(pageHeight, remainingHeight)
+        const sourceY = (pageNumber - 1) * pageHeight * (canvas.height / imgHeight)
+        const sourceHeight = heightForThisPage * (canvas.height / imgHeight)
 
-    // 여러 페이지가 필요한 경우
-    while (heightLeft >= 0) {
-      position = heightLeft - imgHeight
-      pdf.addPage()
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-      heightLeft -= pageHeight
+        // Canvas의 일부를 잘라서 새 캔버스에 그리기
+        const tempCanvas = document.createElement('canvas')
+        const tempCtx = tempCanvas.getContext('2d')
+        tempCanvas.width = canvas.width
+        tempCanvas.height = sourceHeight
+
+        tempCtx.drawImage(canvas, 0, sourceY, canvas.width, sourceHeight, 0, 0, canvas.width, sourceHeight)
+        const tempImgData = tempCanvas.toDataURL('image/png')
+
+        pdf.addImage(tempImgData, 'PNG', 0, 0, imgWidth, heightForThisPage)
+
+        remainingHeight -= heightForThisPage
+        pageNumber++
+        
+        console.log(`페이지 ${pageNumber - 1} 추가 완료, 남은 높이: ${remainingHeight}mm`)
+      }
     }
 
     // 4. PDF를 Blob으로 변환
@@ -382,123 +435,142 @@ const generateAndUploadPDF = async () => {
   color: #6b7280;
 }
 
-/* PDF 템플릿 스타일 */
+/* PDF 템플릿 스타일 (최종 최적화 버전) */
 .newspaper-container {
   width: 794px;
-  min-height: 1123px;
+  height: 1123px;
   background: white;
-  padding: 40px;
+  padding: 20px;
   font-family: 'Noto Sans KR', serif;
   color: #333;
   box-shadow: none;
+  display: flex;
+  flex-direction: column;
 }
 
 .newspaper-header {
   text-align: center;
-  border-bottom: 3px solid #333;
-  padding-bottom: 20px;
-  margin-bottom: 30px;
+  border-bottom: 2px solid #333;
+  padding-bottom: 10px;
+  margin-bottom: 15px;
+  flex-shrink: 0;
 }
 
 .newspaper-title {
-  font-size: 32px;
+  font-size: 24px;
   font-weight: bold;
-  margin-bottom: 10px;
+  margin-bottom: 5px;
   color: #1a202c;
 }
 
 .newspaper-date {
   font-size: 16px;
   color: #666;
-  margin-bottom: 5px;
+  margin-bottom: 2px;
 }
 
 .center-name {
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 600;
   color: #2d3748;
 }
 
 .articles-container {
-  margin-bottom: 40px;
+  flex: 1;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
 }
 
-.article-section {
-  margin-bottom: 30px;
+.articles-row {
+  display: flex;
+  gap: 15px;
+  flex: 1;
+}
+
+.article-item {
+  flex: 1;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 12px;
+  background: #fafafa;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .article-header {
-  margin-bottom: 15px;
+  margin-bottom: 10px;
+  flex-shrink: 0;
 }
 
 .article-title {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: bold;
   color: #2d3748;
-  margin-bottom: 8px;
+  margin-bottom: 5px;
+  line-height: 1.2;
 }
 
 .article-meta {
   display: flex;
-  gap: 20px;
-  font-size: 14px;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 16px;
   color: #666;
 }
 
 .article-content {
-  display: flex;
-  gap: 20px;
-  align-items: flex-start;
-}
-
-.article-text {
   flex: 1;
-  font-size: 14px;
-  line-height: 1.6;
-  color: #444;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
 }
 
 .article-image {
-  flex: 0 0 200px;
+  flex-shrink: 0;
   text-align: center;
+  height: 160px;
+  overflow: hidden;
 }
 
 .article-image img {
   width: 100%;
-  height: 150px;
+  height: 100%;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: 4px;
   border: 1px solid #e2e8f0;
 }
 
-.image-caption {
-  font-size: 12px;
-  color: #666;
-  margin-top: 5px;
-  font-style: italic;
-}
-
-.article-divider {
-  height: 1px;
-  background-color: #e2e8f0;
-  margin: 25px 0;
+.article-text {
+  flex: 1;
+  font-size: 16px;
+  line-height: 1.4;
+  color: #444;
+  text-align: justify;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 12;
+  -webkit-box-orient: vertical;
 }
 
 .newspaper-footer {
-  border-top: 2px solid #e2e8f0;
-  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 8px;
   text-align: center;
-  margin-top: 40px;
+  flex-shrink: 0;
 }
 
 .footer-text {
-  font-size: 14px;
+  font-size: 10px;
   color: #666;
-  margin-bottom: 5px;
+  margin-bottom: 2px;
 }
 
 .footer-date {
-  font-size: 12px;
+  font-size: 8px;
   color: #999;
 }
 </style>
