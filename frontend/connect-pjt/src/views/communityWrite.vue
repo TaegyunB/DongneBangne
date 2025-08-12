@@ -62,6 +62,7 @@ const submitPost = async () => {
   alert('글이 등록되었습니다.')
   router.push('/boards')
 }
+
 </script>
 
 <style scoped>
