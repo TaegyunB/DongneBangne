@@ -54,8 +54,8 @@ public class GameService {
         Long point2 = userRepository.findPointByUserId(user2Id);
 
         //3. 방설정 조건 기반 trotQuiz 추출
-        List<TrotQuiz> quizList = trotQuizRepository.findRandomQuestionsByCondition(
-                musicEra, category, totalRounds
+        List<TrotQuiz> quizList = trotQuizRepository.findRandomQuestions(
+                totalRounds
         );
         if(quizList.size() < totalRounds){
             throw new RuntimeException("조건에 맞는 트로트 퀴즈가 부족합니다.");
