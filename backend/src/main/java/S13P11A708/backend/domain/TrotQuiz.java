@@ -22,6 +22,4 @@ public class TrotQuiz extends BaseEntity {
     private String singer;
     private String answer;
     private String url;
-    private String musicEra;
-    private String category;
 }
