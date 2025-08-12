@@ -49,7 +49,16 @@
       >
         <!-- 이미지 영역 -->
         <div class="challenge-image">
+          <!-- 인증되지 않은 도전: 텍스트 표시 -->
+          <div 
+            v-if="!challenge.isEmpty && !isCompleted(challenge)" 
+            class="challenge-placeholder"
+          >
+            <p>도전 인증을 해주세요!</p>
+          </div>
+          <!-- 인증된 도전 또는 빈 도전: 이미지 표시 -->
           <img 
+            v-else
             :src="getChallengeImage(challenge)" 
             :alt="challenge.challengeTitle || challenge.title"
             class="challenge-img"
@@ -66,17 +75,14 @@
               <h2>{{ getDisplayTitle(challenge, index) }}</h2>
               <!-- 기존 수정/삭제 버튼 또는 새로운 생성 버튼 -->
               <div v-if="shouldShowActionButtons(challenge, index)" class="action-buttons">
-                <!-- 도전이 있을 때: 수정/삭제 버튼 (완료된 경우 수정 버튼만 숨김) -->
+                <!-- 도전이 있을 때: 수정/삭제 버튼 (완료된 경우 버튼 숨김) -->
                 <template v-if="!challenge.isEmpty">
                   <!-- 완료되지 않은 도전: 수정 + 삭제 버튼 -->
                   <template v-if="!isCompleted(challenge)">
                     <button class="edit-btn" @click.stop="editChallenge(index)">수정</button>
                     <button class="delete-btn" @click.stop="showDeleteConfirm(index)">삭제</button>
                   </template>
-                  <!-- 완료된 도전: 삭제 버튼만 -->
-                  <template v-else>
-                    <button class="delete-btn" @click.stop="showDeleteConfirm(index)">삭제</button>
-                  </template>
+                  <!-- 완료된 도전: 버튼 숨김 -->
                 </template>
                 <!-- 도전이 없을 때: 생성 버튼 -->
                 <template v-else>
@@ -110,7 +116,7 @@
         </div>
         
         <!-- 모달 내 이미지 표시 -->
-        <div v-if="selectedChallenge.challengeImage" class="modal-image">
+        <div v-if="selectedChallenge.challengeImage && isCompleted(selectedChallenge)" class="modal-image">
           <img 
             :src="getChallengeImage(selectedChallenge)" 
             :alt="selectedChallenge.challengeTitle"
@@ -118,6 +124,11 @@
             @error="onImageError($event, selectedChallenge)"
             @load="onImageLoad($event, selectedChallenge)"
           />
+        </div>
+        
+        <!-- 인증되지 않은 도전의 경우 텍스트 표시 -->
+        <div v-else-if="!selectedChallenge.isEmpty && !isCompleted(selectedChallenge)" class="modal-placeholder">
+          <p>도전 인증을 해주세요!</p>
         </div>
         
         <button 
@@ -275,7 +286,7 @@ const getDisplayDescription = (challenge, index) => {
 
 const shouldShowActionButtons = (challenge, index) => {
   // ADMIN이고 3,4번째 칸(커스텀 도전과제)인 경우 버튼 표시
-  // 완료 여부와 관계없이 삭제는 가능하도록 함
+  // 완료된 경우에는 버튼을 숨김
   return userRole.value === 'ADMIN' && index >= 2
 }
 
@@ -978,6 +989,7 @@ watch(percent, updateMessage)
         height: 200px;
         overflow: hidden;
         background: var(--neutral-gray);
+        position: relative;
     }
 
     .challenge-img {
@@ -985,6 +997,26 @@ watch(percent, updateMessage)
         height: 100%;
         object-fit: cover;
         object-position: center;
+    }
+
+    /* 인증 전 플레이스홀더 텍스트 스타일 */
+    .challenge-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, var(--secondary-blue), var(--secondary-orange));
+        color: var(--text-black);
+    }
+
+    .challenge-placeholder p {
+        font-size: 18px;
+        font-weight: 600;
+        text-align: center;
+        margin: 0;
+        padding: 20px;
+        color: var(--primary-blue);
     }
 
     .challenge-content {
@@ -1173,6 +1205,21 @@ watch(percent, updateMessage)
         width: 100%;
         height: auto;
         object-fit: cover;
+    }
+
+    /* 모달 내 플레이스홀더 텍스트 스타일 */
+    .modal-placeholder {
+        margin: 20px 0;
+        padding: 40px 20px;
+        background: linear-gradient(135deg, var(--secondary-blue), var(--secondary-orange));
+        border-radius: 12px;
+        color: var(--primary-blue);
+    }
+
+    .modal-placeholder p {
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0;
     }
 
     .modal-button {
@@ -1375,6 +1422,14 @@ watch(percent, updateMessage)
         .ai-news-status {
             max-width: 100%;
         }
+
+        .challenge-placeholder p {
+            font-size: 16px;
+        }
+
+        .modal-placeholder p {
+            font-size: 16px;
+        }
     }
 
     /* 접근성 개선 */
@@ -1397,6 +1452,10 @@ watch(percent, updateMessage)
         }
         
         .ai-news-card {
+            border: 2px solid var(--text-black);
+        }
+        
+        .challenge-placeholder {
             border: 2px solid var(--text-black);
         }
     }
