@@ -124,12 +124,6 @@
         
         <!-- 모달 내 버튼들 -->
         <div class="modal-action-buttons">
-          <!-- 수정/삭제 버튼 (ADMIN이고 커스텀 도전과제인 경우) -->
-          <div v-if="shouldShowEditDeleteButtons(selectedChallenge)" class="modal-edit-delete-buttons">
-            <!-- 인증되지 않은 경우에만 수정 버튼 표시 -->
-            <button v-if="!isCompleted(selectedChallenge)" class="modal-edit-btn-small" @click="editChallenge(getSelectedChallengeIndex())">수정</button>
-            <button class="modal-delete-btn" @click="showDeleteConfirm(getSelectedChallengeIndex())">삭제</button>
-          </div>
           <!-- 도전 인증 버튼 (ADMIN이고 완료되지 않은 도전) -->
           <button 
             v-if="userRole === 'ADMIN' && !selectedChallenge.isEmpty && !isCompleted(selectedChallenge)" 
@@ -146,7 +140,12 @@
           >
             완료된 도전입니다
           </div>
-        
+          
+          <!-- 수정/삭제 버튼 (ADMIN이고 커스텀 도전과제인 경우) -->
+          <div v-if="shouldShowEditDeleteButtons(selectedChallenge)" class="modal-edit-delete-buttons">
+            <button class="modal-edit-btn" @click="editChallenge(getSelectedChallengeIndex())">수정</button>
+            <button class="modal-delete-btn" @click="showDeleteConfirm(getSelectedChallengeIndex())">삭제</button>
+          </div>
         </div>
       </div>
     </div>
@@ -990,25 +989,38 @@ watch(percent, updateMessage)
     }
 
     .ai-news-guide-popup .popup-content {
-        background: rgba(0, 0, 0, 0.85);
-        color: white;
+        background: rgba(248, 239, 104, 0.225);
+        color: black;
         padding: 12px 16px;
         border-radius: 8px;
         font-size: 14px;
         white-space: nowrap;
         position: relative;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgb(255, 225, 0);
+        box-shadow: 0 4px 16px rgba(255, 207, 17, 0.15);
         font-family: 'KoddiUD', sans-serif;
     }
 
     .ai-news-guide-popup .popup-arrow {
         position: absolute;
-        left: -8px;
+        left: -9px;
         top: 50%;
         transform: translateY(-50%);
         width: 0;
         height: 0;
-        border-right: 8px solid rgba(0, 0, 0, 0.85);
+        border-right: 8px solid rgba(248, 239, 104, 0.225);
+        border-top: 6px solid transparent;
+        border-bottom: 6px solid transparent;
+    }
+    
+    .ai-news-guide-popup .popup-arrow::before {
+        content: '';
+        position: absolute;
+        left: 1px;
+        top: -6px;
+        width: 0;
+        height: 0;
+        border-right: 8px solid rgb(255, 225, 0);
         border-top: 6px solid transparent;
         border-bottom: 6px solid transparent;
     }
@@ -1326,7 +1338,7 @@ watch(percent, updateMessage)
         justify-content: center;
     }
 
-    .modal-edit-btn, .modal-delete-btn {
+    .modal-edit-btn, .modal-delete-btn, .modal-edit-btn-small {
         padding: 12px 20px;
         border: none;
         border-radius: 8px;
@@ -1338,11 +1350,11 @@ watch(percent, updateMessage)
         font-family: 'KoddiUD', sans-serif;
     }
 
-    .modal-edit-btn {
+    .modal-edit-btn, .modal-edit-btn-small {
         background-color: var(--primary-blue);
     }
 
-    .modal-edit-btn:hover {
+    .modal-edit-btn:hover, .modal-edit-btn-small:hover {
         background-color: #357abd;
     }
 
@@ -1544,7 +1556,7 @@ watch(percent, updateMessage)
             gap: 12px;
         }
 
-        .modal-edit-btn, .modal-delete-btn {
+        .modal-edit-btn, .modal-delete-btn, .modal-edit-btn-small {
             width: 100%;
         }
 
