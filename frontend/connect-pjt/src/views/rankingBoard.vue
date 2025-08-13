@@ -254,7 +254,7 @@ const myCenterId = ref(null)
 
 /* 내 경로당 객체 & 순위 */
 const myCenter = computed(() =>
-  centers.value.find(c => Number(c.id) === Number(myCenterId.value)) || null
+  centers.value.find(c => String(c.id) === String(myCenterId.value)) || null
 )
 
 const myCenterRank = computed(() => {
@@ -275,12 +275,30 @@ const fetchMyCenterId = async () => {
 
 /* 목록 호출: /api/v1/rankings */
 const fetchRankings = async () => {
+  const toNum = (v, fb = null) => (v == null || v === '') ? fb : Number(v)
+
   try {
     const { data } = await api.get('/api/v1/rankings')
-    const normalized = (data ?? []).map(item => {
-      const name = (item.seniorCenterName || '').replace(/\uFEFF/g, '')
-      const challenges = Array.isArray(item.challenges) ? item.challenges : []
 
+    // 배열이 아닌 형태(content/items)로 내려올 수 있는 케이스도 흡수
+    const list = Array.isArray(data)
+      ? data
+      : Array.isArray(data?.items)   ? data.items
+      : Array.isArray(data?.content) ? data.content
+      : []
+
+    const normalized = list.map(item => {
+      const id = toNum(item.seniorCenterId ?? item.senior_center_id ?? item.id)
+
+      const name = String(
+        item.seniorCenterName ??
+        item.senior_center_name ??
+        item.centerName ??
+        item.center_name ??
+        ''
+      ).replace(/\uFEFF/g, '').trim()
+
+      const challenges = Array.isArray(item.challenges) ? item.challenges : []
       const rawStatuses = challenges.slice(0, 4).map(c =>
         (c?.isSuccess === true || c?.isSuccess === 'True' || c?.is_success === true)
           ? 'success' : 'fail'
@@ -288,16 +306,18 @@ const fetchRankings = async () => {
       while (rawStatuses.length < 4) rawStatuses.push('unknown')
 
       return {
-        id: item.seniorCenterId,
+        id,                               // ← 숫자 확정
         centerName: name,
-        trotPoint: item.trotPoint ?? 0,
-        missionPoint: item.challengePoint ?? 0,
-        monthlyPoint: item.totalPoint ?? 0,
-        ranking: item.ranking ?? null,
+        trotPoint:   toNum(item.trotPoint      ?? item.trot_point,      0),
+        missionPoint:toNum(item.challengePoint ?? item.challenge_point,  0),
+        monthlyPoint:toNum(item.totalPoint     ?? item.total_point,      0),
+        ranking:     toNum(item.ranking        ?? item.rank,             null),
         challenges,
-        challengeStatusesPadded: rawStatuses
+        challengeStatusesPadded: rawStatuses,
+        // (옵션) 관리자 프로필 이미지를 로고로 쓰고 싶다면 같이 받아두기
+        centerLogo: item.adminProfileImage ?? item.admin_profile_image ?? null,
       }
-    })
+    }).filter(r => r.id != null)
 
     normalized.sort((a, b) => (a.ranking ?? 1e9) - (b.ranking ?? 1e9))
     centers.value = normalized
