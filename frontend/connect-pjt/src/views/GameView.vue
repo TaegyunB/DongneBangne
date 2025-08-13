@@ -58,7 +58,18 @@ export default {
           const roomData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data
           this.handleCreateRoom(roomData);
         }
-
+        else if(data.type === 'join-room'){
+          const roomData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data
+          this.handleJoinRoom(roomData);
+        }
+        else if(data.type === 'ready'){
+          const readyData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data
+          this.handleReady(readyData);
+        }
+        else if(data.type === 'start-game'){
+          // WebSockt으로 연결
+          console.log('Unity → Vue 게임 시작 요청:');
+        }
       } catch (error) {
         console.error('메시지 파싱 오류:', error)
       }
@@ -455,6 +466,36 @@ export default {
         this.sendErrorToUnity('방 생성에 실패했습니다.')
       }
     },
+    async handleJoinRoom(roomData) {
+      try {
+        console.log('Unity → Vue 방 입장 요청:', roomData)
+
+        const roomId = roomData.roomId
+
+        // API로 방 참여
+        const response = await api.post(`/api/v1/game-rooms/${roomId}/join`, roomData, { headers: { 'Content-Type': 'application/json' } })
+        console.log('방 입장 성공:', response.data)
+
+        this.sendJoinRoomToUnity(response.data)
+      } catch (error) {
+        console.error('방 입장 실패:', error)
+      }
+    },
+    async handleReady(readyData) {
+      try {
+        console.log('Unity → Vue 게임 준비 요청:', readyData)
+
+        const roomId = readyData.roomId
+
+        // API로 게임 준비
+        const response = await api.put(`/api/v1/game-rooms/${roomId}/ready`, readyData)
+        console.log('게임 준비 성공:', response.data)
+
+        this.sendReadyAnswerToUnity(response.data)
+      } catch (error) {
+        console.error('게임 준비 실패:', error)
+      }
+    },
     
     // 방 생성 성공 정보를 Unity로 전송
     sendRoomCreatedToUnity(roomInfo) {
@@ -469,6 +510,30 @@ export default {
       )
       
       console.log('Vue → Unity 방 생성 성공 전송:', roomInfo)
+    },
+    // 방 입장 성공 정보를 Unity로 전송
+    sendJoinRoomToUnity(roomInfo) {
+      const unityFrame = this.$refs.unityFrame
+      
+      unityFrame.contentWindow.postMessage(
+        JSON.stringify({
+          type: 'join-room',
+          data: JSON.stringify(roomInfo)
+        }),
+        '*'
+      )
+    },
+    // 게임 준비 성공 정보를 Unity로 전송
+    sendReadyAnswerToUnity(readyInfo) {
+      const unityFrame = this.$refs.unityFrame
+      
+      unityFrame.contentWindow.postMessage(
+        JSON.stringify({ 
+          type: 'ready-answer',
+          data: JSON.stringify(readyInfo)
+        }),
+        '*'
+      )
     },
     
     // 에러 정보를 Unity로 전송

@@ -61,6 +61,14 @@
                 unityInstance.SendMessage("VueReceiver", "ReceiveCreatedRoomInfo", data.data);
                 console.log("Vue → Unity 방 생성 전송: ", data.data);
               },
+              "join-room": () => {
+                unityInstance.SendMessage("VueReceiver", "ReceiveJoinRoom", data.data);
+                console.log("Vue → Unity 방 입장 전송: ", data.data);
+              },
+              "ready-answer": () => {
+                unityInstance.SendMessage("VueReceiver", "ReceiveReadyAnswer", data.data);
+                console.log("Vue → Unity 게임 준비: ", data.data);
+              },
               "error": () => {
                 unityInstance.SendMessage("VueReceiver", "ReceiveError", data.data);
                 console.log("Vue → Unity 에러 전송: ", data.data);
