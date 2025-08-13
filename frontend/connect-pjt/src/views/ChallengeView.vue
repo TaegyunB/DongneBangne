@@ -864,7 +864,7 @@ watch(percent, updateMessage)
     .progress-container {
         max-width: 800px;
         width: 90%;
-        margin: 20px auto;
+        margin: 15px auto;
         display: flex;
         align-items: center;
         gap: 20px;
@@ -914,7 +914,7 @@ watch(percent, updateMessage)
         color: rgb(0, 0, 0);
         font-weight: 600;
         text-align: center;
-        padding: 20px;
+        padding: 15px;
         background: rgba(248, 239, 104, 0.225);
         border-radius: 16px;
         font-size: 18px;
@@ -940,7 +940,7 @@ watch(percent, updateMessage)
     }
 
     .btn-ai-news {
-        background: rgb(255, 204, 0);
+        background: rgba(255, 204,0);;
         color: rgb(0, 0, 0);
         border: none;
         padding: 0 20px; /* 세로 패딩 제거하고 가로 패딩만 */
@@ -958,7 +958,7 @@ watch(percent, updateMessage)
         justify-content: center;
     }
 
-    .btn-ai-news:hover:not(:disabled) {
+        .btn-ai-news:hover:not(:disabled) {
         background: rgb(255, 157, 0);
         transform: translateY(-1px);
         box-shadow: 0 6px 16px rgba(255, 107, 53, 0.4);
@@ -1179,13 +1179,13 @@ watch(percent, updateMessage)
         display: flex;
         align-items: center;
         justify-content: center;
-        background-color: var(--dark-gray);
+        background-color: var(--primary-blue);
         transition: all 0.2s ease;
         font-family: 'KoddiUD', sans-serif;
     }
 
     .challenge-complete-btn.completed {
-        background-color: var(--primary-blue);
+        background-color: rgb(68, 0, 255);
     }
 
     /* 모달 스타일 */
