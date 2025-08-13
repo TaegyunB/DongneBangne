@@ -17,7 +17,7 @@
       </div>
 
       <!-- AI 신문 생성 버튼을 메시지 박스 우측에 배치 -->
-      <!-- <div v-if="userRole === 'ADMIN'" class="ai-news-section"> -->
+      <div v-if="userRole === 'ADMIN'" class="ai-news-section">
         <button 
           @click="goToAINews" 
           class="btn-ai-news" 
@@ -37,7 +37,7 @@
             <div class="popup-arrow"></div>
           </div>
         </div>
-      <!-- </div> -->
+      </div>
     </div>
      
     <!-- 도전과제 목록 -->
