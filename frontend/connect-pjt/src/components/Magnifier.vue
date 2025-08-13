@@ -76,7 +76,7 @@ export default {
       mouseY: 0,
       lensSize: 400, // 2배로 확대
       zoomLevel: 2,
-      excludedRoutes: ['/games', '/webrtc'],
+      excludedRoutes: ['/games', '/webrtc','/login'],
       showPopup: false,
       popupTimer: null,
       domObserver: null,

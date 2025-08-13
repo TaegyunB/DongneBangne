@@ -26,6 +26,16 @@
         >
           {{ creatingAINews ? ' AI 신문 생성 중...' : '✨ AI 신문 생성하기' }}
         </button>
+        <!-- AI 신문 생성 가이드 팝업 (비활성화 시에만 표시) -->
+        <div 
+          v-if="!isAINewsButtonEnabled"
+          class="ai-news-guide-popup"
+        >
+          <div class="popup-content">
+            <span>도전인증을 완료해야 AI신문 생성이 가능합니다</span>
+            <div class="popup-arrow"></div>
+          </div>
+        </div>
       </div>
     </div>
      
@@ -85,7 +95,7 @@
                 </template>
               </div>
             </div>
-            <p>{{ getDisplayDescription(challenge, index) }}</p>
+            <p>{{ truncateDescription(getDisplayDescription(challenge, index)) }}</p>
           </div>
           <!-- 완료/미완료 상태 표시만 (클릭 불가) -->
           <div 
@@ -290,6 +300,36 @@ const isAINewsButtonEnabled = computed(() => {
   // 완료된 도전이 1개 이상 있을 때만 활성화
   return count.value > 0
 })
+
+// 텍스트 길이 제한 함수 (공백 제외 30자)
+const truncateDescription = (text) => {
+  if (!text) return ''
+  
+  // 공백을 제거한 텍스트의 길이 확인
+  const textWithoutSpaces = text.replace(/\s/g, '')
+  
+  if (textWithoutSpaces.length <= 30) {
+    return text
+  }
+  
+  // 공백 포함하여 대략적으로 자르되, 30자 기준으로 조정
+  let truncated = ''
+  let charCount = 0
+  
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] !== ' ') {
+      charCount++
+    }
+    
+    truncated += text[i]
+    
+    if (charCount >= 30) {
+      break
+    }
+  }
+  
+  return truncated + '...'
+}
 
 // AI 신문 버튼 툴팁 메시지
 const getAINewsButtonTooltip = computed(() => {
@@ -862,7 +902,7 @@ watch(percent, updateMessage)
         width: 90%;
         margin: 15px auto;
         display: flex;
-        align-items: center;
+        align-items: stretch;
         gap: 20px;
     }
 
@@ -880,6 +920,9 @@ watch(percent, updateMessage)
         box-shadow: 0 4px 16px rgba(255, 107, 53, 0.15);
         font-family: 'KoddiUD', sans-serif;
         margin: 0;
+        display: flex;
+        align-items: center; /* 텍스트를 세로 중앙 정렬 */
+        justify-content: center;
     }
 
     .message-box p {
@@ -889,13 +932,16 @@ watch(percent, updateMessage)
     /* AI 신문 생성 섹션 - 메시지 박스 우측 */
     .ai-news-section {
         flex-shrink: 0;
+        position: relative;
+        display: flex;
+        align-items: stretch; /* 버튼 높이를 메시지 박스와 맞춤 */
     }
 
     .btn-ai-news {
         background: var(--primary-orange);
         color: white;
         border: none;
-        padding: 14px 20px;
+        padding: 0 20px;
         border-radius: 12px;
         font-size: 14px;
         font-weight: 600;
@@ -904,6 +950,13 @@ watch(percent, updateMessage)
         white-space: nowrap;
         box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
         font-family: 'KoddiUD', sans-serif;
+        height: 100%; /* 컨테이너 높이에 맞춤 */
+
+        display: flex;
+
+        align-items: center;
+
+        justify-content: center;
     }
 
     .btn-ai-news:hover:not(:disabled) {
@@ -924,6 +977,51 @@ watch(percent, updateMessage)
         background: #9ca3af;
         transform: none;
         box-shadow: 0 2px 8px rgba(156, 163, 175, 0.3);
+    }
+
+    /* AI 신문 가이드 팝업 */
+    .ai-news-guide-popup {
+        position: absolute;
+        left: -320px; /* 버튼 왼쪽에 표시 */
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 1000;
+        animation: fadeInLeft 0.3s ease-out;
+    }
+
+    .ai-news-guide-popup .popup-content {
+        background: rgba(0, 0, 0, 0.85);
+        color: white;
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        white-space: nowrap;
+        position: relative;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        font-family: 'KoddiUD', sans-serif;
+    }
+
+    .ai-news-guide-popup .popup-arrow {
+        position: absolute;
+        right: -8px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 0;
+        height: 0;
+        border-left: 8px solid rgba(0, 0, 0, 0.85);
+        border-top: 6px solid transparent;
+        border-bottom: 6px solid transparent;
+    }
+
+    @keyframes fadeInLeft {
+        0% {
+            opacity: 0;
+            transform: translateY(-50%) translateX(-10px);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(-50%) translateX(0);
+        }
     }
 
     /* 도전과제 컨테이너 */
@@ -1080,7 +1178,7 @@ watch(percent, updateMessage)
         transform: translateX(-50%);
         font-weight: 600;
         color: white;
-        width: 100px;
+        width: 120px;
         height: 36px;
         border: none;
         font-size: 16px;
