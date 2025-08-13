@@ -24,7 +24,7 @@
           <h1 class="newspaper-title">{{ newsData.newsTitle }}</h1>
           <div class="newspaper-date">{{ newsData.centerName }} - {{ formatDate(newsData.year, newsData.month) }}</div>
         </div>
-
+<!-- . -->
         <!-- 도전과제별 기사 (상하 2행 레이아웃) -->
         <div class="articles-container">
           <!-- 상단 행 (첫 번째, 두 번째 미션) -->
