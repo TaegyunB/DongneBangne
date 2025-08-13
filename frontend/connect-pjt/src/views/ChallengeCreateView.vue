@@ -121,7 +121,12 @@ const goToList = () => {
 }
 
 .header h1 {
-  font-size: 32px;
+  font-size: 40px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.header h2 {
+  font-size: 35px;
   font-weight: 700;
   margin-bottom: 10px;
 }

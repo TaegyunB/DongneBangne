@@ -24,8 +24,19 @@
           :disabled="creatingAINews || !isAINewsButtonEnabled"
           :title="getAINewsButtonTooltip"
         >
-          {{ creatingAINews ? ' AI 신문 생성 중...' : '✨ AI 신문 생성하기' }}
+          {{ creatingAINews ? ' AI 신문 생성 중...' : 'AI 신문 생성하기' }}
         </button>
+        
+        <!-- AI 신문 생성 가이드 팝업 (항상 표시) -->
+        <div 
+          class="ai-news-guide-popup"
+        >
+          <div class="popup-content">
+            <span v-if="!isAINewsButtonEnabled">도전인증을을 해주세요</span>
+            <span v-else>완료된 도전과제로 신문을 생성합니다</span>
+            <div class="popup-arrow"></div>
+          </div>
+        </div>
       </div>
     </div>
      
@@ -42,7 +53,7 @@
         <div class="challenge-image">
           <!-- 인증되지 않은 도전: 역할별 텍스트 표시 -->
           <div 
-            v-if="!challenge.isEmpty && !isCompleted(challenge)" 
+            v-if="!isCompleted(challenge)" 
             class="challenge-placeholder"
           >
             <p v-if="userRole === 'ADMIN'">도전 인증을 해주세요!</p>
@@ -65,27 +76,12 @@
           <div class="text-content">
             <div class="title-with-buttons">
               <h2>{{ getDisplayTitle(challenge, index) }}</h2>
-              <!-- 기존 수정/삭제 버튼 또는 새로운 생성 버튼 -->
-              <div v-if="shouldShowActionButtons(challenge, index)" class="action-buttons">
-                <!-- 도전이 있을 때: 수정/삭제 버튼 (완료된 경우 버튼 숨김) -->
-                <template v-if="!challenge.isEmpty">
-                  <!-- 완료되지 않은 도전: 수정 + 삭제 버튼 -->
-                  <template v-if="!isCompleted(challenge)">
-                    <button class="edit-btn" @click.stop="editChallenge(index)">수정</button>
-                    <button class="delete-btn" @click.stop="showDeleteConfirm(index)">삭제</button>
-                  </template>
-                  <!-- 완료된 도전: 삭제 버튼만 -->
-                  <template v-else>
-                    <button class="delete-btn" @click.stop="showDeleteConfirm(index)">삭제</button>
-                  </template>
-                </template>
-                <!-- 도전이 없을 때: 생성 버튼 -->
-                <template v-else>
-                  <button class="create-btn" @click.stop="moveToCreate()">생성</button>
-                </template>
+              <!-- 3,4번째 칸에서 미션이 없을 때만 생성 버튼 표시 -->
+              <div v-if="shouldShowCreateButton(challenge, index)" class="action-buttons">
+                <button class="create-btn" @click.stop="moveToCreate()">생성</button>
               </div>
             </div>
-            <p>{{ getDisplayDescription(challenge, index) }}</p>
+            <p>{{ truncateDescription(getDisplayDescription(challenge, index)) }}</p>
           </div>
           <!-- 완료/미완료 상태 표시만 (클릭 불가) -->
           <div 
@@ -126,19 +122,30 @@
           <p>도전 인증을 해주세요!</p>
         </div>
         
-        <button 
-          v-if="userRole === 'ADMIN' && !selectedChallenge.isEmpty && !isCompleted(selectedChallenge)" 
-          class="modal-button" 
-          @click="moveToFinish"
-        >
-          도전 인증하기
-        </button>
-        
-        <div 
-          v-if="!selectedChallenge.isEmpty && isCompleted(selectedChallenge)"
-          class="completed-message"
-        >
-          완료된 도전입니다
+        <!-- 모달 내 버튼들 -->
+        <div class="modal-action-buttons">
+          <!-- 도전 인증 버튼 (ADMIN이고 완료되지 않은 도전) -->
+          <button 
+            v-if="userRole === 'ADMIN' && !selectedChallenge.isEmpty && !isCompleted(selectedChallenge)" 
+            class="modal-button modal-complete-btn" 
+            @click="moveToFinish"
+          >
+            도전 인증하기
+          </button>
+          
+          <!-- 완료 메시지 (완료된 도전) -->
+          <div 
+            v-if="!selectedChallenge.isEmpty && isCompleted(selectedChallenge)"
+            class="completed-message"
+          >
+            완료된 도전입니다
+          </div>
+          
+          <!-- 수정/삭제 버튼 (ADMIN이고 커스텀 도전과제인 경우) -->
+          <div v-if="shouldShowEditDeleteButtons(selectedChallenge)" class="modal-edit-delete-buttons">
+            <button class="modal-edit-btn" @click="editChallenge(getSelectedChallengeIndex())">수정</button>
+            <button class="modal-delete-btn" @click="showDeleteConfirm(getSelectedChallengeIndex())">삭제</button>
+          </div>
         </div>
       </div>
     </div>
@@ -193,7 +200,7 @@
         </div>
       </div>
     </div>
-
+<!-- .. -->
     <!-- 최종 삭제 확인 모달 -->
     <div v-if="showFinalDeleteModal" class="modal-overlay" @click.self="closeFinalDeleteModal">
       <div class="modal-content delete-modal">
@@ -279,10 +286,52 @@ const getDisplayDescription = (challenge, index) => {
   }
 }
 
-const shouldShowActionButtons = (challenge, index) => {
-  // ADMIN이고 3,4번째 칸(커스텀 도전과제)인 경우 버튼 표시
-  // 완료된 경우에는 버튼을 숨김
-  return userRole.value === 'ADMIN' && index >= 2
+// 생성 버튼 표시 조건 (3,4번째 칸에서 미션이 없을 때만)
+const shouldShowCreateButton = (challenge, index) => {
+  return userRole.value === 'ADMIN' && index >= 2 && challenge.isEmpty
+}
+
+// 모달 내 수정/삭제 버튼 표시 조건
+const shouldShowEditDeleteButtons = (challenge) => {
+  return userRole.value === 'ADMIN' && 
+         !challenge.isEmpty && 
+         challenge.challengeType === 'CUSTOM'
+}
+
+// 선택된 도전과제의 인덱스 찾기
+const getSelectedChallengeIndex = () => {
+  const selectedId = selectedChallengeId.value
+  return challenges.value.findIndex(challenge => challenge.id === selectedId)
+}
+
+// 텍스트 길이 제한 함수 (공백 제외 30자)
+const truncateDescription = (text) => {
+  if (!text) return ''
+  
+  // 공백을 제거한 텍스트의 길이 확인
+  const textWithoutSpaces = text.replace(/\s/g, '')
+  
+  if (textWithoutSpaces.length <= 30) {
+    return text
+  }
+  
+  // 공백 포함하여 대략적으로 자르되, 30자 기준으로 조정
+  let truncated = ''
+  let charCount = 0
+  
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] !== ' ') {
+      charCount++
+    }
+    
+    truncated += text[i]
+    
+    if (charCount >= 30) {
+      break
+    }
+  }
+  
+  return truncated + '...'
 }
 
 // AI 신문 버튼 활성화 조건
@@ -536,6 +585,8 @@ const editChallenge = (index) => {
     editingIndex: index,
     showSuccess: false
   }
+  // 상세 모달 닫기
+  closeModal()
 }
 
 const closeEditModal = () => {
@@ -601,6 +652,8 @@ const confirmEdit = () => {
 
 const showDeleteConfirm = (index) => {
   modals.value.delete = { show: true, showFinal: false, selectedChallenge: challenges.value[index], selectedIndex: index }
+  // 상세 모달 닫기
+  closeModal()
 }
 
 const closeDeleteModal = () => {
@@ -781,17 +834,6 @@ watch(percent, updateMessage)
         color: #333;
         line-height: 1.6;
     }
-    
-    /* body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        background-color: #f8f9fa;
-        color: #333;
-        line-height: 1.6;
-        background-image: url('@/assets/background/back3.jpg');
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-    } */
 
     /* 메인 컬러 변수 */
     :root {
@@ -811,7 +853,7 @@ watch(percent, updateMessage)
     /* 헤더 */
     .header {
         text-align: center;
-        margin: 30px auto;
+        margin: 20px auto;
         font-size: 32px;
         font-weight: 700;
         color: var(--text-black);
@@ -822,7 +864,7 @@ watch(percent, updateMessage)
     .progress-container {
         max-width: 800px;
         width: 90%;
-        margin: 30px auto;
+        margin: 15px auto;
         display: flex;
         align-items: center;
         gap: 20px;
@@ -835,7 +877,7 @@ watch(percent, updateMessage)
 
     .progress-container h3 {
         font-size: 20px;
-        font-weight: 600;
+        font-weight: 500;
         color: var(--text-black);
         min-width: 80px;
         font-family: 'KoddiUD', sans-serif;
@@ -862,7 +904,7 @@ watch(percent, updateMessage)
         width: 90%;
         margin: 15px auto;
         display: flex;
-        align-items: center;
+        align-items: stretch; /* 높이를 동일하게 맞춤 */
         gap: 20px;
     }
 
@@ -872,14 +914,17 @@ watch(percent, updateMessage)
         color: rgb(0, 0, 0);
         font-weight: 600;
         text-align: center;
-        padding: 20px;
-        background: rgba(248, 205, 104, 0.225);
+        padding: 15px;
+        background: rgba(248, 239, 104, 0.225);
         border-radius: 16px;
         font-size: 18px;
-        border: 2px solid var(--primary-orange);
-        box-shadow: 0 4px 16px rgba(255, 107, 53, 0.15);
+        border: 3px solid rgb(255, 225, 0);
+        box-shadow: 0 4px 16px rgba(255, 207, 17, 0.15);
         font-family: 'KoddiUD', sans-serif;
         margin: 0;
+        display: flex;
+        align-items: center; /* 텍스트를 세로 중앙 정렬 */
+        justify-content: center;
     }
 
     .message-box p {
@@ -889,25 +934,32 @@ watch(percent, updateMessage)
     /* AI 신문 생성 섹션 - 메시지 박스 우측 */
     .ai-news-section {
         flex-shrink: 0;
+        position: relative;
+        display: flex;
+        align-items: stretch; /* 버튼 높이를 메시지 박스와 맞춤 */
     }
 
     .btn-ai-news {
-        background: var(--primary-orange);
-        color: white;
+        background: rgba(255, 204,0);;
+        color: rgb(0, 0, 0);
         border: none;
-        padding: 14px 20px;
+        padding: 0 20px; /* 세로 패딩 제거하고 가로 패딩만 */
         border-radius: 12px;
-        font-size: 14px;
+        font-size: 18px;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s ease;
         white-space: nowrap;
-        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+        box-shadow: 0 4px 16px rgba(255, 207, 17, 0.15);
         font-family: 'KoddiUD', sans-serif;
+        height: 100%; /* 컨테이너 높이에 맞춤 */
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
-    .btn-ai-news:hover:not(:disabled) {
-        background: #e55a2b;
+        .btn-ai-news:hover:not(:disabled) {
+        background: rgb(255, 157, 0);
         transform: translateY(-1px);
         box-shadow: 0 6px 16px rgba(255, 107, 53, 0.4);
     }
@@ -924,6 +976,64 @@ watch(percent, updateMessage)
         background: #9ca3af;
         transform: none;
         box-shadow: 0 2px 8px rgba(156, 163, 175, 0.3);
+    }
+
+    /* AI 신문 가이드 팝업 */
+    .ai-news-guide-popup {
+        position: absolute;
+        right: -340px; /* 버튼 오른쪽에 표시 */
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 1000;
+        animation: fadeInRight 0.3s ease-out;
+    }
+
+    .ai-news-guide-popup .popup-content {
+        background: rgba(248, 239, 104, 0.225);
+        color: black;
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        white-space: nowrap;
+        position: relative;
+        border: 1px solid rgb(255, 225, 0);
+        box-shadow: 0 4px 16px rgba(255, 207, 17, 0.15);
+        font-family: 'KoddiUD', sans-serif;
+    }
+
+    .ai-news-guide-popup .popup-arrow {
+        position: absolute;
+        left: -9px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 0;
+        height: 0;
+        border-right: 8px solid rgba(248, 239, 104, 0.225);
+        border-top: 6px solid transparent;
+        border-bottom: 6px solid transparent;
+    }
+    
+    .ai-news-guide-popup .popup-arrow::before {
+        content: '';
+        position: absolute;
+        left: 1px;
+        top: -6px;
+        width: 0;
+        height: 0;
+        border-right: 8px solid rgb(255, 225, 0);
+        border-top: 6px solid transparent;
+        border-bottom: 6px solid transparent;
+    }
+
+    @keyframes fadeInLeft {
+        0% {
+            opacity: 0;
+            transform: translateY(-50%) translateX(-10px);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(-50%) translateX(0);
+        }
     }
 
     /* 도전과제 컨테이너 */
@@ -977,7 +1087,7 @@ watch(percent, updateMessage)
         display: flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, var(--secondary-blue), var(--secondary-orange));
+        background: rgb(220, 220, 220);
         color: var(--text-black);
         font-family: 'KoddiUD', sans-serif;
     }
@@ -988,7 +1098,7 @@ watch(percent, updateMessage)
         text-align: center;
         margin: 0;
         padding: 20px;
-        color: var(--primary-blue);
+        color: black;
     }
 
     .challenge-content {
@@ -1027,7 +1137,7 @@ watch(percent, updateMessage)
         margin-left: 12px;
     }
 
-    .edit-btn, .delete-btn, .create-btn {
+    .create-btn {
         padding: 6px 12px;
         border: none;
         border-radius: 8px;
@@ -1037,25 +1147,6 @@ watch(percent, updateMessage)
         color: white;
         transition: all 0.2s ease;
         font-family: 'KoddiUD', sans-serif;
-    }
-
-    .edit-btn {
-        background-color: var(--primary-blue);
-    }
-
-    .edit-btn:hover {
-        background-color: #357abd;
-    }
-
-    .delete-btn {
-        background-color: #e74c3c;
-    }
-
-    .delete-btn:hover {
-        background-color: #c0392b;
-    }
-
-    .create-btn {
         background-color: var(--primary-green);
     }
 
@@ -1080,7 +1171,7 @@ watch(percent, updateMessage)
         transform: translateX(-50%);
         font-weight: 600;
         color: white;
-        width: 100px;
+        width: 120px;
         height: 36px;
         border: none;
         font-size: 16px;
@@ -1088,13 +1179,13 @@ watch(percent, updateMessage)
         display: flex;
         align-items: center;
         justify-content: center;
-        background-color: var(--dark-gray);
+        background-color: var(--primary-blue);
         transition: all 0.2s ease;
         font-family: 'KoddiUD', sans-serif;
     }
 
     .challenge-complete-btn.completed {
-        background-color: var(--primary-blue);
+        background-color: rgb(68, 0, 255);
     }
 
     /* 모달 스타일 */
@@ -1190,9 +1281,9 @@ watch(percent, updateMessage)
     .modal-placeholder {
         margin: 20px 0;
         padding: 40px 20px;
-        background: linear-gradient(135deg, var(--secondary-blue), var(--secondary-orange));
+        background: lightgray;
         border-radius: 12px;
-        color: var(--primary-blue);
+        color: black;
     }
 
     .modal-placeholder p {
@@ -1202,8 +1293,17 @@ watch(percent, updateMessage)
         font-family: 'KoddiUD', sans-serif;
     }
 
+    /* 모달 내 액션 버튼들 컨테이너 */
+    .modal-action-buttons {
+        margin-top: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        align-items: center;
+    }
+
     .modal-button {
-        background-color: var(--primary-orange);
+        background-color: var(--primary-blue);
         color: white;
         padding: 14px 28px;
         font-size: 16px;
@@ -1216,7 +1316,7 @@ watch(percent, updateMessage)
     }
 
     .modal-button:hover {
-        background-color: #e55a2b;
+        background-color: #2b6ce5;
         transform: translateY(-1px);
     }
 
@@ -1229,6 +1329,41 @@ watch(percent, updateMessage)
         font-weight: 600;
         border: 2px solid rgba(74, 144, 226, 0.2);
         font-family: 'KoddiUD', sans-serif;
+    }
+
+    /* 모달 내 수정/삭제 버튼들 */
+    .modal-edit-delete-buttons {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+    }
+
+    .modal-edit-btn, .modal-delete-btn, .modal-edit-btn-small {
+        padding: 12px 20px;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        color: white;
+        transition: all 0.2s ease;
+        font-family: 'KoddiUD', sans-serif;
+    }
+
+    .modal-edit-btn, .modal-edit-btn-small {
+        background-color: var(--primary-blue);
+    }
+
+    .modal-edit-btn:hover, .modal-edit-btn-small:hover {
+        background-color: #357abd;
+    }
+
+    .modal-delete-btn {
+        background-color: #e74c3c;
+    }
+
+    .modal-delete-btn:hover {
+        background-color: #c0392b;
     }
 
     /* 수정 모달 */
@@ -1305,12 +1440,12 @@ watch(percent, updateMessage)
     }
 
     .btn-save, .delete-confirm-btn, .delete-success-btn {
-        background-color: var(--primary-orange);
+        background-color: var(--primary-blue);
         color: white;
     }
 
     .btn-save:hover:not(:disabled), .delete-confirm-btn:hover, .delete-success-btn:hover {
-        background-color: #e55a2b;
+        background-color: #2ba7e5;
         transform: translateY(-1px);
     }
 
@@ -1356,6 +1491,7 @@ watch(percent, updateMessage)
         .message-and-ai-container {
             flex-direction: column;
             gap: 15px;
+            align-items: stretch;
         }
 
         .ai-news-section {
@@ -1366,6 +1502,29 @@ watch(percent, updateMessage)
             width: 100%;
             padding: 14px 20px;
             font-size: 16px;
+            height: auto; /* 모바일에서는 자동 높이 */
+        }
+
+        .ai-news-guide-popup {
+            position: static;
+            transform: none;
+            margin-top: 10px;
+            animation: fadeInUp 0.3s ease-out;
+        }
+
+        .ai-news-guide-popup .popup-arrow {
+            display: none; /* 모바일에서는 화살표 숨김 */
+        }
+
+        @keyframes fadeInUp {
+            0% {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .challenge-container {
@@ -1392,20 +1551,13 @@ watch(percent, updateMessage)
             width: 100%;
         }
 
-        /* AI 신문 섹션 반응형 */
-        .message-and-ai-container {
+        .modal-edit-delete-buttons {
             flex-direction: column;
-            gap: 15px;
+            gap: 12px;
         }
 
-        .ai-news-section {
+        .modal-edit-btn, .modal-delete-btn, .modal-edit-btn-small {
             width: 100%;
-        }
-
-        .btn-ai-news {
-            width: 100%;
-            padding: 14px 20px;
-            font-size: 16px;
         }
 
         .challenge-placeholder p {
@@ -1441,6 +1593,10 @@ watch(percent, updateMessage)
         }
         
         .challenge-placeholder {
+            border: 2px solid var(--text-black);
+        }
+
+        .ai-news-guide-popup .popup-content {
             border: 2px solid var(--text-black);
         }
     }

@@ -4,7 +4,6 @@
         <div class="header">
             <h1>도전을 성공적으로 수행하셨나요?</h1>
             <h2>도전을 인증해주세요</h2>
-            <h2>인증을 완료해야 순위에 반영이 됩니다.</h2>
         </div>
         
         <!-- 메인 콘텐츠 -->
@@ -14,7 +13,7 @@
                 <h3>도전 상세</h3>
                 <textarea 
                     v-model="form.description"
-                    placeholder="도전을 어떻게 수행하셨나요? &#10;도전을 수행하면서 느꼈던 감정 등을 자유롭게 작성해주세요"
+                    placeholder="도전을 수행하면서 느꼈던 감정 등을 자유롭게 작성해주세요"
                     class="textarea"
                 />
             </div>
@@ -26,7 +25,7 @@
                     <div v-if="!form.image" class="upload-placeholder">
                         <div class="upload-icon">📁</div>
                         <button type="button" class="upload-btn">파일 선택</button>
-                        <p>도전 인증을 위한 이미지를<br>업로드해주세요</p>
+                        <p>도전 인증을 위한 이미지를<br>올려주세요</p>
                     </div>
                     <div v-else class="preview">
                         <img :src="previewUrl" alt="preview" />
@@ -273,8 +272,8 @@ const goToChallenge = () => {
     text-align: center; 
     margin-bottom: 40px; 
 }
-.header h1 { margin: 30px 10px 10px; font-size: 32px; font-weight: bold; }
-.header h2 { margin: 5px 0; font-weight: normal; color: #666; }
+.header h1 { margin: 30px 10px 10px; font-size: 40px; font-weight: bold; }
+.header h2 { margin: 5px 0; font-size: 35px;font-weight: normal; color: #666; }
 
 .content { display: flex; gap: 40px; margin-bottom: 40px; }
 .section { flex: 1; }
