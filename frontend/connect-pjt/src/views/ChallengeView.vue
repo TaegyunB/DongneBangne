@@ -200,7 +200,7 @@
         </div>
       </div>
     </div>
-<!-- . -->
+<!-- .. -->
     <!-- 최종 삭제 확인 모달 -->
     <div v-if="showFinalDeleteModal" class="modal-overlay" @click.self="closeFinalDeleteModal">
       <div class="modal-content delete-modal">
