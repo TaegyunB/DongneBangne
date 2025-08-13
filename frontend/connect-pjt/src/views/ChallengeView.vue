@@ -124,6 +124,12 @@
         
         <!-- 모달 내 버튼들 -->
         <div class="modal-action-buttons">
+          <!-- 수정/삭제 버튼 (ADMIN이고 커스텀 도전과제인 경우) -->
+          <div v-if="shouldShowEditDeleteButtons(selectedChallenge)" class="modal-edit-delete-buttons">
+            <!-- 인증되지 않은 경우에만 수정 버튼 표시 -->
+            <button v-if="!isCompleted(selectedChallenge)" class="modal-edit-btn-small" @click="editChallenge(getSelectedChallengeIndex())">수정</button>
+            <button class="modal-delete-btn" @click="showDeleteConfirm(getSelectedChallengeIndex())">삭제</button>
+          </div>
           <!-- 도전 인증 버튼 (ADMIN이고 완료되지 않은 도전) -->
           <button 
             v-if="userRole === 'ADMIN' && !selectedChallenge.isEmpty && !isCompleted(selectedChallenge)" 
@@ -140,12 +146,7 @@
           >
             완료된 도전입니다
           </div>
-          
-          <!-- 수정/삭제 버튼 (ADMIN이고 커스텀 도전과제인 경우) -->
-          <div v-if="shouldShowEditDeleteButtons(selectedChallenge)" class="modal-edit-delete-buttons">
-            <button class="modal-edit-btn" @click="editChallenge(getSelectedChallengeIndex())">수정</button>
-            <button class="modal-delete-btn" @click="showDeleteConfirm(getSelectedChallengeIndex())">삭제</button>
-          </div>
+        
         </div>
       </div>
     </div>
@@ -940,9 +941,9 @@ watch(percent, updateMessage)
     }
 
     .btn-ai-news {
-        background: rgb(255, 204, 0);
+        background: rgba(248, 239, 104, 0.225);;
         color: rgb(0, 0, 0);
-        border: none;
+        border: 3px solid rgb(255, 225, 0);;
         padding: 0 20px; /* 세로 패딩 제거하고 가로 패딩만 */
         border-radius: 12px;
         font-size: 18px;
@@ -959,23 +960,25 @@ watch(percent, updateMessage)
     }
 
     .btn-ai-news:hover:not(:disabled) {
-        background: rgb(255, 157, 0);
+        background: rgba(248, 239, 104, 0.4);;
         transform: translateY(-1px);
-        box-shadow: 0 6px 16px rgba(255, 107, 53, 0.4);
+        box-shadow: 0 6px 16px rgba(255, 207, 17, 0.25);;
     }
 
     .btn-ai-news:disabled {
-        background: #9ca3af;
+        background: #f5f5f5;
+        border: 3px solid #e0e0e0;
+        color: #9ca3af;
         cursor: not-allowed;
         transform: none;
-        box-shadow: 0 2px 8px rgba(156, 163, 175, 0.3);
+        box-shadow: 0 2px 8px rgba(156, 163, 175, 0.1);
         opacity: 0.6;
     }
 
     .btn-ai-news:disabled:hover {
-        background: #9ca3af;
+        background: #f5f5f5;
         transform: none;
-        box-shadow: 0 2px 8px rgba(156, 163, 175, 0.3);
+        box-shadow: 0 2px 8px rgba(156, 163, 175, 0.1);
     }
 
     /* AI 신문 가이드 팝업 */
@@ -989,15 +992,14 @@ watch(percent, updateMessage)
     }
 
     .ai-news-guide-popup .popup-content {
-        background: rgba(248, 239, 104, 0.225);
-        color: black;
+        background: rgba(0, 0, 0, 0.85);
+        color: white;
         padding: 12px 16px;
         border-radius: 8px;
         font-size: 14px;
         white-space: nowrap;
         position: relative;
-        border: 1cqmin solid rgb(255, 225, 0);
-        /* box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); */
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         font-family: 'KoddiUD', sans-serif;
     }
 
@@ -1008,7 +1010,7 @@ watch(percent, updateMessage)
         transform: translateY(-50%);
         width: 0;
         height: 0;
-        border-right: 8px solid rgba(0, 0, 0, 0.85);
+        border-right: 8px solid rgb(255, 225, 0);
         border-top: 6px solid transparent;
         border-bottom: 6px solid transparent;
     }
