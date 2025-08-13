@@ -6,7 +6,7 @@
       <button @click="generateAndUploadPDF" :disabled="generating" class="generate-pdf-btn">
         {{ generating ? 'PDF 생성 중...' : 'PDF 생성하기' }}
       </button>
-      
+      <!-- . -->
       <!-- 진행 상태 표시 -->
       <div v-if="generating" class="progress-info">
         <p>{{ progressMessage }}</p>
