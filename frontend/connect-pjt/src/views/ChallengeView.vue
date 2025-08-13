@@ -973,7 +973,7 @@ watch(percent, updateMessage)
         top: 50%;
         transform: translateY(-50%);
         z-index: 1000;
-        animation: fadeInLeft 0.3s ease-out;
+        animation: fadeInRight 0.3s ease-out;
     }
 
     .ai-news-guide-popup .popup-content {
@@ -1062,7 +1062,7 @@ watch(percent, updateMessage)
         display: flex;
         align-items: center;
         justify-content: center;
-        background: gray;
+        background: rgb(220, 220, 220);
         color: var(--text-black);
         font-family: 'KoddiUD', sans-serif;
     }
@@ -1073,7 +1073,7 @@ watch(percent, updateMessage)
         text-align: center;
         margin: 0;
         padding: 20px;
-        color: var(--primary-blue);
+        color: black;
     }
 
     .challenge-content {
@@ -1165,7 +1165,7 @@ watch(percent, updateMessage)
         transform: translateX(-50%);
         font-weight: 600;
         color: white;
-        width: 100px;
+        width: 120px;
         height: 36px;
         border: none;
         font-size: 16px;
@@ -1288,7 +1288,7 @@ watch(percent, updateMessage)
     }
 
     .modal-button {
-        background-color: var(--primary-orange);
+        background-color: var(--primary-blue);
         color: white;
         padding: 14px 28px;
         font-size: 16px;
@@ -1301,7 +1301,7 @@ watch(percent, updateMessage)
     }
 
     .modal-button:hover {
-        background-color: #e55a2b;
+        background-color: #2b6ce5;
         transform: translateY(-1px);
     }
 
