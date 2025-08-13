@@ -41,7 +41,8 @@
 
           <td class="text-center">
             <div class="center-name">
-              <img :src="getCenterLogoSrc(myCenter)" class="logo" crossorigin="anonymous" @error="onLogoError" />
+              <img :src="getCenterLogoSrc(myCenter)" class="logo"
+                  crossorigin="anonymous" @error="onLogoError" />
               <span class="ellipsis">{{ myCenter.centerName }}</span>
               <span class="chip-mycenter">내 경로당</span>
             </div>
@@ -93,7 +94,8 @@
 
           <td class="text-center">
             <div class="center-name">
-              <img :src="getCenterLogoSrc(center)" class="logo" crossorigin="anonymous" @error="onLogoError" />
+              <img :src="getCenterLogoSrc(center)" class="logo"
+                  crossorigin="anonymous" @error="onLogoError" />
               <span class="ellipsis">{{ center.centerName }}</span>
             </div>
           </td>
@@ -239,26 +241,28 @@ import { ref, computed, onMounted, watch } from 'vue'
 import api from '@/api/axios'
 import defaultImage from '@/assets/default_image.png'
 
-import defaultLogo from '@/assets/logo.png'   // 기본 로고
+import defaultLogo from '@/assets/logo.png'
 
-// 상대경로도 동작하도록 절대 URL로 바꾸기
-const toAbsoluteUrl = (u) => {
+/** axios 인스턴스 baseURL을 이용해 상대경로를 절대경로로 보정 */
+const apiBase = (api.defaults?.baseURL || '').replace(/\/+$/, '')
+const toAbsUrl = (u) => {
   if (!u) return null
   if (/^https?:\/\//i.test(u)) return u
-  try { return new URL(u, window.location.origin).href } catch { return u }
+  if (u.startsWith('/')) return apiBase + u
+  return apiBase + '/' + u
 }
 
 const getCenterLogoSrc = (center) => {
   const u =
-    center?.centerLogo ||                 // 정규화해서 넣어둘 필드(아래 3번 참고)
+    center?.centerLogo ||                 // fetchRankings에서 정규화한 값
     center?.adminProfileImage ||
     center?.admin_profile_image ||
     center?.admin?.profileImage ||
     center?.admin?.profile_image ||
     center?.profileImage ||
-    center?.profile_image ||
-    null
-  return toAbsoluteUrl(u) || defaultLogo
+    center?.profile_image || null
+
+  return toAbsUrl(u) || defaultLogo
 }
 
 const onLogoError = (e) => {
@@ -370,8 +374,7 @@ const fetchRankings = async () => {
           item.admin?.profileImage ??
           item.admin?.profile_image ??
           item.profileImage ??
-          item.profile_image ??
-          null,
+          item.profile_image ?? null,
       }
     }).filter(r => r.id != null)
 
