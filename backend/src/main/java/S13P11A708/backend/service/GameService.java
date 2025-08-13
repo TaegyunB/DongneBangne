@@ -46,8 +46,6 @@ public class GameService {
                 .orElseThrow(()-> new RuntimeException("게임방이 존재하지 않습니다."));
 
         int totalRounds = room.getGameRound();
-        String musicEra = room.getMusicEra();
-        String category = room.getCategory();
 
         //2. 각 참가자 포인트 조회
         Long point1 = userRepository.findPointByUserId(user1Id);
@@ -176,6 +174,7 @@ public class GameService {
         //2. 포인트 차감 시도
         boolean deducted = gameRedisService.deductPointForHint(roomId, userId);
         if(!deducted){
+            log.info("[HINT] NO_POINT: send -> /queue/hint/{}, msg='포인트가 부족합니다.'", userId);
             broadcaster.sendToUser(userId,
                     messageFactory.createHintMessage(GameMessageType.HINT_REJECTED, roomId, userId, false, "포인트가 부족합니다."));
             return;
