@@ -933,7 +933,7 @@ watch(percent, updateMessage)
         border: none;
         padding: 0 20px; /* 세로 패딩 제거하고 가로 패딩만 */
         border-radius: 12px;
-        font-size: 14px;
+        font-size: 18px;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s ease;
@@ -990,7 +990,7 @@ watch(percent, updateMessage)
 
     .ai-news-guide-popup .popup-arrow {
         position: absolute;
-        right: -8px;
+        left: -8px;
         top: 50%;
         transform: translateY(-50%);
         width: 0;
