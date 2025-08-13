@@ -289,9 +289,9 @@ const fetchMyCenterId = async () => {
   } catch (e) {}
 }
 
-/* 목록 호출: /api/v1/ranking */
+/* 목록 호출: /api/v1/rankings */
 const fetchRankings = async () => {
-  const { data } = await api.get('/api/v1/ranking')
+  const { data } = await api.get('/api/v1/rankings')
   const normalized = (data ?? []).map(item => {
     const name = (item.seniorCenterName || '').replace(/\uFEFF/g, '')
     const challenges = Array.isArray(item.challenges) ? item.challenges : []
