@@ -15,7 +15,7 @@
         </div>
       </div>
     </div>
-
+<!--  -->
     <!-- PDF 템플릿 (숨김) -->
     <div ref="pdfTemplate" class="pdf-template" style="position: absolute; left: -9999px; top: -9999px;">
       <div class="newspaper-container">
