@@ -941,9 +941,9 @@ watch(percent, updateMessage)
     }
 
     .btn-ai-news {
-        background: rgba(248, 239, 104, 0.225);;
+        background: rgba(255, 204,0);;
         color: rgb(0, 0, 0);
-        border: 3px solid rgb(255, 225, 0);;
+        border: none;
         padding: 0 20px; /* 세로 패딩 제거하고 가로 패딩만 */
         border-radius: 12px;
         font-size: 18px;
@@ -959,26 +959,24 @@ watch(percent, updateMessage)
         justify-content: center;
     }
 
-    .btn-ai-news:hover:not(:disabled) {
-        background: rgba(248, 239, 104, 0.4);;
+        .btn-ai-news:hover:not(:disabled) {
+        background: rgb(255, 157, 0);
         transform: translateY(-1px);
-        box-shadow: 0 6px 16px rgba(255, 207, 17, 0.25);;
+        box-shadow: 0 6px 16px rgba(255, 107, 53, 0.4);
     }
 
     .btn-ai-news:disabled {
-        background: #f5f5f5;
-        border: 3px solid #e0e0e0;
-        color: #9ca3af;
+        background: #9ca3af;
         cursor: not-allowed;
         transform: none;
-        box-shadow: 0 2px 8px rgba(156, 163, 175, 0.1);
+        box-shadow: 0 2px 8px rgba(156, 163, 175, 0.3);
         opacity: 0.6;
     }
 
     .btn-ai-news:disabled:hover {
-        background: #f5f5f5;
+        background: #9ca3af;
         transform: none;
-        box-shadow: 0 2px 8px rgba(156, 163, 175, 0.1);
+        box-shadow: 0 2px 8px rgba(156, 163, 175, 0.3);
     }
 
     /* AI 신문 가이드 팝업 */
@@ -1010,7 +1008,7 @@ watch(percent, updateMessage)
         transform: translateY(-50%);
         width: 0;
         height: 0;
-        border-right: 8px solid rgb(255, 225, 0);
+        border-right: 8px solid rgba(0, 0, 0, 0.85);
         border-top: 6px solid transparent;
         border-bottom: 6px solid transparent;
     }
