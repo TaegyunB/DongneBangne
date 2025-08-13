@@ -19,6 +19,7 @@
 
 <script>
 import api from '@/api/axios'
+import { Client } from '@stomp/stompjs'
 export default {
   data() {
     return {
@@ -35,24 +36,65 @@ export default {
       localId: 'ID', // 내 아이디
       remoteId: 'ID', // 상대방 아이디
       isUnityReady: false, // Unity 준비 여부
+      stompClient: null, // STOMP 클라이언트
     }
   },
   async mounted() {
 
     // Unity가 보낸 메시지 수신
     window.addEventListener('message', (event) => {
-      console.log('✅ Unity → Vue 메시지:', event.data)
-      if(event.data.type === 'unity-ready'){
-        this.isUnityReady = true;
+      console.log('✅ Unity → Vue Type:', event.type)
+      console.log('✅ Unity → Vue Data:', event.data)
+      
+      try {
+        // event.data가 문자열인 경우 JSON 파싱
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
+        
+        if(data.type === 'unity-ready'){
+          this.isUnityReady = true;
+        }
+        else if(data.type === 'create-room'){
+          // data.data도 JSON 문자열이므로 파싱
+          const roomData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data
+          this.handleCreateRoom(roomData);
+        }
+
+      } catch (error) {
+        console.error('메시지 파싱 오류:', error)
       }
     })
 
     // 유저 정보 받아오기
     try {
-      await this.getUserInfo();
+
+      // Unity가 준비되었는지 확인
+      if(this.isUnityReady){
+
+        // 유저 정보 받아오기
+        await this.getUserInfo();
+
+        // 방 정보 받아오기
+        await this.getRoomList();
+      }
+      else{
+        const onUnityReady = (event) => {
+            try {
+              const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
+              if (data && data.type === 'unity-ready') {
+                this.isUnityReady = true
+                this.getUserInfo();
+                this.getRoomList();
+              }
+            } catch (_) {}
+          }
+          window.addEventListener('message', onUnityReady, { once: true })
+      }
     }catch(error){
       console.error('유저 정보 조회 실패:', error);
     }
+
+    // STOMP WebSocket 연결 시작
+    // this.connectStompWebSocket()
 
     // try {
     //   await this.initLocalMedia() // 카메라, 마이크 준비
@@ -80,6 +122,9 @@ export default {
     if (this.frameIntervalId) {
       clearInterval(this.frameIntervalId)
     }
+    // STOMP 연결 해제
+    this.disconnectStompWebSocket()
+    
     this.ws = null
     this.pc = null
     this.pendingCandidates = []
@@ -319,25 +364,21 @@ export default {
       try {
         const response = await api.get('/api/v1/main/me')
         const userInfo = response.data
+        this.sendUserInfoToUnity(userInfo)
 
-        if (this.isUnityReady) {
-          this.sendUserInfoToUnity(userInfo)
-        } else {
-          const onUnityReady = (event) => {
-            try {
-              const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
-              if (data && data.type === 'unity-ready') {
-                this.isUnityReady = true
-                this.sendUserInfoToUnity(userInfo)
-              }
-            } catch (_) {}
-          }
-          window.addEventListener('message', onUnityReady, { once: true })
-        }
-
-        console.log(response.data)
+        console.log(userInfo)
       } catch (error) {
         console.error('유저 정보 조회 실패:', error)
+      }
+    },
+    // 방 정보 조회 함수
+    async getRoomList(){
+      try{
+        const response = await api.get('/api/v1/game-rooms')
+        const roomList = response.data
+        this.sendRoomListToUnity(roomList)
+      } catch(error){
+        console.error('방 정보 조회 실패', error);
       }
     },
     // Unity 전송 함수
@@ -377,7 +418,167 @@ export default {
       )
 
       console.log('Vue → Unity 유저 정보 전송: ', userInfo)
-    }
+    },
+    sendRoomListToUnity(roomList) {
+      const unityFrame = this.$refs.unityFrame
+
+      // Unity JsonUtility 호환을 위해 래퍼 객체로 감싸기
+      const wrapper = { rooms: roomList }
+      
+      unityFrame.contentWindow.postMessage(
+        JSON.stringify({
+          type: 'room-list',
+          data: JSON.stringify(wrapper)
+        }),
+        '*',
+      )
+
+      console.log('Vue → Unity 방 목록 전송: ', roomList)
+    },
+    
+    // Unity에서 방 생성 요청 처리
+    async handleCreateRoom(roomData) {
+      try {
+        console.log('Unity → Vue 방 생성 요청:', roomData)
+        
+        // API로 방 생성 요청
+        const response = await api.post('/api/v1/game-rooms', roomData, { headers: { 'Content-Type': 'application/json' } })
+        
+        console.log('방 생성 성공:', response.data)
+        
+        // 생성된 방 정보를 Unity로 전송
+        this.sendRoomCreatedToUnity(response.data)
+        
+      } catch (error) {
+        console.error('방 생성 실패:', error)
+        // 에러 정보를 Unity로 전송
+        this.sendErrorToUnity('방 생성에 실패했습니다.')
+      }
+    },
+    
+    // 방 생성 성공 정보를 Unity로 전송
+    sendRoomCreatedToUnity(roomInfo) {
+      const unityFrame = this.$refs.unityFrame
+      
+      unityFrame.contentWindow.postMessage(
+        JSON.stringify({
+          type: 'room-created',
+          data: JSON.stringify(roomInfo)
+        }),
+        '*'
+      )
+      
+      console.log('Vue → Unity 방 생성 성공 전송:', roomInfo)
+    },
+    
+    // 에러 정보를 Unity로 전송
+    sendErrorToUnity(errorMessage) {
+      const unityFrame = this.$refs.unityFrame
+      
+      unityFrame.contentWindow.postMessage(
+        JSON.stringify({
+          type: 'error',
+          data: errorMessage
+        }),
+        '*'
+      )
+      
+      console.log('Vue → Unity 에러 전송:', errorMessage)
+    },
+
+    // STOMP WebSocket 연결
+    connectStompWebSocket() {
+      try {
+        // STOMP 클라이언트 생성
+        this.stompClient = new Client({
+          brokerURL: 'ws://localhost:8080/ws-game', // WebSocket 엔드포인트
+          debug: function (str) {
+            console.log('STOMP Debug:', str)
+          },
+          reconnectDelay: 5000, // 재연결 지연 시간 (5초)
+          heartbeatIncoming: 4000, // 수신 하트비트
+          heartbeatOutgoing: 4000, // 송신 하트비트
+        })
+
+        // 연결 성공 시 콜백
+        this.stompClient.onConnect = (frame) => {
+          console.log('✅ STOMP WebSocket 연결 성공:', frame)
+          
+          // 구독할 토픽들
+          this.subscribeToTopics()
+          
+                  // 연결 확인 메시지 전송
+        this.sendStompMessage('/pub/test', {
+          message: 'STOMP 연결 테스트',
+          timestamp: new Date().toISOString()
+        })
+        }
+
+        // 연결 실패 시 콜백
+        this.stompClient.onStompError = (frame) => {
+          console.error('❌ STOMP 연결 오류:', frame)
+        }
+
+        // 연결 해제 시 콜백
+        this.stompClient.onDisconnect = () => {
+          console.log('🔌 STOMP WebSocket 연결 해제')
+        }
+
+        // WebSocket 연결 활성화
+        this.stompClient.activate()
+        
+      } catch (error) {
+        console.error('STOMP 클라이언트 생성 오류:', error)
+      }
+    },
+
+    // STOMP 토픽 구독
+    subscribeToTopics() {
+      if (!this.stompClient || !this.stompClient.connected) {
+        console.warn('STOMP 클라이언트가 연결되지 않았습니다.')
+        return
+      }
+
+      // 연결 확인용 메시지 구독
+      this.stompClient.subscribe('/sub/test', (message) => {
+        console.log('✅ 연결 확인 메시지 수신:', message.body)
+      })
+    },
+
+    // STOMP 메시지 전송 (/pub로 클라이언트에서 서버로)
+    sendStompMessage(destination, message) {
+      if (!this.stompClient || !this.stompClient.connected) {
+        console.warn('STOMP 클라이언트가 연결되지 않았습니다.')
+        return
+      }
+
+      try {
+        // /pub 접두사 추가
+        const pubDestination = destination.startsWith('/pub') ? destination : `/pub${destination}`
+        
+        this.stompClient.publish({
+          destination: pubDestination,
+          body: JSON.stringify(message),
+          headers: {
+            'content-type': 'application/json'
+          }
+        })
+        console.log('📤 STOMP 메시지 전송:', pubDestination, message)
+      } catch (error) {
+        console.error('STOMP 메시지 전송 오류:', error)
+      }
+    },
+
+
+
+    // STOMP 연결 해제
+    disconnectStompWebSocket() {
+      if (this.stompClient) {
+        this.stompClient.deactivate()
+        this.stompClient = null
+        console.log('🔌 STOMP WebSocket 연결 해제 완료')
+      }
+    },
   },
   name: 'UnityView',
 }
