@@ -124,6 +124,12 @@
         
         <!-- 모달 내 버튼들 -->
         <div class="modal-action-buttons">
+          <!-- 수정/삭제 버튼 (ADMIN이고 커스텀 도전과제인 경우) -->
+          <div v-if="shouldShowEditDeleteButtons(selectedChallenge)" class="modal-edit-delete-buttons">
+            <!-- 인증되지 않은 경우에만 수정 버튼 표시 -->
+            <button v-if="!isCompleted(selectedChallenge)" class="modal-edit-btn-small" @click="editChallenge(getSelectedChallengeIndex())">수정</button>
+            <button class="modal-delete-btn" @click="showDeleteConfirm(getSelectedChallengeIndex())">삭제</button>
+          </div>
           <!-- 도전 인증 버튼 (ADMIN이고 완료되지 않은 도전) -->
           <button 
             v-if="userRole === 'ADMIN' && !selectedChallenge.isEmpty && !isCompleted(selectedChallenge)" 
@@ -140,12 +146,7 @@
           >
             완료된 도전입니다
           </div>
-          
-          <!-- 수정/삭제 버튼 (ADMIN이고 커스텀 도전과제인 경우) -->
-          <div v-if="shouldShowEditDeleteButtons(selectedChallenge)" class="modal-edit-delete-buttons">
-            <button class="modal-edit-btn" @click="editChallenge(getSelectedChallengeIndex())">수정</button>
-            <button class="modal-delete-btn" @click="showDeleteConfirm(getSelectedChallengeIndex())">삭제</button>
-          </div>
+        
         </div>
       </div>
     </div>
@@ -940,7 +941,7 @@ watch(percent, updateMessage)
     }
 
     .btn-ai-news {
-        background: rgb(255, 204, 0);
+        background: rgba(255, 204,0);;
         color: rgb(0, 0, 0);
         border: none;
         padding: 0 20px; /* 세로 패딩 제거하고 가로 패딩만 */
@@ -958,7 +959,7 @@ watch(percent, updateMessage)
         justify-content: center;
     }
 
-    .btn-ai-news:hover:not(:disabled) {
+        .btn-ai-news:hover:not(:disabled) {
         background: rgb(255, 157, 0);
         transform: translateY(-1px);
         box-shadow: 0 6px 16px rgba(255, 107, 53, 0.4);
@@ -989,15 +990,14 @@ watch(percent, updateMessage)
     }
 
     .ai-news-guide-popup .popup-content {
-        background: rgba(248, 239, 104, 0.225);
-        color: black;
+        background: rgba(0, 0, 0, 0.85);
+        color: white;
         padding: 12px 16px;
         border-radius: 8px;
         font-size: 14px;
         white-space: nowrap;
         position: relative;
-        border: 1cqmin solid rgb(255, 225, 0);
-        /* box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); */
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         font-family: 'KoddiUD', sans-serif;
     }
 
