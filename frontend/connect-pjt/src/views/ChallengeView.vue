@@ -32,8 +32,8 @@
           class="ai-news-guide-popup"
         >
           <div class="popup-content">
-            <span v-if="!isAINewsButtonEnabled">도전인증을 완료해야 AI신문 생성이 가능합니다</span>
-            <span v-else>완료된 {{ count }}개의 도전과제로 AI 신문을 생성합니다</span>
+            <span v-if="!isAINewsButtonEnabled">도전인증을을 해주세요</span>
+            <span v-else>완료된 도전과제로 신문을 생성합니다</span>
             <div class="popup-arrow"></div>
           </div>
         </div>
@@ -76,24 +76,9 @@
           <div class="text-content">
             <div class="title-with-buttons">
               <h2>{{ getDisplayTitle(challenge, index) }}</h2>
-              <!-- 기존 수정/삭제 버튼 또는 새로운 생성 버튼 -->
-              <div v-if="shouldShowActionButtons(challenge, index)" class="action-buttons">
-                <!-- 도전이 있을 때: 수정/삭제 버튼 (완료된 경우 버튼 숨김) -->
-                <template v-if="!challenge.isEmpty">
-                  <!-- 완료되지 않은 도전: 수정 + 삭제 버튼 -->
-                  <template v-if="!isCompleted(challenge)">
-                    <button class="edit-btn" @click.stop="editChallenge(index)">수정</button>
-                    <button class="delete-btn" @click.stop="showDeleteConfirm(index)">삭제</button>
-                  </template>
-                  <!-- 완료된 도전: 삭제 버튼만 -->
-                  <template v-else>
-                    <button class="delete-btn" @click.stop="showDeleteConfirm(index)">삭제</button>
-                  </template>
-                </template>
-                <!-- 도전이 없을 때: 생성 버튼 -->
-                <template v-else>
-                  <button class="create-btn" @click.stop="moveToCreate()">생성</button>
-                </template>
+              <!-- 3,4번째 칸에서 미션이 없을 때만 생성 버튼 표시 -->
+              <div v-if="shouldShowCreateButton(challenge, index)" class="action-buttons">
+                <button class="create-btn" @click.stop="moveToCreate()">생성</button>
               </div>
             </div>
             <p>{{ truncateDescription(getDisplayDescription(challenge, index)) }}</p>
@@ -137,19 +122,31 @@
           <p>도전 인증을 해주세요!</p>
         </div>
         
-        <button 
-          v-if="userRole === 'ADMIN' && !selectedChallenge.isEmpty && !isCompleted(selectedChallenge)" 
-          class="modal-button" 
-          @click="moveToFinish"
-        >
-          도전 인증하기
-        </button>
+        <!-- 모달 내 버튼들 -->
+        <div class="modal-action-buttons">
+          <!-- 수정/삭제 버튼 (ADMIN이고 커스텀 도전과제인 경우) -->
+          <div v-if="shouldShowEditDeleteButtons(selectedChallenge)" class="modal-edit-delete-buttons">
+            <!-- 인증되지 않은 경우에만 수정 버튼 표시 -->
+            <button v-if="!isCompleted(selectedChallenge)" class="modal-edit-btn-small" @click="editChallenge(getSelectedChallengeIndex())">수정</button>
+            <button class="modal-delete-btn" @click="showDeleteConfirm(getSelectedChallengeIndex())">삭제</button>
+          </div>
+          <!-- 도전 인증 버튼 (ADMIN이고 완료되지 않은 도전) -->
+          <button 
+            v-if="userRole === 'ADMIN' && !selectedChallenge.isEmpty && !isCompleted(selectedChallenge)" 
+            class="modal-button modal-complete-btn" 
+            @click="moveToFinish"
+          >
+            도전 인증하기
+          </button>
+          
+          <!-- 완료 메시지 (완료된 도전) -->
+          <div 
+            v-if="!selectedChallenge.isEmpty && isCompleted(selectedChallenge)"
+            class="completed-message"
+          >
+            완료된 도전입니다
+          </div>
         
-        <div 
-          v-if="!selectedChallenge.isEmpty && isCompleted(selectedChallenge)"
-          class="completed-message"
-        >
-          완료된 도전입니다
         </div>
       </div>
     </div>
@@ -290,10 +287,22 @@ const getDisplayDescription = (challenge, index) => {
   }
 }
 
-const shouldShowActionButtons = (challenge, index) => {
-  // ADMIN이고 3,4번째 칸(커스텀 도전과제)인 경우 버튼 표시
-  // 완료된 경우에는 버튼을 숨김
-  return userRole.value === 'ADMIN' && index >= 2
+// 생성 버튼 표시 조건 (3,4번째 칸에서 미션이 없을 때만)
+const shouldShowCreateButton = (challenge, index) => {
+  return userRole.value === 'ADMIN' && index >= 2 && challenge.isEmpty
+}
+
+// 모달 내 수정/삭제 버튼 표시 조건
+const shouldShowEditDeleteButtons = (challenge) => {
+  return userRole.value === 'ADMIN' && 
+         !challenge.isEmpty && 
+         challenge.challengeType === 'CUSTOM'
+}
+
+// 선택된 도전과제의 인덱스 찾기
+const getSelectedChallengeIndex = () => {
+  const selectedId = selectedChallengeId.value
+  return challenges.value.findIndex(challenge => challenge.id === selectedId)
 }
 
 // 텍스트 길이 제한 함수 (공백 제외 30자)
@@ -577,6 +586,8 @@ const editChallenge = (index) => {
     editingIndex: index,
     showSuccess: false
   }
+  // 상세 모달 닫기
+  closeModal()
 }
 
 const closeEditModal = () => {
@@ -642,6 +653,8 @@ const confirmEdit = () => {
 
 const showDeleteConfirm = (index) => {
   modals.value.delete = { show: true, showFinal: false, selectedChallenge: challenges.value[index], selectedIndex: index }
+  // 상세 모달 닫기
+  closeModal()
 }
 
 const closeDeleteModal = () => {
@@ -852,7 +865,7 @@ watch(percent, updateMessage)
     .progress-container {
         max-width: 800px;
         width: 90%;
-        margin: 20px auto;
+        margin: 15px auto;
         display: flex;
         align-items: center;
         gap: 20px;
@@ -902,7 +915,7 @@ watch(percent, updateMessage)
         color: rgb(0, 0, 0);
         font-weight: 600;
         text-align: center;
-        padding: 20px;
+        padding: 15px;
         background: rgba(248, 239, 104, 0.225);
         border-radius: 16px;
         font-size: 18px;
@@ -928,7 +941,7 @@ watch(percent, updateMessage)
     }
 
     .btn-ai-news {
-        background: rgb(255, 204, 0);
+        background: rgba(255, 204,0);;
         color: rgb(0, 0, 0);
         border: none;
         padding: 0 20px; /* 세로 패딩 제거하고 가로 패딩만 */
@@ -946,7 +959,7 @@ watch(percent, updateMessage)
         justify-content: center;
     }
 
-    .btn-ai-news:hover:not(:disabled) {
+        .btn-ai-news:hover:not(:disabled) {
         background: rgb(255, 157, 0);
         transform: translateY(-1px);
         box-shadow: 0 6px 16px rgba(255, 107, 53, 0.4);
@@ -1112,7 +1125,7 @@ watch(percent, updateMessage)
         margin-left: 12px;
     }
 
-    .edit-btn, .delete-btn, .create-btn {
+    .create-btn {
         padding: 6px 12px;
         border: none;
         border-radius: 8px;
@@ -1122,25 +1135,6 @@ watch(percent, updateMessage)
         color: white;
         transition: all 0.2s ease;
         font-family: 'KoddiUD', sans-serif;
-    }
-
-    .edit-btn {
-        background-color: var(--primary-blue);
-    }
-
-    .edit-btn:hover {
-        background-color: #357abd;
-    }
-
-    .delete-btn {
-        background-color: #e74c3c;
-    }
-
-    .delete-btn:hover {
-        background-color: #c0392b;
-    }
-
-    .create-btn {
         background-color: var(--primary-green);
     }
 
@@ -1173,13 +1167,13 @@ watch(percent, updateMessage)
         display: flex;
         align-items: center;
         justify-content: center;
-        background-color: var(--dark-gray);
+        background-color: var(--primary-blue);
         transition: all 0.2s ease;
         font-family: 'KoddiUD', sans-serif;
     }
 
     .challenge-complete-btn.completed {
-        background-color: var(--primary-blue);
+        background-color: rgb(68, 0, 255);
     }
 
     /* 모달 스타일 */
@@ -1287,6 +1281,15 @@ watch(percent, updateMessage)
         font-family: 'KoddiUD', sans-serif;
     }
 
+    /* 모달 내 액션 버튼들 컨테이너 */
+    .modal-action-buttons {
+        margin-top: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        align-items: center;
+    }
+
     .modal-button {
         background-color: var(--primary-blue);
         color: white;
@@ -1314,6 +1317,41 @@ watch(percent, updateMessage)
         font-weight: 600;
         border: 2px solid rgba(74, 144, 226, 0.2);
         font-family: 'KoddiUD', sans-serif;
+    }
+
+    /* 모달 내 수정/삭제 버튼들 */
+    .modal-edit-delete-buttons {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+    }
+
+    .modal-edit-btn, .modal-delete-btn {
+        padding: 12px 20px;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        color: white;
+        transition: all 0.2s ease;
+        font-family: 'KoddiUD', sans-serif;
+    }
+
+    .modal-edit-btn {
+        background-color: var(--primary-blue);
+    }
+
+    .modal-edit-btn:hover {
+        background-color: #357abd;
+    }
+
+    .modal-delete-btn {
+        background-color: #e74c3c;
+    }
+
+    .modal-delete-btn:hover {
+        background-color: #c0392b;
     }
 
     /* 수정 모달 */
@@ -1498,6 +1536,15 @@ watch(percent, updateMessage)
         }
 
         .btn-cancel, .btn-save {
+            width: 100%;
+        }
+
+        .modal-edit-delete-buttons {
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .modal-edit-btn, .modal-delete-btn {
             width: 100%;
         }
 

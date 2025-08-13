@@ -450,7 +450,8 @@ const generateAndUploadPDF = async () => {
 
 .newspaper-header {
   text-align: center;
-  border-bottom: 2px solid #333;
+  border-top: 1px solid #333;
+  border-bottom: 1px solid #333;
   padding-bottom: 10px;
   margin-bottom: 15px;
   flex-shrink: 0;
