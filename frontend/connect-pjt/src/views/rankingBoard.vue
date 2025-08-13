@@ -41,8 +41,6 @@
 
           <td class="text-center">
             <div class="center-name">
-              <img :src="getCenterLogoSrc(myCenter)" class="logo"
-                  crossorigin="anonymous" @error="onLogoError" />
               <span class="ellipsis">{{ myCenter.centerName }}</span>
               <span class="chip-mycenter">내 경로당</span>
             </div>
@@ -94,8 +92,6 @@
 
           <td class="text-center">
             <div class="center-name">
-              <img :src="getCenterLogoSrc(center)" class="logo"
-                  crossorigin="anonymous" @error="onLogoError" />
               <span class="ellipsis">{{ center.centerName }}</span>
             </div>
           </td>
@@ -252,23 +248,23 @@ const toAbsUrl = (u) => {
   return apiBase + '/' + u
 }
 
-const getCenterLogoSrc = (center) => {
-  const u =
-    center?.centerLogo ||                 // fetchRankings에서 정규화한 값
-    center?.adminProfileImage ||
-    center?.admin_profile_image ||
-    center?.admin?.profileImage ||
-    center?.admin?.profile_image ||
-    center?.profileImage ||
-    center?.profile_image || null
+// const getCenterLogoSrc = (center) => {
+//   const u =
+//     center?.centerLogo ||                 // fetchRankings에서 정규화한 값
+//     center?.adminProfileImage ||
+//     center?.admin_profile_image ||
+//     center?.admin?.profileImage ||
+//     center?.admin?.profile_image ||
+//     center?.profileImage ||
+//     center?.profile_image || null
 
-  return toAbsUrl(u) || defaultLogo
-}
+//   return toAbsUrl(u) || defaultLogo
+// }
 
-const onLogoError = (e) => {
-  e.target.onerror = null
-  e.target.src = defaultLogo
-}
+// const onLogoError = (e) => {
+//   e.target.onerror = null
+//   e.target.src = defaultLogo
+// }
 
 const centers = ref([])
 const currentPage = ref(1)
