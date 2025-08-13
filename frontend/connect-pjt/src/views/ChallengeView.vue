@@ -24,7 +24,7 @@
           :disabled="creatingAINews || !isAINewsButtonEnabled"
           :title="getAINewsButtonTooltip"
         >
-          {{ creatingAINews ? ' AI 신문 생성 중...' : '✨ AI 신문 생성하기' }}
+          {{ creatingAINews ? ' AI 신문 생성 중...' : 'AI 신문 생성하기' }}
         </button>
         
         <!-- AI 신문 생성 가이드 팝업 (항상 표시) -->
@@ -969,7 +969,7 @@ watch(percent, updateMessage)
     /* AI 신문 가이드 팝업 */
     .ai-news-guide-popup {
         position: absolute;
-        right: -320px; /* 버튼 오른쪽에 표시 */
+        right: -340px; /* 버튼 오른쪽에 표시 */
         top: 50%;
         transform: translateY(-50%);
         z-index: 1000;
@@ -995,7 +995,7 @@ watch(percent, updateMessage)
         transform: translateY(-50%);
         width: 0;
         height: 0;
-        border-left: 8px solid rgba(0, 0, 0, 0.85);
+        border-right: 8px solid rgba(0, 0, 0, 0.85);
         border-top: 6px solid transparent;
         border-bottom: 6px solid transparent;
     }
@@ -1275,9 +1275,9 @@ watch(percent, updateMessage)
     .modal-placeholder {
         margin: 20px 0;
         padding: 40px 20px;
-        background: linear-gradient(135deg, var(--secondary-blue), var(--secondary-orange));
+        background: lightgray;
         border-radius: 12px;
-        color: var(--primary-blue);
+        color: black;
     }
 
     .modal-placeholder p {
