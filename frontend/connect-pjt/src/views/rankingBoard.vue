@@ -41,7 +41,7 @@
 
           <td class="text-center">
             <div class="center-name">
-              <img src="@/assets/logo.png" class="logo" />
+              <img :src="getCenterLogoSrc(myCenter)" class="logo" crossorigin="anonymous" @error="onLogoError" />
               <span class="ellipsis">{{ myCenter.centerName }}</span>
               <span class="chip-mycenter">내 경로당</span>
             </div>
@@ -93,7 +93,7 @@
 
           <td class="text-center">
             <div class="center-name">
-              <img src="@/assets/logo.png" class="logo" />
+              <img :src="getCenterLogoSrc(center)" class="logo" crossorigin="anonymous" @error="onLogoError" />
               <span class="ellipsis">{{ center.centerName }}</span>
             </div>
           </td>
@@ -239,6 +239,33 @@ import { ref, computed, onMounted, watch } from 'vue'
 import api from '@/api/axios'
 import defaultImage from '@/assets/default_image.png'
 
+import defaultLogo from '@/assets/logo.png'   // 기본 로고
+
+// 상대경로도 동작하도록 절대 URL로 바꾸기
+const toAbsoluteUrl = (u) => {
+  if (!u) return null
+  if (/^https?:\/\//i.test(u)) return u
+  try { return new URL(u, window.location.origin).href } catch { return u }
+}
+
+const getCenterLogoSrc = (center) => {
+  const u =
+    center?.centerLogo ||                 // 정규화해서 넣어둘 필드(아래 3번 참고)
+    center?.adminProfileImage ||
+    center?.admin_profile_image ||
+    center?.admin?.profileImage ||
+    center?.admin?.profile_image ||
+    center?.profileImage ||
+    center?.profile_image ||
+    null
+  return toAbsoluteUrl(u) || defaultLogo
+}
+
+const onLogoError = (e) => {
+  e.target.onerror = null
+  e.target.src = defaultLogo
+}
+
 const centers = ref([])
 const currentPage = ref(1)
 const pageSize = 10
@@ -265,13 +292,35 @@ const myCenterRank = computed(() => {
   return idx >= 0 ? idx + 1 : null
 })
 
+const fetchMyCenterIdFromServer = async () => {
+  try {
+    const { data } = await api.get('/api/v1/me', { withCredentials: true });
+    const id =
+      data?.seniorCenterId ??
+      data?.senior_center_id ??
+      data?.user?.seniorCenterId ??
+      data?.user?.senior_center_id ??
+      null;
+
+    if (id != null) {
+      myCenterId.value = String(id);
+      // 보조 용도로 동기화
+      localStorage.setItem('mySeniorCenterId', String(id));
+      return true;
+    }
+  } catch (e) {
+    console.warn('/api/v1/me 호출 실패:', e);
+  }
+  return false;
+};
+
 /* 로컬에서 소속 센터 ID 로드(임시) */
 const fetchMyCenterId = async () => {
   try {
-    const saved = localStorage.getItem('mySeniorCenterId')
-    if (saved) myCenterId.value = Number(saved)
+    const saved = localStorage.getItem('mySeniorCenterId');
+    if (saved) myCenterId.value = String(saved);
   } catch (e) {}
-}
+};
 
 /* 목록 호출: /api/v1/rankings */
 const fetchRankings = async () => {
@@ -315,7 +364,14 @@ const fetchRankings = async () => {
         challenges,
         challengeStatusesPadded: rawStatuses,
         // (옵션) 관리자 프로필 이미지를 로고로 쓰고 싶다면 같이 받아두기
-        centerLogo: item.adminProfileImage ?? item.admin_profile_image ?? null,
+        centerLogo:
+          item.adminProfileImage ??
+          item.admin_profile_image ??
+          item.admin?.profileImage ??
+          item.admin?.profile_image ??
+          item.profileImage ??
+          item.profile_image ??
+          null,
       }
     }).filter(r => r.id != null)
 
@@ -414,8 +470,12 @@ watch(filteredCenters, (filtered) => {
 })
 
 onMounted(async () => {
-  await fetchMyCenterId()
-  await fetchRankings()
+  // 1) 서버에서 시도
+  const ok = await fetchMyCenterIdFromServer();
+  // 2) 실패하면 로컬스토리지 폴백
+  if (!ok) await fetchMyCenterId();
+
+  await fetchRankings();
 })
 
 /* 상세 모달 */
