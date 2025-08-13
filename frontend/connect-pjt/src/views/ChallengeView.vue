@@ -53,7 +53,7 @@
         <div class="challenge-image">
           <!-- 인증되지 않은 도전: 역할별 텍스트 표시 -->
           <div 
-            v-if="!challenge.isEmpty && !isCompleted(challenge)" 
+            v-if="!isCompleted(challenge)" 
             class="challenge-placeholder"
           >
             <p v-if="userRole === 'ADMIN'">도전 인증을 해주세요!</p>
@@ -841,7 +841,7 @@ watch(percent, updateMessage)
     /* 헤더 */
     .header {
         text-align: center;
-        margin: 30px auto;
+        margin: 20px auto;
         font-size: 32px;
         font-weight: 700;
         color: var(--text-black);
@@ -852,7 +852,7 @@ watch(percent, updateMessage)
     .progress-container {
         max-width: 800px;
         width: 90%;
-        margin: 30px auto;
+        margin: 20px auto;
         display: flex;
         align-items: center;
         gap: 20px;
@@ -865,7 +865,7 @@ watch(percent, updateMessage)
 
     .progress-container h3 {
         font-size: 20px;
-        font-weight: 600;
+        font-weight: 500;
         color: var(--text-black);
         min-width: 80px;
         font-family: 'KoddiUD', sans-serif;
@@ -928,7 +928,7 @@ watch(percent, updateMessage)
     }
 
     .btn-ai-news {
-        background: rgb(255, 225, 0);
+        background: rgb(255, 204, 0);
         color: rgb(0, 0, 0);
         border: none;
         padding: 0 20px; /* 세로 패딩 제거하고 가로 패딩만 */
@@ -947,7 +947,7 @@ watch(percent, updateMessage)
     }
 
     .btn-ai-news:hover:not(:disabled) {
-        background: #e55a2b;
+        background: rgb(255, 157, 0);
         transform: translateY(-1px);
         box-shadow: 0 6px 16px rgba(255, 107, 53, 0.4);
     }
@@ -969,7 +969,7 @@ watch(percent, updateMessage)
     /* AI 신문 가이드 팝업 */
     .ai-news-guide-popup {
         position: absolute;
-        left: -320px; /* 버튼 왼쪽에 표시 */
+        right: -320px; /* 버튼 오른쪽에 표시 */
         top: 50%;
         transform: translateY(-50%);
         z-index: 1000;
@@ -1062,7 +1062,7 @@ watch(percent, updateMessage)
         display: flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, var(--secondary-blue), var(--secondary-orange));
+        background: gray;
         color: var(--text-black);
         font-family: 'KoddiUD', sans-serif;
     }
@@ -1390,12 +1390,12 @@ watch(percent, updateMessage)
     }
 
     .btn-save, .delete-confirm-btn, .delete-success-btn {
-        background-color: var(--primary-orange);
+        background-color: var(--primary-blue);
         color: white;
     }
 
     .btn-save:hover:not(:disabled), .delete-confirm-btn:hover, .delete-success-btn:hover {
-        background-color: #e55a2b;
+        background-color: #2ba7e5;
         transform: translateY(-1px);
     }
 
