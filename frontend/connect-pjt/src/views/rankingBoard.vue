@@ -355,7 +355,7 @@ const fetchRankings = async () => {
       while (rawStatuses.length < 4) rawStatuses.push('unknown')
 
       return {
-        // id,                               // ← 숫자 확정
+        id,                               // ← 숫자 확정
         centerName: name,
         trotPoint:   toNum(item.trotPoint      ?? item.trot_point,      0),
         missionPoint:toNum(item.challengePoint ?? item.challenge_point,  0),
