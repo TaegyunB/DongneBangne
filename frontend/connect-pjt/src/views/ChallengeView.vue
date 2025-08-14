@@ -47,17 +47,15 @@
         :key="index"
         class="single-challenge"
         :class="`challenge-${index + 1}`"
-        @click="openModal(challenge, index)" 
       >
         <!-- 이미지 영역 -->
         <div class="challenge-image">
-          <!-- 인증되지 않은 도전: 역할별 텍스트 표시 -->
+          <!-- 인증되지 않은 도전: 회색 배경만 -->
           <div 
             v-if="!isCompleted(challenge)" 
             class="challenge-placeholder"
           >
-            <p v-if="userRole === 'ADMIN'">도전 인증을 해주세요!</p>
-            <p v-else>도전 인증은 관리자만 가능합니다</p>
+            <!-- 텍스트 제거 -->
           </div>
           <!-- 인증된 도전 또는 빈 도전: 이미지 표시 -->
           <img 
@@ -81,15 +79,23 @@
                 <button class="create-btn" @click.stop="moveToCreate()">생성</button>
               </div>
             </div>
-            <p>{{ truncateDescription(getDisplayDescription(challenge, index)) }}</p>
           </div>
-          <!-- 완료/미완료 상태 표시만 (클릭 불가) -->
+          <!-- 상태별 버튼 -->
           <div 
             v-if="!challenge.isEmpty"
             class="challenge-complete-btn"
-            :class="{ 'completed': isCompleted(challenge) }"
+            :class="getButtonClass(challenge)"
+            @click="handleButtonClick(challenge, index)"
           >
             {{ getButtonText(challenge) }}
+          </div>
+          <!-- 생성 전 버튼 (MEMBER, 빈 도전) -->
+          <div 
+            v-else-if="userRole !== 'ADMIN' && challenge.isEmpty"
+            class="challenge-complete-btn btn-not-created"
+            @click="showNotCreatedModal()"
+          >
+            도전 생성 전
           </div>
         </div>
       </div>
@@ -106,8 +112,15 @@
           장소: {{ selectedChallenge.challengePlace || selectedChallenge.place || '장소 정보 없음' }}
         </div>
         
-        <!-- 모달 내 이미지 표시 -->
-        <div v-if="selectedChallenge.challengeImage && isCompleted(selectedChallenge)" class="modal-image">
+        <!-- 인증 전 상태일 때 대형 인증 버튼 (ADMIN만) -->
+        <div v-if="userRole === 'ADMIN' && !selectedChallenge.isEmpty && !isCompleted(selectedChallenge)">
+          <button class="large-verify-btn" @click="moveToFinish">
+            도전 인증하기
+          </button>
+        </div>
+        
+        <!-- 모달 내 이미지 표시 (완료된 도전만) -->
+        <div v-else-if="selectedChallenge.challengeImage && isCompleted(selectedChallenge)" class="modal-image">
           <img 
             :src="getChallengeImage(selectedChallenge)" 
             :alt="selectedChallenge.challengeTitle"
@@ -117,22 +130,8 @@
           />
         </div>
         
-        <!-- 인증되지 않은 도전의 경우 텍스트 표시 -->
-        <div v-else-if="!selectedChallenge.isEmpty && !isCompleted(selectedChallenge)" class="modal-placeholder">
-          <p>도전 인증을 해주세요!</p>
-        </div>
-        
         <!-- 모달 내 버튼들 -->
         <div class="modal-action-buttons">
-          <!-- 도전 인증 버튼 (ADMIN이고 완료되지 않은 도전) -->
-          <button 
-            v-if="userRole === 'ADMIN' && !selectedChallenge.isEmpty && !isCompleted(selectedChallenge)" 
-            class="modal-button modal-complete-btn" 
-            @click="moveToFinish"
-          >
-            도전 인증하기
-          </button>
-          
           <!-- 완료 메시지 (완료된 도전) -->
           <div 
             v-if="!selectedChallenge.isEmpty && isCompleted(selectedChallenge)"
@@ -143,9 +142,43 @@
           
           <!-- 수정/삭제 버튼 (ADMIN이고 커스텀 도전과제인 경우) -->
           <div v-if="shouldShowEditDeleteButtons(selectedChallenge)" class="modal-edit-delete-buttons">
-            <button class="modal-edit-btn" @click="editChallenge(getSelectedChallengeIndex())">수정</button>
-            <button class="modal-delete-btn" @click="showDeleteConfirm(getSelectedChallengeIndex())">삭제</button>
+            <button 
+              v-if="shouldShowEditButton(selectedChallenge)" 
+              class="modal-edit-btn" 
+              @click="editChallenge(getSelectedChallengeIndex())"
+            >
+              수정
+            </button>
+            <button 
+              v-if="shouldShowDeleteButton(selectedChallenge)" 
+              class="modal-delete-btn" 
+              @click="showDeleteConfirm(getSelectedChallengeIndex())"
+            >
+              삭제
+            </button>
           </div>
+          
+          <!-- 삭제 버튼 (ADMIN이고 완료된 도전) -->
+          <div v-if="userRole === 'ADMIN' && !selectedChallenge.isEmpty && isCompleted(selectedChallenge) && selectedChallenge.challengeType === 'CUSTOM'" class="modal-edit-delete-buttons">
+            <button 
+              class="modal-delete-btn" 
+              @click="showDeleteConfirm(getSelectedChallengeIndex())"
+            >
+              삭제
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 도전 생성 전 알림 모달 -->
+    <div v-if="showNotCreatedAlertModal" class="modal-overlay" @click.self="closeNotCreatedAlertModal">
+      <div class="modal-content">
+        <button class="modal-close-btn" @click="closeNotCreatedAlertModal">×</button>
+        <h2>알림</h2>
+        <p class="modal-description">아직 도전이 생성되지 않았습니다</p>
+        <div class="modal-action-buttons">
+          <button class="modal-button" @click="closeNotCreatedAlertModal">확인</button>
         </div>
       </div>
     </div>
@@ -200,7 +233,7 @@
         </div>
       </div>
     </div>
-<!-- .. -->
+
     <!-- 최종 삭제 확인 모달 -->
     <div v-if="showFinalDeleteModal" class="modal-overlay" @click.self="closeFinalDeleteModal">
       <div class="modal-content delete-modal">
@@ -238,11 +271,12 @@ const challenges = ref([])
 const challengeDetails = ref({}) // 도전 상세 정보 캐시
 const creatingAINews = ref(false) // AI 신문 생성 중 상태
 
-// 모달 상태
+// 모달 상태 - 새로운 알림 모달 추가
 const modals = ref({
   detail: { show: false, selectedChallenge: { challengeTitle: '', description: '', challengePlace: '' }, selectedChallengeId: null },
   edit: { show: false, form: { title: '', description: '', place: '' }, editingIndex: null, showSuccess: false },
-  delete: { show: false, showFinal: false, selectedChallenge: null, selectedIndex: null }
+  delete: { show: false, showFinal: false, selectedChallenge: null, selectedIndex: null },
+  notCreatedAlert: { show: false } // 새로운 모달 추가
 })
 
 // 모달 상태 단축 접근
@@ -254,6 +288,7 @@ const showEditSuccessModal = computed(() => modals.value.edit.showSuccess)
 const editForm = computed(() => modals.value.edit.form)
 const showDeleteModal = computed(() => modals.value.delete.show)
 const showFinalDeleteModal = computed(() => modals.value.delete.showFinal)
+const showNotCreatedAlertModal = computed(() => modals.value.notCreatedAlert.show) // 새로운 모달
 
 // 새로운 유틸리티 함수들
 const getDisplayTitle = (challenge, index) => {
@@ -264,25 +299,10 @@ const getDisplayTitle = (challenge, index) => {
   // 빈 도전인 경우
   if (index >= 2) { // 3, 4번째 칸 (커스텀 도전)
     return userRole.value === 'ADMIN' 
-      ? '도전과제를 생성해주세요' 
-      : '아직 도전과제가 등록되지 않았습니다'
+      ? '다 같이 재밌는 도전을 수행해보는 것은 어때요?' 
+      : '관리자가 재밌는 도전 주제를 고민하고 있어요'
   } else { // 1, 2번째 칸 (서비스 제공 도전)
     return '준비 중입니다.'
-  }
-}
-
-const getDisplayDescription = (challenge, index) => {
-  if (!challenge.isEmpty) {
-    return challenge.description
-  }
-  
-  // 빈 도전인 경우
-  if (index >= 2) { // 3, 4번째 칸 (커스텀 도전)
-    return userRole.value === 'ADMIN' 
-      ? '새로운 도전과제를 만들어보세요.' 
-      : '관리자가 도전과제를 등록하면 참여할 수 있습니다.'
-  } else { // 1, 2번째 칸 (서비스 제공 도전)
-    return '곧 새로운 도전과제가 업데이트됩니다.'
   }
 }
 
@@ -291,47 +311,30 @@ const shouldShowCreateButton = (challenge, index) => {
   return userRole.value === 'ADMIN' && index >= 2 && challenge.isEmpty
 }
 
-// 모달 내 수정/삭제 버튼 표시 조건
-const shouldShowEditDeleteButtons = (challenge) => {
+// 수정 버튼 표시 조건 (완료 전에만)
+const shouldShowEditButton = (challenge) => {
+  return userRole.value === 'ADMIN' && 
+         !challenge.isEmpty && 
+         challenge.challengeType === 'CUSTOM' &&
+         !isCompleted(challenge)
+}
+
+// 삭제 버튼 표시 조건 (완료 전후 모두)
+const shouldShowDeleteButton = (challenge) => {
   return userRole.value === 'ADMIN' && 
          !challenge.isEmpty && 
          challenge.challengeType === 'CUSTOM'
+}
+
+// 수정/삭제 버튼 영역 표시 조건 (둘 중 하나라도 보여야 할 때)
+const shouldShowEditDeleteButtons = (challenge) => {
+  return shouldShowEditButton(challenge) || shouldShowDeleteButton(challenge)
 }
 
 // 선택된 도전과제의 인덱스 찾기
 const getSelectedChallengeIndex = () => {
   const selectedId = selectedChallengeId.value
   return challenges.value.findIndex(challenge => challenge.id === selectedId)
-}
-
-// 텍스트 길이 제한 함수 (공백 제외 30자)
-const truncateDescription = (text) => {
-  if (!text) return ''
-  
-  // 공백을 제거한 텍스트의 길이 확인
-  const textWithoutSpaces = text.replace(/\s/g, '')
-  
-  if (textWithoutSpaces.length <= 30) {
-    return text
-  }
-  
-  // 공백 포함하여 대략적으로 자르되, 30자 기준으로 조정
-  let truncated = ''
-  let charCount = 0
-  
-  for (let i = 0; i < text.length; i++) {
-    if (text[i] !== ' ') {
-      charCount++
-    }
-    
-    truncated += text[i]
-    
-    if (charCount >= 30) {
-      break
-    }
-  }
-  
-  return truncated + '...'
 }
 
 // AI 신문 버튼 활성화 조건
@@ -367,12 +370,48 @@ const isCompleted = (challenge) => {
   }
 }
 
+// 새로운 버튼 텍스트 함수
 const getButtonText = (challenge) => {
   if (isCompleted(challenge)) {
     return '완료'
-  } else {
-    return '도전 인증하기'
   }
+  
+  if (userRole.value === 'ADMIN') {
+    return '도전 인증'
+  } else {
+    return '도전 인증 전'
+  }
+}
+
+// 새로운 버튼 클래스 함수
+const getButtonClass = (challenge) => {
+  if (isCompleted(challenge)) {
+    return 'btn-completed'
+  }
+  
+  if (userRole.value === 'ADMIN') {
+    return 'btn-verify'
+  } else {
+    return 'btn-not-verified'
+  }
+}
+
+// 새로운 버튼 클릭 핸들러
+const handleButtonClick = (challenge, index) => {
+  modals.value.detail = { 
+    show: true, 
+    selectedChallenge: challenge, 
+    selectedChallengeId: challenge.id 
+  }
+}
+
+// 새로운 알림 모달 함수들
+const showNotCreatedModal = () => {
+  modals.value.notCreatedAlert.show = true
+}
+
+const closeNotCreatedAlertModal = () => {
+  modals.value.notCreatedAlert.show = false
 }
 
 // 이미지 처리 함수 (S3 디버깅 포함)
@@ -548,27 +587,6 @@ const fetchChallengeDetail = async (challengeId) => {
 }
 
 // 모달 함수
-const openModal = async (challenge, index) => {
-  if (challenge.isEmpty) return
-  
-  if (challenge.id) {
-    const detailChallenge = await fetchChallengeDetail(challenge.id)
-    if (detailChallenge) {
-      modals.value.detail = { 
-        show: true, 
-        selectedChallenge: detailChallenge, 
-        selectedChallengeId: challenge.id 
-      }
-    }
-  } else {
-    modals.value.detail = { 
-      show: true, 
-      selectedChallenge: challenge, 
-      selectedChallengeId: challenge.id 
-    }
-  }
-}
-
 const closeModal = () => {
   modals.value.detail.show = false
 }
@@ -668,7 +686,6 @@ const showFinalDeleteConfirm = () => {
 const closeFinalDeleteModal = () => {
   modals.value.delete.showFinal = false
 }
-
 const confirmDelete = async () => {
   const selectedIndex = modals.value.delete.selectedIndex
   if (selectedIndex !== null) {
@@ -848,6 +865,7 @@ watch(percent, updateMessage)
         --border-light: #e0e0e0;
         --pastel-yellow: #FFF9C4;
         --sky-blue: #87CEEB;
+        --hover-blue: linear-gradient(135deg, #4A90E2, #87CEEB);
     }
 
     /* 헤더 */
@@ -981,7 +999,7 @@ watch(percent, updateMessage)
     /* AI 신문 가이드 팝업 */
     .ai-news-guide-popup {
         position: absolute;
-        right: -340px; /* 버튼 오른쪽에 표시 */
+        right: -270px; /* 버튼 오른쪽에 표시 */
         top: 50%;
         transform: translateY(-50%);
         z-index: 1000;
@@ -1050,7 +1068,7 @@ watch(percent, updateMessage)
         background: white;
         border-radius: 16px;
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-        cursor: pointer;
+        cursor: default; /* 카드 클릭 비활성화 */
         overflow: hidden;
         display: flex;
         flex-direction: column;
@@ -1062,7 +1080,8 @@ watch(percent, updateMessage)
     .single-challenge:hover {
         transform: translateY(-2px);
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-        border-color: var(--primary-orange);
+        border: 2px solid;
+        border-image: var(--hover-blue) 1;
     }
 
     .challenge-image {
@@ -1080,7 +1099,7 @@ watch(percent, updateMessage)
         object-position: center;
     }
 
-    /* 인증 전 플레이스홀더 텍스트 스타일 */
+    /* 인증 전 플레이스홀더 텍스트 스타일 - 텍스트 제거 */
     .challenge-placeholder {
         width: 100%;
         height: 100%;
@@ -1090,15 +1109,6 @@ watch(percent, updateMessage)
         background: rgb(220, 220, 220);
         color: var(--text-black);
         font-family: 'KoddiUD', sans-serif;
-    }
-
-    .challenge-placeholder p {
-        font-size: 18px;
-        font-weight: 600;
-        text-align: center;
-        margin: 0;
-        padding: 20px;
-        color: black;
     }
 
     .challenge-content {
@@ -1163,7 +1173,7 @@ watch(percent, updateMessage)
         font-family: 'KoddiUD', sans-serif;
     }
 
-    /* 완료 버튼 */
+    /* 완료 버튼 - 새로운 버튼 클래스들 */
     .challenge-complete-btn {
         position: absolute;
         bottom: 24px;
@@ -1179,13 +1189,50 @@ watch(percent, updateMessage)
         display: flex;
         align-items: center;
         justify-content: center;
-        background-color: var(--primary-blue);
         transition: all 0.2s ease;
         font-family: 'KoddiUD', sans-serif;
+        cursor: pointer;
     }
 
-    .challenge-complete-btn.completed {
-        background-color: rgb(68, 0, 255);
+    /* 도전 인증 버튼 (ADMIN, 인증 전) */
+    .btn-verify {
+        background-color: #FFA500;
+        color: black;
+    }
+
+    .btn-verify:hover {
+        background-color: #FF8C00;
+        transform: translateX(-50%) translateY(-2px);
+    }
+
+    /* 완료 버튼 */
+    .btn-completed {
+        background-color: rgb(30, 58, 138); /* 진한 파란색 */
+    }
+
+    .btn-completed:hover {
+        background-color: rgb(23, 37, 84); /* 더 진한 파란색 */
+        transform: translateX(-50%) translateY(-2px);
+    }
+
+    /* 도전 생성 전 버튼 (MEMBER) */
+    .btn-not-created {
+        background-color: #6c757d;
+    }
+
+    .btn-not-created:hover {
+        background-color: #5a6268;
+        transform: translateX(-50%) translateY(-2px);
+    }
+
+    /* 도전 인증 전 버튼 (MEMBER) */
+    .btn-not-verified {
+        background-color: #17a2b8;
+    }
+
+    .btn-not-verified:hover {
+        background-color: #138496;
+        transform: translateX(-50%) translateY(-2px);
     }
 
     /* 모달 스타일 */
@@ -1277,20 +1324,25 @@ watch(percent, updateMessage)
         object-fit: cover;
     }
 
-    /* 모달 내 플레이스홀더 텍스트 스타일 */
-    .modal-placeholder {
+    /* 대형 도전 인증하기 버튼 */
+    .large-verify-btn {
+        background-color: var(--primary-blue);
+        color: white;
+        padding: 40px 60px;
+        font-size: 24px;
+        font-weight: 700;
+        border-radius: 16px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-family: 'KoddiUD', sans-serif;
+        width: 100%;
         margin: 20px 0;
-        padding: 40px 20px;
-        background: lightgray;
-        border-radius: 12px;
-        color: black;
     }
 
-    .modal-placeholder p {
-        font-size: 18px;
-        font-weight: 600;
-        margin: 0;
-        font-family: 'KoddiUD', sans-serif;
+    .large-verify-btn:hover {
+        background-color: #2b6ce5;
+        transform: translateY(-2px);
     }
 
     /* 모달 내 액션 버튼들 컨테이너 */
@@ -1560,12 +1612,9 @@ watch(percent, updateMessage)
             width: 100%;
         }
 
-        .challenge-placeholder p {
-            font-size: 16px;
-        }
-
-        .modal-placeholder p {
-            font-size: 16px;
+        .large-verify-btn {
+            padding: 30px 40px;
+            font-size: 20px;
         }
     }
 

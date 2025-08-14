@@ -14,13 +14,13 @@
         </div>
 
         <div class="meta">
-          <span>작성자: {{ boardAuthor }}</span>
+          <span>작성자: {{ board.nickname }}</span>
           <span>경로당: {{ board.seniorCenterName }}</span>
           <span>{{ formatCreatedAt(board.createdAt) }}</span>
         </div>
       </div>
 
-      <!-- 이미지 표시 -->
+      <!-- 이미지 표시 개선 -->
       <div v-if="board.boardImage" class="image">
         <img 
           :src="getBoardImage(board)" 
@@ -33,7 +33,7 @@
 
       <div class="content">{{ board.content }}</div>
 
-            <div class="footer">
+      <div class="footer">
         <!-- 좋아요 -->
         <button class="like-button" :disabled="likeBusy" @click="toggleLike">
           <span class="thumb" :class="{ on: liked }">👍</span>
@@ -54,59 +54,6 @@
 
         <button class="back-button" @click="goBack">목록으로</button>
       </div>
-
-      <!-- ===== 댓글 섹션 ===== -->
-      <div class="comments">
-        <h3 class="comments-title">
-          댓글 <span class="count">{{ commentCount }}</span>
-        </h3>
-
-        <!-- 작성 -->
-        <div v-if="me" class="comment-editor">
-          <textarea
-            v-model.trim="newComment"
-            :disabled="commentBusy"
-            placeholder="댓글을 입력하세요"
-            aria-label="댓글 입력"
-          ></textarea>
-          <button class="comment-submit" :disabled="commentBusy || !newComment" @click="createComment">
-            {{ commentBusy ? '등록 중...' : '댓글 등록' }}
-          </button>
-        </div>
-        <div v-else class="comment-login-hint">
-          댓글을 작성하려면 로그인해 주세요.
-        </div>
-
-        <!-- 목록 -->
-        <div class="comment-list">
-          <div v-for="c in comments" :key="c.commentId" class="comment-item">
-            <div class="comment-meta">
-              <span class="author">{{ c.nickname }}</span>
-              <span class="date">{{ formatCreatedAt(c.createdAt) }}</span>
-            </div>
-
-            <!-- 편집 모드 -->
-            <div v-if="editTargetId === c.commentId" class="comment-editing">
-              <textarea v-model.trim="editContent" :disabled="commentBusy" aria-label="댓글 수정"></textarea>
-              <div class="edit-actions">
-                <button class="btn" :disabled="commentBusy" @click="cancelEdit">취소</button>
-                <button class="btn primary" :disabled="commentBusy || !editContent" @click="saveEdit(c.commentId)">저장</button>
-              </div>
-            </div>
-
-            <!-- 보기 모드 -->
-            <div v-else class="comment-content">{{ c.content }}</div>
-
-            <!-- 내 댓글만 조작 -->
-            <div class="comment-actions" v-if="isMyComment(c)">
-              <button class="btn" @click="startEdit(c)">수정</button>
-              <button class="btn danger" :disabled="commentBusy" @click="removeComment(c.commentId)">삭제</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <!-- ===== /댓글 섹션 ===== -->
-
     </template>
 
     <!-- 삭제 확인 모달 -->
@@ -161,31 +108,62 @@ const showConfirm = ref(false)
 
 const me = ref(null)
 
-// 이미지 처리
+// 이미지 처리 함수들 추가
 const getBoardImage = (boardData) => {
-  if (!boardData.boardImage) return defaultImage
+  console.log('=== 게시글 이미지 디버깅 ===')
+  console.log('Board 객체:', boardData)
+  console.log('Board Image URL:', boardData.boardImage)
+  
+  if (!boardData.boardImage) {
+    console.log('📷 게시글 이미지 URL 없음 - 기본 이미지 사용')
+    return defaultImage
+  }
+  
+  if (boardData.boardImage.includes('amazonaws.com') || 
+      boardData.boardImage.includes('s3')) {
+    console.log('✅ 게시글 S3 URL 감지:', boardData.boardImage)
+  }
+  
   return boardData.boardImage
 }
+
+// 이미지 에러 핸들링
 const onImageError = (event, boardData) => {
-  console.error('이미지 로드 실패:', { src: event.target.src, boardId: boardData.boardId })
+  console.error('❌ 게시글 이미지 로드 실패:', {
+    src: event.target.src,
+    boardId: boardData.boardId,
+    boardImage: boardData.boardImage,
+    error: event,
+    errorType: event.target.src.includes('s3') ? 'S3 CORS/권한 문제' : '기타 오류'
+  })
+  
+  if (event.target.src.includes('s3') || event.target.src.includes('amazonaws')) {
+    console.warn('🔒 게시글 S3 이미지 로드 실패 - CORS 또는 권한 문제일 가능성')
+  }
+  
+  // 기본 이미지로 대체
   event.target.src = defaultImage
 }
+
 const onImageLoad = (event, boardData) => {
-  console.log('이미지 로드 성공:', { src: event.target.src, boardId: boardData.boardId })
+  console.log('✅ 게시글 이미지 로드 성공:', {
+    src: event.target.src,
+    boardId: boardData.boardId
+  })
 }
 
-// 토큰 헤더(선택)
+// 토큰이 있으면 헤더에 추가(없으면 쿠키로만 요청)
 const headersWithToken = () => {
   const token = getAccessToken?.()
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-// 내 정보
+// 선택: 내 정보
 const fetchMe = async () => {
   try {
-    const { data } = await api.get('/api/v1/main/me', { headers: headersWithToken() })
+    const { data } = await api.get('/api/v1/users/me', { headers: headersWithToken() })
     me.value = data
-  } catch {}
+  } catch { /* 미제공/비로그인 시 무시 */ }
 }
 
 // 카테고리
@@ -231,7 +209,7 @@ const normalize = (raw) => ({
   likeCount: Number(raw?.likeCount ?? 0),
 })
 
-// 작성자 판별
+// 작성자 판별(가능한 정보로만)
 const isOwner = computed(() => {
   const b = board.value
   if ('isOwner' in b) return !!b.isOwner
@@ -245,7 +223,7 @@ const fetchDetail = async () => {
   loading.value = true
   error.value = false
   try {
-    const { data } = await api.get(`/api/v1/boards/${boardId.value}`, {  // boardId
+    const { data } = await api.get(`/api/v1/boards/${boardId.value}`, {
       headers: headersWithToken()
     })
     const row = normalize(data || {})
@@ -266,193 +244,44 @@ const fetchDetail = async () => {
   }
 }
 
-/* ===== 댓글 상태/로직 ===== */
-const comments = ref([])
-const commentCount = ref(0)
-const newComment = ref('')
-const commentBusy = ref(false)
-const editTargetId = ref(null)
-const editContent = ref('')
-
-const isMyComment = (c) => {
-  if (c.userId && me.value?.userId) return c.userId === me.value.userId
-  if (c.nickname && me.value?.nickname) return c.nickname === me.value.nickname
-  return false
-}
-const normalizeComment = (raw) => {
-  const uid =
-    raw?.userId ??
-    raw?.user?.id ??
-    raw?.writerId ??
-    null
-
-  const nick =
-    raw?.nickname ??
-    raw?.authorNickname ??
-    raw?.writerNickname ??
-    raw?.userNickname ??
-    raw?.user?.nickname ??
-    (uid && me.value?.userId && uid === me.value.userId ? me.value?.nickname : null)
-
-  return {
-    commentId: raw?.commentId ?? raw?.id,
-    userId: uid,
-    nickname: nick || '익명',
-    content: raw?.content ?? '',
-    createdAt: raw?.createdAt ?? raw?.created_at ?? new Date().toISOString(),
-  }
-}
-
-const boardAuthor = computed(() => {
-  const b = board.value
-  const candidate =
-    b?.nickname ??
-    b?.userNickname ??
-    b?.authorNickname ??
-    b?.user?.nickname ??
-    (isOwner.value ? me.value?.nickname : null)
-  return candidate || '작성자'
-})
-
-const fetchCommentCount = async () => {
-  try {
-    const { data } = await api.get(`/api/v1/boards/${boardId.value}/comments/count`, { headers: headersWithToken() })
-    commentCount.value = typeof data === 'number' ? data : Number(data?.count ?? 0)
-  } catch {
-    commentCount.value = comments.value.length
-  }
-}
-const fetchComments = async () => {
-  try {
-    const { data } = await api.get(`/api/v1/boards/${boardId.value}/comments`, { headers: headersWithToken() })
-    const rows = Array.isArray(data) ? data : []
-    comments.value = rows.map(normalizeComment)
-    if (!commentCount.value) commentCount.value = comments.value.length
-  } catch (e) {
-    console.error('댓글 목록 불러오기 실패:', e)
-    comments.value = []
-  }
-}
-const createComment = async () => {
-  if (commentBusy.value || !newComment.value) return
-  commentBusy.value = true
-  try {
-    const body = { content: newComment.value }
-    // const { data } = await api.post(`/api/v1/boards/${boardId.value}/comments`, body, { headers: headersWithToken() })
-    // const created = normalizeComment(data || { content: newComment.value, nickname: me.value?.nickname, userId: me.value?.userId, createdAt: new Date().toISOString() })
-    const { data } = await api.post(
-    `/api/v1/boards/${boardId.value}/comments`,
-    body,
-    { headers: headersWithToken() }
-  )
-  const created = normalizeComment({
-    ...data,
-    // 서버가 안 주면 내가 채운다
-    nickname: data?.nickname ?? me.value?.nickname,
-    userId: data?.userId ?? me.value?.userId,
-    content: data?.content ?? newComment.value,
-    createdAt: data?.createdAt ?? new Date().toISOString()
-  })
-    
-    comments.value.unshift(created)
-    newComment.value = ''
-    commentCount.value += 1
-  } catch (e) {
-    const s = e?.response?.status
-    if (s === 401) {
-      alert('로그인이 필요합니다.')
-      router.push({ name: 'onboarding' })
-    } else {
-      alert('댓글 등록에 실패했습니다.')
-      console.error(e)
-    }
-  } finally {
-    commentBusy.value = false
-  }
-}
-const startEdit = (c) => {
-  editTargetId.value = c.commentId
-  editContent.value = c.content
-}
-const cancelEdit = () => {
-  editTargetId.value = null
-  editContent.value = ''
-}
-const saveEdit = async (commentId) => {
-  if (commentBusy.value || !editContent.value) return
-  commentBusy.value = true
-  try {
-    const body = { content: editContent.value }
-    await api.put(`/api/v1/boards/${boardId.value}/comments/${commentId}`, body, { headers: headersWithToken() })
-    const idx = comments.value.findIndex(c => c.commentId === commentId)
-    if (idx !== -1) comments.value[idx] = { ...comments.value[idx], content: editContent.value }
-    cancelEdit()
-  } catch (e) {
-    const s = e?.response?.status
-    if (s === 401) {
-      alert('로그인이 필요합니다.')
-      router.push({ name: 'onboarding' })
-    } else if (s === 403) {
-      alert('수정 권한이 없습니다.')
-    } else {
-      alert('댓글 수정에 실패했습니다.')
-      console.error(e)
-    }
-  } finally {
-    commentBusy.value = false
-  }
-}
-const removeComment = async (commentId) => {
-  if (commentBusy.value) return
-  if (!confirm('댓글을 삭제하시겠어요?')) return
-  commentBusy.value = true
-  try {
-    await api.delete(`/api/v1/boards/${boardId.value}/comments/${commentId}`, { headers: headersWithToken() })
-    comments.value = comments.value.filter(c => c.commentId !== commentId)
-    commentCount.value = Math.max(0, commentCount.value - 1)
-  } catch (e) {
-    const s = e?.response?.status
-    if (s === 401) {
-      alert('로그인이 필요합니다.')
-      router.push({ name: 'onboarding' })
-    } else if (s === 403) {
-      alert('삭제 권한이 없습니다.')
-    } else {
-      alert('댓글 삭제에 실패했습니다.')
-      console.error(e)
-    }
-  } finally {
-    commentBusy.value = false
-  }
-}
-/* ===== /댓글 ===== */
-
 const toggleLike = async () => {
   if (likeBusy.value) return
   likeBusy.value = true
 
+  // 낙관적 업데이트
   const prevLiked = liked.value
   const prevCount = likeCount.value
   liked.value = !prevLiked
   likeCount.value = prevLiked ? Math.max(0, prevCount - 1) : prevCount + 1
 
   try {
+    // 백엔드가 POST 토글 방식이므로 항상 POST만 사용
     const { data } = await api.post(`/api/v1/boards/${boardId.value}/like`, null, { 
       headers: headersWithToken() 
     })
+    
+    // 백엔드 응답으로 실제 상태 동기화
     if (data) {
       liked.value = data.isLiked ?? data.liked ?? !prevLiked
-      likeCount.value = data.likeCount ?? likeCount.value
+      likeCount.value = data.likeCount ?? data.like_count ?? likeCount.value
     }
+    
   } catch (e) {
+    // 실패 시 롤백
     liked.value = prevLiked
     likeCount.value = prevCount
+    
     const status = e?.response?.status
     if (status === 401) {
       alert('로그인이 필요합니다.')
       router.push({ name: 'onboarding' })
     } else {
       console.error('좋아요 처리 실패:', e)
+      console.error('에러 상세:', {
+        status,
+        data: e?.response?.data,
+        config: e?.config
+      })
       alert('좋아요 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.')
     }
   } finally {
@@ -506,11 +335,8 @@ const goBack = () => {
 
 onMounted(async () => {
   await Promise.all([fetchMe(), fetchDetail()])
-  await Promise.all([fetchComments(), fetchCommentCount()])
 })
-watch(boardId, async () => {
-  await Promise.all([fetchDetail(), fetchComments(), fetchCommentCount()])
-})
+watch(boardId, fetchDetail)
 onBeforeUnmount(() => document.removeEventListener('keydown', onEscClose))
 </script>
 
@@ -522,28 +348,6 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onEscClose))
 .meta{font-size:13px;color:#6b7280;display:flex;gap:12px;flex-wrap:wrap;margin-top:8px}
 .image{margin:12px 0 16px}.image img{width:100%;max-height:520px;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb}
 .content{font-size:16px;line-height:1.7;color:#111827;white-space:pre-wrap;border:1px solid #e5e7eb;border-radius:10px;padding:14px}
-
-/* 댓글 */
-.comments{margin-top:18px;border:1px solid #e5e7eb;border-radius:10px;padding:14px;background:#fafafa}
-.comments-title{font-size:18px;font-weight:800;margin:0 0 10px;color:#0f172a}
-.comments-title .count{color:#2563eb}
-.comment-editor{display:flex;gap:8px;align-items:flex-start;margin-bottom:12px}
-.comment-editor textarea{flex:1;min-height:80px;border:1px solid #d1d5db;border-radius:8px;padding:10px;font-size:15px}
-.comment-submit{background:#2563eb;color:#fff;border:none;border-radius:8px;padding:10px 14px;cursor:pointer}
-.comment-submit:disabled{opacity:.6;cursor:not-allowed}
-.comment-list{display:grid;gap:10px}
-.comment-item{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:10px}
-.comment-meta{font-size:13px;color:#6b7280;display:flex;gap:8px;margin-bottom:6px}
-.comment-content{font-size:16px;line-height:1.6;color:#111827;white-space:pre-wrap}
-.comment-actions{display:flex;gap:6px;margin-top:8px}
-.btn{border:1px solid #d1d5db;background:#fff;border-radius:6px;padding:6px 10px;cursor:pointer;font-size:13px}
-.btn.primary{background:#2563eb;border-color:#2563eb;color:#fff}
-.btn.danger{background:#ef4444;border-color:#ef4444;color:#fff}
-.comment-editing textarea{width:100%;min-height:80px;border:1px solid #d1d5db;border-radius:8px;padding:10px;font-size:15px}
-.edit-actions{display:flex;gap:6px;margin-top:8px}
-.comment-login-hint{font-size:14px;color:#6b7280;margin-bottom:10px}
-
-/* 하단 */
 .footer{display:flex;align-items:center;margin-top:14px;gap:10px}.spacer{flex:1}
 .like-button{display:inline-flex;align-items:center;gap:8px;background:#eff6ff;color:#1d4ed8;border:none;border-radius:9999px;padding:8px 12px;cursor:pointer;min-height:36px;font-weight:700}
 .like-button:disabled{opacity:.6;cursor:not-allowed}.thumb{font-size:16px}.thumb.on{filter:drop-shadow(0 0 2px rgba(29,78,216,.6))}.count{min-width:16px;text-align:right}.label{font-weight:600}

@@ -9,7 +9,7 @@
     <div class="news-table">
       <div class="table-header">
         <div class="col-month">발간 월</div>
-        <div class="col-challenges">수행 도전 목록</div>
+        <div class="col-challenges">수행한 도전</div>
         <div class="col-date header-date">발간일자</div>
         <div class="col-action">PDF</div>
       </div>
@@ -330,7 +330,7 @@ onMounted(async () => {
 
 <style scoped>
 .container {
-  max-width: 1200px;
+  max-width: 1300px; /* 기존 1200px에서 1300px로 증가 */
   margin: 40px auto;
   padding: 0 20px;
   font-family: 'Noto Sans KR', sans-serif;
@@ -362,14 +362,15 @@ onMounted(async () => {
   margin-bottom: 30px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   background-color: white;
+  width: 100%; /* 테이블 전체 너비 사용 */
 }
 
 .table-header {
   display: grid;
-  grid-template-columns: 1.2fr 2.5fr 1.2fr 1fr;
+  grid-template-columns: 200px 1fr 200px 200px; /* 고정 너비로 세로줄 일정하게 */
   background-color: white;
   font-weight: 600;
-  font-size: 18px;
+  font-size: 20px; /* 헤더 폰트 크기 20px */
   color: #374151;
 }
 
@@ -386,14 +387,9 @@ onMounted(async () => {
   border-right: none;
 }
 
-/* 발간일자 헤더 볼드 추가 */
-.header-date {
-  font-weight: 700 !important;
-}
-
 .table-row {
   display: grid;
-  grid-template-columns: 1.2fr 2.5fr 1.2fr 1fr;
+  grid-template-columns: 200px 1fr 200px 200px; /* 헤더와 동일한 고정 너비 */
   border-bottom: 1px solid #f3f4f6;
   transition: background-color 0.15s;
   min-height: 80px;
@@ -413,6 +409,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   border-right: 1px solid #f3f4f6;
+  font-size: 18px; /* 기본 폰트 크기 18px */
 }
 
 .table-row > div:last-child {
@@ -427,9 +424,9 @@ onMounted(async () => {
 }
 
 .month-label {
-  font-weight: 800;
+  font-weight: bold; /* 월 표시 볼드 */
   color: #1f2937;
-  font-size: 16px;
+  font-size: 19px;
 }
 
 .col-challenges {
@@ -450,10 +447,11 @@ onMounted(async () => {
 }
 
 .challenges-list li {
-  font-size: 16px;
+  font-size: 18px;
   color: #4b5563;
   line-height: 1.5;
   margin-bottom: 4px;
+  font-weight: normal; /* 리스트 항목은 볼드 아님 */
 }
 
 .challenges-list li:last-child {
@@ -461,15 +459,16 @@ onMounted(async () => {
 }
 
 .no-challenges {
-  font-size: 13px;
+  font-size: 18px;
   color: #9ca3af;
   font-style: italic;
+  font-weight: normal;
 }
 
 .col-date {
   font-size: 18px;
   color: #4b5563;
-  font-weight: 800;
+  font-weight: bold; /* 날짜는 볼드 아님 */
 }
 
 .col-action {
@@ -480,8 +479,8 @@ onMounted(async () => {
   border: none;
   border-radius: 8px;
   padding: 10px 20px;
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 16px;
+  font-weight: bold; /* 버튼 텍스트만 볼드 */
   cursor: pointer;
   transition: all 0.2s;
   min-width: 80px;
@@ -509,13 +508,14 @@ onMounted(async () => {
 }
 
 .no-content-label {
-  font-size: 12px;
+  font-size: 14px;
   color: #9ca3af;
   background-color: #f3f4f6;
   padding: 8px 12px;
   border-radius: 6px;
   border: 1px solid #e5e7eb;
   cursor: help;
+  font-weight: normal;
 }
 
 .no-data {
@@ -631,16 +631,24 @@ onMounted(async () => {
 @media (max-width: 768px) {
   .container {
     padding: 0 16px;
+    max-width: 100%;
   }
   
   .table-header,
   .table-row {
-    grid-template-columns: 1fr 2fr 1fr 1fr;
-    font-size: 14px;
+    grid-template-columns: 80px 1fr 100px 100px; /* 모바일에서도 고정 너비 */
+  }
+  
+  .table-header {
+    font-size: 16px; /* 모바일에서 헤더 폰트 크기 조정 */
+  }
+  
+  .table-row > div {
+    font-size: 14px; /* 모바일에서 내용 폰트 크기 조정 */
   }
   
   .challenges-list li {
-    font-size: 12px;
+    font-size: 14px;
   }
   
   .action-btn {
