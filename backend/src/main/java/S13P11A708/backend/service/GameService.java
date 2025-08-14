@@ -245,9 +245,7 @@ public class GameService {
                 winnerEntity,
                 game.getStartedAt(),
                 LocalDateTime.now(),
-                game.getTotalRound(),
-                room.getMusicEra(),
-                room.getCategory()
+                game.getTotalRound()
         );
 
         //3-2. 게임 결과 기록 GameHistoryUser
