@@ -28,4 +28,5 @@ public class TrotQuiz extends BaseEntity {
 
     @Column(name = "url")
     private String url;
+
 }
