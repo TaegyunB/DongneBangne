@@ -9,6 +9,7 @@
     <div class="news-table">
       <div class="table-header">
         <div class="col-month">발간 월</div>
+        <div class="col-challenges">수행 도전 목록</div>
         <div class="col-date header-date">발간일자</div>
         <div class="col-action">PDF</div>
       </div>
@@ -23,8 +24,18 @@
             <div class="month-label">
               {{ news.month }}월
             </div>
-            <div class="news-description">
-              {{ getNewsDescription(news) }}
+          </div>
+          
+          <div class="col-challenges">
+            <div class="challenges-list" v-if="getChallengeNames(news).length > 0">
+              <ul>
+                <li v-for="challengeName in getChallengeNames(news)" :key="challengeName">
+                  {{ challengeName }}
+                </li>
+              </ul>
+            </div>
+            <div v-else class="no-challenges">
+              완료된 도전과제가 없습니다
             </div>
           </div>
           
@@ -207,21 +218,15 @@ const visiblePages = computed(() => {
   return pages
 })
 
-// 신문 설명 생성
-const getNewsDescription = (news) => {
+// 도전과제 이름 목록 가져오기 (bullet point 용)
+const getChallengeNames = (news) => {
   if (news.challenges && news.challenges.length > 0) {
-    const challengeNames = news.challenges
-      .filter(c => c.challengeName || c.challengeTitle)
+    return news.challenges
+      .filter(c => (c.challengeName || c.challengeTitle) && c.isSuccess)
       .map(c => c.challengeName || c.challengeTitle)
-      .slice(0, 4) // 최대 4개까지만 표시
-      .join('|')
-    
-    if (challengeNames) {
-      return `${challengeNames}`
-    }
+      .slice(0, 6) // 최대 6개까지만 표시
   }
-  
-  return '이번 달의 도전과제 활동 내용입니다.'
+  return []
 }
 
 // 발간일자 포맷팅 (현재 날짜 기준)
@@ -325,7 +330,7 @@ onMounted(async () => {
 
 <style scoped>
 .container {
-  max-width: 900px;
+  max-width: 1200px;
   margin: 40px auto;
   padding: 0 20px;
   font-family: 'Noto Sans KR', sans-serif;
@@ -361,13 +366,11 @@ onMounted(async () => {
 
 .table-header {
   display: grid;
-  grid-template-columns: 3fr 1.5fr 1fr;
+  grid-template-columns: 1.2fr 2.5fr 1.2fr 1fr;
   background-color: white;
   font-weight: 600;
   font-size: 18px;
   color: #374151;
-  /* justify-content: center; */
-  align-items: center;
 }
 
 .table-header > div {
@@ -390,7 +393,7 @@ onMounted(async () => {
 
 .table-row {
   display: grid;
-  grid-template-columns: 3fr 1.5fr 1fr;
+  grid-template-columns: 1.2fr 2.5fr 1.2fr 1fr;
   border-bottom: 1px solid #f3f4f6;
   transition: background-color 0.15s;
   min-height: 80px;
@@ -429,11 +432,38 @@ onMounted(async () => {
   font-size: 16px;
 }
 
-.news-description {
+.col-challenges {
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  text-align: left !important;
+}
+
+.challenges-list {
+  width: 100%;
+}
+
+.challenges-list ul {
+  margin: 0;
+  padding-left: 16px;
+  list-style-type: disc;
+}
+
+.challenges-list li {
+  font-size: 16px;
+  color: #4b5563;
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+
+.challenges-list li:last-child {
+  margin-bottom: 0;
+}
+
+.no-challenges {
   font-size: 13px;
-  color: #6b7280;
-  line-height: 1.4;
-  max-width: 100%;
+  color: #9ca3af;
+  font-style: italic;
 }
 
 .col-date {
@@ -605,11 +635,12 @@ onMounted(async () => {
   
   .table-header,
   .table-row {
-    grid-template-columns: 2fr 1fr 1fr;
+    grid-template-columns: 1fr 2fr 1fr 1fr;
+    font-size: 14px;
   }
   
-  .news-description {
-    display: none;
+  .challenges-list li {
+    font-size: 12px;
   }
   
   .action-btn {
