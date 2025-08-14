@@ -366,7 +366,7 @@ onMounted(async () => {
 
 .table-header {
   display: grid;
-  grid-template-columns: 1.2fr 2.5fr 1.2fr 1fr;
+  grid-template-columns: 1.8fr 3.0fr 1.5fr 1.2fr;
   background-color: white;
   font-weight: 600;
   font-size: 18px;
@@ -450,7 +450,7 @@ onMounted(async () => {
 }
 
 .challenges-list li {
-  font-size: 16px;
+  font-size: 18px;
   color: #4b5563;
   line-height: 1.5;
   margin-bottom: 4px;
@@ -469,7 +469,7 @@ onMounted(async () => {
 .col-date {
   font-size: 18px;
   color: #4b5563;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .col-action {
@@ -480,7 +480,7 @@ onMounted(async () => {
   border: none;
   border-radius: 8px;
   padding: 10px 20px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
   cursor: pointer;
   transition: all 0.2s;
