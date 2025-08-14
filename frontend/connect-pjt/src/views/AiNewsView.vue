@@ -426,7 +426,7 @@ onMounted(async () => {
 .month-label {
   font-weight: bold; /* 월 표시 볼드 */
   color: #1f2937;
-  font-size: 18px;
+  font-size: 19px;
 }
 
 .col-challenges {
@@ -468,7 +468,7 @@ onMounted(async () => {
 .col-date {
   font-size: 18px;
   color: #4b5563;
-  font-weight: normal; /* 날짜는 볼드 아님 */
+  font-weight: bold; /* 날짜는 볼드 아님 */
 }
 
 .col-action {
