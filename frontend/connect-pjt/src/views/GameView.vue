@@ -67,45 +67,69 @@ export default {
           this.handleReady(readyData);
         }
         else if(data.type === 'start-game'){
-          // WebSockt으로 연결
+          // WebSocket으로 연결
           console.log('Unity → Vue 게임 시작 요청:');
+          const gameData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data
+          
+          // roomId 설정
+          if (gameData.roomId) {
+            this.roomId = gameData.roomId
+            console.log('🎮 게임방 ID 설정:', this.roomId)
+          }
+          
+          this.connectStompWebSocket();
+        }
+        else if(data.type === 'answer-submit'){
+          // 정답 제출
+          const answerData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data
+          this.sendAnswerToServer(answerData);
+        }
+        else if(data.type === 'hint-request'){
+          // 힌트 요청
+          const hintData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data
+          this.sendHintRequestToServer(hintData);
         }
       } catch (error) {
         console.error('메시지 파싱 오류:', error)
       }
     })
 
+
+    
+
     // 유저 정보 받아오기
-    try {
+    // try {
+    //   // Unity가 준비되었는지 확인
+    //   if(this.isUnityReady){
 
-      // Unity가 준비되었는지 확인
-      if(this.isUnityReady){
+    //     // 유저 정보 받아오기
+    //     await this.getUserInfo();
 
-        // 유저 정보 받아오기
-        await this.getUserInfo();
+    //     // 방 정보 받아오기
+    //     await this.getRoomList();
+    //   }
+    //   else{
+    //     const onUnityReady = (event) => {
+    //         try {
+    //           const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
+    //           if (data && data.type === 'unity-ready') {
+    //             this.isUnityReady = true
+    //             this.getUserInfo();
+    //             this.getRoomList();
+    //           }
+    //         } catch (_) {}
+    //       }
+    //       window.addEventListener('message', onUnityReady, { once: true })
+    //   }
+    // }catch(error){
+    //   console.error('유저 정보 조회 실패:', error);
+    // }
 
-        // 방 정보 받아오기
-        await this.getRoomList();
-      }
-      else{
-        const onUnityReady = (event) => {
-            try {
-              const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
-              if (data && data.type === 'unity-ready') {
-                this.isUnityReady = true
-                this.getUserInfo();
-                this.getRoomList();
-              }
-            } catch (_) {}
-          }
-          window.addEventListener('message', onUnityReady, { once: true })
-      }
-    }catch(error){
-      console.error('유저 정보 조회 실패:', error);
-    }
+    // STOMP 연결
+    this.connectStompWebSocket();
 
     // STOMP WebSocket 연결 시작
-    // this.connectStompWebSocket()
+    // this.connectStompWebSocket() // Unity에서 start-game 메시지로 연결
 
     // try {
     //   await this.initLocalMedia() // 카메라, 마이크 준비
@@ -572,11 +596,8 @@ export default {
           // 구독할 토픽들
           this.subscribeToTopics()
           
-                  // 연결 확인 메시지 전송
-        this.sendStompMessage('/pub/test', {
-          message: 'STOMP 연결 테스트',
-          timestamp: new Date().toISOString()
-        })
+          // 연결 성공 로그만 출력
+          console.log('🎮 STOMP 연결 완료 - 게임 준비됨')
         }
 
         // 연결 실패 시 콜백
@@ -604,10 +625,167 @@ export default {
         return
       }
 
-      // 연결 확인용 메시지 구독
-      this.stompClient.subscribe('/sub/test', (message) => {
-        console.log('✅ 연결 확인 메시지 수신:', message.body)
-      })
+      try {
+        // 1. 기본 구독 경로 (/sub)
+        this.stompClient.subscribe('/sub', (message) => {
+          console.log('✅ 기본 메시지 수신:', message.body)
+        })
+
+        // 2. 특정 게임방 구독 (/sub/games/{roomId})
+        if (this.roomId && this.roomId !== 'default') {
+          this.stompClient.subscribe(`/sub/games/${this.roomId}`, (message) => {
+            console.log('🎮 게임방 메시지 수신:', message.body)
+            this.handleGameMessage(JSON.parse(message.body))
+          })
+        }
+
+        console.log('📡 STOMP 토픽 구독 완료')
+      } catch (error) {
+        console.error('STOMP 토픽 구독 오류:', error)
+      }
+    },
+
+    // 게임 메시지 처리
+    handleGameMessage(message) {
+      console.log('🎮 게임 메시지 처리:', message)
+      
+      try {
+        const { type, data } = message
+        
+        switch (type) {
+          case 'GAME_START':
+            this.handleGameStart(data)
+            break
+          case 'ROUND_QUESTION':
+            this.handleRoundQuestion(data)
+            break
+          case 'ROUND_END':
+            this.handleRoundEnd(data)
+            break
+          case 'GAME_END':
+            this.handleGameEnd(data)
+            break
+          case 'ANSWER_RESULT':
+            this.handleAnswerResult(data)
+            break
+          case 'ANSWER_REJECTED':
+            this.handleAnswerRejected(data)
+            break
+          case 'HINT_RESPONSE':
+            this.handleHintResponse(data)
+            break
+          case 'HINT_REJECTED':
+            this.handleHintRejected(data)
+            break
+          default:
+            console.warn('알 수 없는 게임 메시지 타입:', type)
+        }
+      } catch (error) {
+        console.error('게임 메시지 처리 오류:', error)
+      }
+    },
+
+    // 게임 시작 처리
+    handleGameStart(data) {
+      console.log('🎮 게임 시작:', data)
+      this.sendToUnity('game-start', data)
+    },
+
+    // 라운드 문제 처리
+    handleRoundQuestion(data) {
+      console.log('❓ 라운드 문제:', data)
+      this.sendToUnity('round-question', data)
+    },
+
+    // 라운드 종료 처리
+    handleRoundEnd(data) {
+      console.log('🏁 라운드 종료:', data)
+      this.sendToUnity('round-end', data)
+    },
+
+    // 게임 종료 처리
+    handleGameEnd(data) {
+      console.log('🎯 게임 종료:', data)
+      this.sendToUnity('game-end', data)
+    },
+
+    // 정답 결과 처리
+    handleAnswerResult(data) {
+      console.log('✅ 정답 결과:', data)
+      this.sendToUnity('answer-result', data)
+    },
+
+    // 정답 거부 처리
+    handleAnswerRejected(data) {
+      console.log('❌ 정답 거부:', data)
+      this.sendToUnity('answer-rejected', data)
+    },
+
+    // 힌트 응답 처리
+    handleHintResponse(data) {
+      console.log('💡 힌트 응답:', data)
+      this.sendToUnity('hint-response', data)
+    },
+
+    // 힌트 거부 처리
+    handleHintRejected(data) {
+      console.log('🚫 힌트 거부:', data)
+      this.sendToUnity('hint-rejected', data)
+    },
+
+    // Unity로 메시지 전송
+    sendToUnity(type, data) {
+      const unityFrame = this.$refs.unityFrame
+      if (unityFrame && unityFrame.contentWindow) {
+        unityFrame.contentWindow.postMessage(
+          JSON.stringify({
+            type: type,
+            data: JSON.stringify(data)
+          }),
+          '*'
+        )
+        console.log('🎮 Vue → Unity 전송:', type, data)
+      }
+    },
+
+    // 정답 제출 (클라이언트 → 서버)
+    sendAnswerToServer(answerData) {
+      try {
+        const message = {
+          type: 'ANSWER_SUBMIT',
+          data: {
+            roomId: this.roomId,
+            userId: this.localId,
+            answer: answerData.answer,
+            timestamp: new Date().toISOString()
+          }
+        }
+        
+        this.sendStompMessage('/games/answer', message)
+        console.log('📤 정답 제출 전송:', message)
+      } catch (error) {
+        console.error('정답 제출 전송 오류:', error)
+      }
+    },
+
+    // 힌트 요청 (클라이언트 → 서버)
+    sendHintRequestToServer(hintData) {
+      try {
+        const message = {
+          type: 'HINT_REQUEST',
+          data: {
+            roomId: this.roomId,
+            userId: this.localId,
+            hintType: hintData.hintType,
+            timestamp: new Date().toISOString()
+          }
+        }
+        
+        this.sendStompMessage('/games/hint', message)
+        console.log('💡 힌트 요청 전송:', message)
+      } catch (error) {
+        console.error('힌트 요청 전송 오류:', error)
+      }
     },
 
     // STOMP 메시지 전송 (/pub로 클라이언트에서 서버로)
