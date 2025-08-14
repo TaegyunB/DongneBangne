@@ -20,8 +20,15 @@
         </div>
       </div>
 
+      <!-- 이미지 표시 개선 -->
       <div v-if="board.boardImage" class="image">
-        <img :src="board.boardImage" alt="게시글 이미지" />
+        <img 
+          :src="getBoardImage(board)" 
+          alt="게시글 이미지" 
+          crossorigin="anonymous"
+          @error="onImageError($event, board)"
+          @load="onImageLoad($event, board)"
+        />
       </div>
 
       <div class="content">{{ board.content }}</div>
@@ -36,25 +43,41 @@
 
         <div class="spacer"></div>
 
-        <!-- [OWNER-GATE] 작성자만 보임 -->
+        <!-- 작성자만 수정/삭제 노출 -->
         <template v-if="isOwner">
           <RouterLink
             :to="{ name:'communityEdit', params:{ boardId: board.boardId }, query:{ category: listQueryCategory } }"
             class="edit-button"
           >수정</RouterLink>
-          <button class="delete-button" :disabled="deleting" @click="handleDelete">삭제</button>
+          <button class="delete-button" :disabled="deleting" @click="openConfirm">삭제</button>
         </template>
 
         <button class="back-button" @click="goBack">목록으로</button>
       </div>
     </template>
+
+    <!-- 삭제 확인 모달 -->
+    <div v-if="showConfirm" class="modal-backdrop" @click.self="closeConfirm">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+        <h3 id="confirmTitle" class="modal-title">삭제하시겠어요?</h3>
+        <p class="modal-desc">이 작업은 되돌릴 수 없습니다.</p>
+        <div class="modal-actions">
+          <button class="modal-cancel" @click="closeConfirm">취소</button>
+          <button class="modal-danger" :disabled="deleting" @click="confirmDelete">
+            {{ deleting ? '삭제 중...' : '삭제' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/api/axios'
+import { getAccessToken } from '@/utils/token'
+import defaultImage from '@/assets/default_image.png'
 
 const route = useRoute()
 const router = useRouter()
@@ -65,7 +88,7 @@ const error = ref(false)
 
 const board = ref({
   boardId: null,
-  userId: null,            // [HINT] 백이 주면 사용
+  userId: null,
   nickname: '',
   seniorCenterName: '',
   title: '',
@@ -81,14 +104,66 @@ const liked = ref(false)
 const likeCount = ref(0)
 
 const deleting = ref(false)
+const showConfirm = ref(false)
 
-// (선택) 내 정보. 백에 /api/v1/users/me 같은 게 있으면 사용, 없으면 실패해도 무시
 const me = ref(null)
+
+// 이미지 처리 함수들 추가
+const getBoardImage = (boardData) => {
+  console.log('=== 게시글 이미지 디버깅 ===')
+  console.log('Board 객체:', boardData)
+  console.log('Board Image URL:', boardData.boardImage)
+  
+  if (!boardData.boardImage) {
+    console.log('📷 게시글 이미지 URL 없음 - 기본 이미지 사용')
+    return defaultImage
+  }
+  
+  if (boardData.boardImage.includes('amazonaws.com') || 
+      boardData.boardImage.includes('s3')) {
+    console.log('✅ 게시글 S3 URL 감지:', boardData.boardImage)
+  }
+  
+  return boardData.boardImage
+}
+
+// 이미지 에러 핸들링
+const onImageError = (event, boardData) => {
+  console.error('❌ 게시글 이미지 로드 실패:', {
+    src: event.target.src,
+    boardId: boardData.boardId,
+    boardImage: boardData.boardImage,
+    error: event,
+    errorType: event.target.src.includes('s3') ? 'S3 CORS/권한 문제' : '기타 오류'
+  })
+  
+  if (event.target.src.includes('s3') || event.target.src.includes('amazonaws')) {
+    console.warn('🔒 게시글 S3 이미지 로드 실패 - CORS 또는 권한 문제일 가능성')
+  }
+  
+  // 기본 이미지로 대체
+  event.target.src = defaultImage
+}
+
+const onImageLoad = (event, boardData) => {
+  console.log('✅ 게시글 이미지 로드 성공:', {
+    src: event.target.src,
+    boardId: boardData.boardId
+  })
+}
+
+// 토큰이 있으면 헤더에 추가(없으면 쿠키로만 요청)
+const headersWithToken = () => {
+  const token = getAccessToken?.()
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+// 선택: 내 정보
 const fetchMe = async () => {
   try {
-    const { data } = await api.get('/api/v1/users/me')
-    me.value = data // {userId, nickname, ...} 형태 가정
-  } catch { /* 없으면 무시 */ }
+    const { data } = await api.get('/api/v1/users/me', { headers: headersWithToken() })
+    me.value = data
+  } catch { /* 미제공/비로그인 시 무시 */ }
 }
 
 // 카테고리
@@ -134,7 +209,7 @@ const normalize = (raw) => ({
   likeCount: Number(raw?.likeCount ?? 0),
 })
 
-// [OWNER-GATE] 작성자 판단(여러 백 케이스 지원)
+// 작성자 판별(가능한 정보로만)
 const isOwner = computed(() => {
   const b = board.value
   if ('isOwner' in b) return !!b.isOwner
@@ -148,12 +223,20 @@ const fetchDetail = async () => {
   loading.value = true
   error.value = false
   try {
-    const { data } = await api.get(`/api/v1/boards/${boardId.value}`)
+    const { data } = await api.get(`/api/v1/boards/${boardId.value}`, {
+      headers: headersWithToken()
+    })
     const row = normalize(data || {})
     board.value = row
     likeCount.value = row.likeCount
     liked.value = Boolean(row?.liked ?? row?.isLiked ?? false)
   } catch (e) {
+    const status = e?.response?.status
+    if (status === 401) {
+      alert('로그인이 필요합니다.')
+      router.push({ name: 'onboarding' })
+      return
+    }
     console.error('상세 조회 실패:', e)
     error.value = true
   } finally {
@@ -164,32 +247,80 @@ const fetchDetail = async () => {
 const toggleLike = async () => {
   if (likeBusy.value) return
   likeBusy.value = true
+
+  // 낙관적 업데이트
+  const prevLiked = liked.value
+  const prevCount = likeCount.value
+  liked.value = !prevLiked
+  likeCount.value = prevLiked ? Math.max(0, prevCount - 1) : prevCount + 1
+
   try {
-    if (liked.value) {
-      await api.delete(`/api/v1/boards/${boardId.value}/like`)
-      liked.value = false
-      likeCount.value = Math.max(0, likeCount.value - 1)
-    } else {
-      await api.post(`/api/v1/boards/${boardId.value}/like`)
-      liked.value = true
-      likeCount.value += 1
+    // 백엔드가 POST 토글 방식이므로 항상 POST만 사용
+    const { data } = await api.post(`/api/v1/boards/${boardId.value}/like`, null, { 
+      headers: headersWithToken() 
+    })
+    
+    // 백엔드 응답으로 실제 상태 동기화
+    if (data) {
+      liked.value = data.isLiked ?? data.liked ?? !prevLiked
+      likeCount.value = data.likeCount ?? data.like_count ?? likeCount.value
     }
+    
   } catch (e) {
-    console.error('좋아요 처리 실패:', e)
-    alert('좋아요 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.')
+    // 실패 시 롤백
+    liked.value = prevLiked
+    likeCount.value = prevCount
+    
+    const status = e?.response?.status
+    if (status === 401) {
+      alert('로그인이 필요합니다.')
+      router.push({ name: 'onboarding' })
+    } else {
+      console.error('좋아요 처리 실패:', e)
+      console.error('에러 상세:', {
+        status,
+        data: e?.response?.data,
+        config: e?.config
+      })
+      alert('좋아요 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.')
+    }
   } finally {
     likeBusy.value = false
   }
 }
 
-const handleDelete = async () => {
-  if (!confirm('정말 삭제하시겠습니까?')) return
+const openConfirm = () => {
+  showConfirm.value = true
+  document.addEventListener('keydown', onEscClose)
+}
+const closeConfirm = () => {
+  showConfirm.value = false
+  document.removeEventListener('keydown', onEscClose)
+}
+const onEscClose = (e) => {
+  if (e.key === 'Escape') closeConfirm()
+}
+
+const confirmDelete = async () => {
+  if (deleting.value) return
   deleting.value = true
   try {
-    await api.delete(`/api/v1/boards/${boardId.value}`)
+    await api.delete(`/api/v1/boards/${boardId.value}`, { headers: headersWithToken() })
     alert('삭제되었습니다.')
+    closeConfirm()
     goBack()
   } catch (e) {
+    const status = e?.response?.status
+    if (status === 401) {
+      alert('로그인이 필요합니다.')
+      router.push({ name: 'onboarding' })
+      return
+    }
+    if (status === 403) {
+      alert('삭제 권한이 없습니다.')
+      closeConfirm()
+      return
+    }
     console.error('삭제 실패:', e)
     alert('삭제에 실패했습니다.')
   } finally {
@@ -206,6 +337,7 @@ onMounted(async () => {
   await Promise.all([fetchMe(), fetchDetail()])
 })
 watch(boardId, fetchDetail)
+onBeforeUnmount(() => document.removeEventListener('keydown', onEscClose))
 </script>
 
 <style scoped>
@@ -224,4 +356,15 @@ watch(boardId, fetchDetail)
 .badge{display:inline-flex;align-items:center;padding:4px 10px;border-radius:9999px;font-size:12px;font-weight:700}
 .badge--all{background:#f3f4f6;color:#1f2937}.badge--popular{background:#fee2e2;color:#b91c1c}.badge--chat{background:#dbeafe;color:#1e40af}
 .badge--share{background:#dcfce7;color:#14532d}.badge--info{background:#ede9fe;color:#6d28d9}.badge--hobby{background:#ffedd5;color:#9a3412}
+
+/* 모달 */
+.modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.modal{width:100%;max-width:420px;background:#fff;border-radius:12px;border:1px solid #e5e7eb;box-shadow:0 10px 30px rgba(2,6,23,.2);padding:18px}
+.modal-title{font-size:18px;font-weight:800;color:#0f172a;margin:0 0 6px}
+.modal-desc{font-size:14px;color:#475569;margin:0 0 14px}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px}
+.modal-cancel{border:1px solid #d1d5db;background:#fff;border-radius:8px;padding:8px 12px;cursor:pointer}
+.modal-danger{border:none;background:#ef4444;color:#fff;border-radius:8px;padding:8px 12px;cursor:pointer}
+.modal-cancel:hover{background:#f3f4f6}
+.modal-danger:hover{background:#dc2626}
 </style>

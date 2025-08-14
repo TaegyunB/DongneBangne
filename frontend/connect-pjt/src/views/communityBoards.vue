@@ -69,6 +69,10 @@
                 <span :class="badgeClass(displayCategory(item.category))">
                   {{ displayCategory(item.category) }}
                 </span>
+                <!-- 이미지 첨부 표시 추가 -->
+                <span v-if="item.boardImage" class="image-indicator" title="이미지 첨부됨">
+                  사진 첨부
+                </span>
               </div>
 
               <div class="card-title" :title="item.content">
@@ -123,7 +127,8 @@ const getMappedCategory = category => categoryToApi[category] || 'all'
 const normalizeBoard = b => ({
   ...b,
   likeCount: Number(b?.likeCount ?? b?.likes ?? b?.likeCnt ?? b?.like ?? 0),
-  category: (b?.category || '').toString().toUpperCase()
+  category: (b?.category || '').toString().toUpperCase(),
+  boardImage: b?.boardImage || b?.image || null // 이미지 필드 정규화
 })
 
 // 목록 조회 (요청은 영문 코드로)
@@ -345,7 +350,16 @@ const goToDetail = boardId => {
   gap: 16px;
 }
 .card-main { flex: 1; min-width: 0; }
-.card-header { margin-bottom: 8px; }
+
+/* 카드 헤더 - 뱃지와 이미지 표시기를 나란히 */
+.card-header { 
+  margin-bottom: 8px; 
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .card-title {
   font-size: 18px;  /* 가독성 향상 */
   font-weight: 700;
@@ -383,6 +397,18 @@ const goToDetail = boardId => {
 .badge--share   { background: #dcfce7; color: #14532d; }
 .badge--info    { background: #ede9fe; color: #6d28d9; }
 .badge--hobby   { background: #ffedd5; color: #9a3412; }
+
+/* 이미지 첨부 표시기 */
+.image-indicator {
+  font-size: 11px;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 3px 6px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  font-weight: 500;
+  white-space: nowrap;
+}
 
 /* 빈 상태 */
 .empty {

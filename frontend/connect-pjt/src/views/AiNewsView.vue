@@ -9,8 +9,8 @@
     <div class="news-table">
       <div class="table-header">
         <div class="col-month">발간 월</div>
-        <div class="col-date">발간일자</div>
-        <div class="col-action">액션</div>
+        <div class="col-date header-date">발간일자</div>
+        <div class="col-action">PDF</div>
       </div>
       
       <div class="table-body">
@@ -29,7 +29,7 @@
           </div>
           
           <div class="col-date">
-            {{ news.year }}.{{ String(news.month).padStart(2, '0') }}.{{ getLastDay(news.year, news.month) }}
+            {{ formatPublishDate(news) }}
           </div>
           
           <div class="col-action">
@@ -213,20 +213,35 @@ const getNewsDescription = (news) => {
     const challengeNames = news.challenges
       .filter(c => c.challengeName || c.challengeTitle)
       .map(c => c.challengeName || c.challengeTitle)
-      .slice(0, 3) // 최대 3개까지만 표시
-      .join(', ')
+      .slice(0, 4) // 최대 4개까지만 표시
+      .join('|')
     
     if (challengeNames) {
-      return `${challengeNames} 활동을 하며 추억을 나누...`
+      return `${challengeNames}`
     }
   }
   
   return '이번 달의 도전과제 활동 내용입니다.'
 }
 
-// 해당 월의 마지막 날 구하기
-const getLastDay = (year, month) => {
-  return new Date(year, month, 0).getDate()
+// 발간일자 포맷팅 (현재 날짜 기준)
+const formatPublishDate = (news) => {
+  // 신문이 생성된 날짜가 있으면 그 날짜를 사용, 없으면 현재 날짜 사용
+  let publishDate
+  
+  if (news.createdAt) {
+    // API에서 생성일시를 제공하는 경우
+    publishDate = new Date(news.createdAt)
+  } else {
+    // 생성일시가 없으면 현재 날짜 사용
+    publishDate = new Date()
+  }
+  
+  const year = publishDate.getFullYear()
+  const month = String(publishDate.getMonth() + 1).padStart(2, '0')
+  const day = String(publishDate.getDate()).padStart(2, '0')
+  
+  return `${year}.${month}.${day}`
 }
 
 // 완료된 도전과제가 있는지 확인
@@ -322,14 +337,14 @@ onMounted(async () => {
 }
 
 .header h1 {
-  font-size: 28px;
+  font-size: 32px;
   font-weight: bold;
   margin-bottom: 12px;
   color: #333;
 }
 
 .header h3 {
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 400;
   color: #666;
   line-height: 1.5;
@@ -341,15 +356,18 @@ onMounted(async () => {
   overflow: hidden;
   margin-bottom: 30px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  background-color: white;
 }
 
 .table-header {
   display: grid;
   grid-template-columns: 3fr 1.5fr 1fr;
-  background-color: #f9fafb;
+  background-color: white;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 18px;
   color: #374151;
+  /* justify-content: center; */
+  align-items: center;
 }
 
 .table-header > div {
@@ -363,6 +381,11 @@ onMounted(async () => {
 
 .table-header > div:last-child {
   border-right: none;
+}
+
+/* 발간일자 헤더 볼드 추가 */
+.header-date {
+  font-weight: 700 !important;
 }
 
 .table-row {
@@ -395,13 +418,13 @@ onMounted(async () => {
 
 .col-month {
   flex-direction: column !important;
-  align-items: flex-start !important;
+  align-items: center !important;
   gap: 8px;
   justify-content: center !important;
 }
 
 .month-label {
-  font-weight: 600;
+  font-weight: 800;
   color: #1f2937;
   font-size: 16px;
 }
@@ -414,9 +437,9 @@ onMounted(async () => {
 }
 
 .col-date {
-  font-size: 14px;
+  font-size: 18px;
   color: #4b5563;
-  font-weight: 500;
+  font-weight: 800;
 }
 
 .col-action {
@@ -428,7 +451,7 @@ onMounted(async () => {
   border-radius: 8px;
   padding: 10px 20px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 800;
   cursor: pointer;
   transition: all 0.2s;
   min-width: 80px;
@@ -436,22 +459,22 @@ onMounted(async () => {
 }
 
 .view-btn {
-  background-color: #8b5cf6;
+  background-color: #4A90E2;
   color: white;
 }
 
 .view-btn:hover {
-  background-color: #7c3aed;
+  background-color: #1e7ae3;
   transform: translateY(-1px);
 }
 
 .generate-pdf-btn {
-  background-color: #10b981;
+  background-color: #fed800;
   color: white;
 }
 
 .generate-pdf-btn:hover:not(:disabled) {
-  background-color: #059669;
+  background-color: #feb200;
   transform: translateY(-1px);
 }
 

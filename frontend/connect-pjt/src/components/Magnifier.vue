@@ -21,7 +21,7 @@
       </svg>
     </div>
 
-    <!-- 안내 팝업 -->
+    <!-- 안내 팝업 (렌즈 ON: 해제 안내) -->
     <div 
       v-if="showPopup && isActive"
       class="help-popup"
@@ -32,6 +32,19 @@
         <div class="popup-arrow"></div>
       </div>
     </div>
+
+    <!-- 안내 팝업 (렌즈 OFF: 메인페이지 전용 클릭 유도) -->
+    <div
+      v-if="isMainPage && !isActive && shouldShowMagnifier"
+      class="help-popup"
+      :style="popupStyle"
+    >
+      <div class="popup-content">
+        <span>돋보기를 클릭해주세요</span>
+        <div class="popup-arrow"></div>
+      </div>
+    </div>
+
 
     <!-- 돋보기 렌즈 -->
     <div 
@@ -63,19 +76,29 @@ export default {
       mouseY: 0,
       lensSize: 400, // 2배로 확대
       zoomLevel: 2,
-      excludedRoutes: ['/games', '/webrtc'],
+      // excludedRoutes: ['/games', '/webrtc','/login'],
       showPopup: false,
       popupTimer: null,
       domObserver: null,
-      updateTimer: null
+      updateTimer: null,
+      showClickGuide:false
     }
   },
   computed: {
     shouldShowMagnifier() {
-      const currentPath = this.$route?.path || '';
-      return !this.excludedRoutes.some(route => 
-        currentPath.startsWith(route)
-      );
+      // 기존 코드를 이것으로 교체
+      // const currentPath = this.$route?.path || '';
+      // return !this.excludedRoutes.some(route => 
+      //   currentPath.startsWith(route)
+      // );
+      
+      // 새로운 코드: 라우터 meta를 확인
+      return !this.$route?.meta?.hideMagnifier;
+    },
+    
+    isMainPage() {
+      const p = this.$route?.path || '';
+      return p === '/mainpage';
     },
     
     lensStyle() {
@@ -107,7 +130,7 @@ export default {
       // 돋보기 버튼 근처에 팝업 표시
       return {
         right: '90px', // 버튼 왼쪽에 표시
-        bottom: '80px'
+        bottom: '25px'
       }
     }
   },
@@ -225,8 +248,46 @@ export default {
           el.style.pointerEvents = 'none';
         });
         
+        // 페이지의 전체 크기 계산 (스크롤 영역 포함)
+        const documentHeight = Math.max(
+          document.body.scrollHeight,
+          document.body.offsetHeight,
+          document.documentElement.clientHeight,
+          document.documentElement.scrollHeight,
+          document.documentElement.offsetHeight
+        );
+        
+        const documentWidth = Math.max(
+          document.body.scrollWidth,
+          document.body.offsetWidth,
+          document.documentElement.clientWidth,
+          document.documentElement.scrollWidth,
+          document.documentElement.offsetWidth
+        );
+        
+        // 복사된 콘텐츠의 크기를 전체 문서 크기로 설정
+        const clonedHtml = htmlClone;
+        const clonedBody = htmlClone.querySelector('body');
+        
+        if (clonedHtml) {
+          clonedHtml.style.width = documentWidth + 'px';
+          clonedHtml.style.height = documentHeight + 'px';
+          clonedHtml.style.overflow = 'visible';
+        }
+        
+        if (clonedBody) {
+          clonedBody.style.width = documentWidth + 'px';
+          clonedBody.style.height = documentHeight + 'px';
+          clonedBody.style.overflow = 'visible';
+          clonedBody.style.position = 'relative';
+        }
+        
         // 내용 교체
-        content.innerHTML = htmlClone.outerHTML;
+        content.innerHTML = clonedHtml.outerHTML;
+        
+        // 돋보기 콘텐츠 컨테이너의 크기도 조정
+        content.style.width = documentWidth + 'px';
+        content.style.height = documentHeight + 'px';
       });
     },
 
@@ -386,11 +447,12 @@ export default {
 }
 
 .magnifier-content {
-  width: 100vw;
-  height: 100vh;
   position: absolute;
   overflow: hidden;
   pointer-events: none;
+  /* 크기는 JavaScript에서 동적으로 설정 */
+  min-width: 100vw;
+  min-height: 100vh;
 }
 
 /* 돋보기 내부 요소들의 상호작용 차단 */
