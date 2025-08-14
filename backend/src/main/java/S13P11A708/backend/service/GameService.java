@@ -95,7 +95,9 @@ public class GameService {
                 game.getRound(), game.getTotalRound(), game.getCurrentAnswer());
 
         //2. 이미 정답을 맞춘 사람인지
-        PlayerStatus player = gameRedisService.getPlayer(roomId, senderId);
+//        PlayerStatus player = gameRedisService.getPlayer(roomId, senderId);
+        //redis 호출 최소화
+        PlayerStatus player = game.getPlayerStatus(senderId);
         log.info("[3] 플레이어 상태: answered={}, correctCount={}",
                 player.isAnswered(), player.getCorrectCount());
 
