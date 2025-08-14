@@ -577,10 +577,11 @@ export default {
 
     // STOMP WebSocket 연결
     connectStompWebSocket() {
+
       try {
         // STOMP 클라이언트 생성
         this.stompClient = new Client({
-          brokerURL: 'ws://localhost:8080/ws-game', // WebSocket 엔드포인트
+          brokerURL: `wss://i13a708.p.ssafy.io/ws-game`, // WebSocket 엔드포인트
           debug: function (str) {
             console.log('STOMP Debug:', str)
           },
