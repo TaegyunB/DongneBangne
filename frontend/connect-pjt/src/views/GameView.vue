@@ -89,6 +89,12 @@ export default {
           const hintData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data
           this.sendHintRequestToServer(hintData);
         }
+        else if(data.type === 'unity-error'){
+          // Unity 오류 처리
+          console.error('Unity 오류 발생:', data.error);
+          // 사용자에게 오류 알림
+          alert(`Unity 로딩 오류: ${data.error}\n\n브라우저를 새로고침하거나 다른 브라우저를 사용해주세요.`);
+        }
       } catch (error) {
         console.error('메시지 파싱 오류:', error)
       }
