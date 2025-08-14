@@ -225,6 +225,7 @@ public class GameEndSocketTest {
             @Override public void afterConnected(StompSession session, StompHeaders ch) {
                 System.out.println("✅ [TEST] connected (tie)");
                 connected.countDown();
+
                 //웹소켓 구독 (서버 브로드캐스트를 받음)
                 String dest = "/sub/games/" + roomId;
                 System.out.println("▶ [TEST] SUB " + dest);
@@ -234,9 +235,14 @@ public class GameEndSocketTest {
                         GameEndSocketMessage msg = (GameEndSocketMessage) payload;
                         System.out.println("📨 [TEST] RECV " + msg.getType() + " '" + msg.getPayload() + "'");
                         inbox.add(msg);
-                        gotEnd.countDown();
+                        if (msg.getType() == GameMessageType.GAME_END) { // ✅ 이때만 카운트다운
+                            gotEnd.countDown();
+                        }
                     }
                 });
+
+                try { Thread.sleep(80); } catch (InterruptedException ignored) {}
+
                 System.out.println("▶ [TEST] TRIGGER handleAnswer(correct, tie)");
                 gameService.handleAnswer(roomId, u1, correct);
             }
@@ -244,14 +250,17 @@ public class GameEndSocketTest {
 
         stomp.connectAsync(wsUrl, handler).get(5, TimeUnit.SECONDS);
         assertTrue(connected.await(5, TimeUnit.SECONDS));
+
         assertTrue(gotEnd.await(15, TimeUnit.SECONDS));
 
         GameEndSocketMessage end = inbox.stream()
                 .filter(m -> m.getType() == GameMessageType.GAME_END)
-                .findFirst().orElseThrow();
+                .reduce((first, second) -> second)
+                .orElseThrow();
 
         assertEquals(roomId, end.getRoomId());
         assertTrue(end.getPayload().contains("무승부")); // 무승부 메시지 확인
         verify(userService, never()).addWinPoint(anyLong()); // 동점이면 포인트 부여 없음
     }
+
 }

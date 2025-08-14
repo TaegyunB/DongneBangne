@@ -9,6 +9,7 @@ import S13P11A708.backend.service.GameService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 
@@ -26,6 +27,8 @@ public class GameSocketController {
      */
     @MessageMapping("/games/answer")
     public void submitAnswer(GameAnsRequestMessage message, Principal principal) {
+        if (principal == null) throw new AccessDeniedException("Unauthenticated");
+
         Long userId = extractUserIdFromPrincipal(principal);
         Long roomId = message.getRoomId();
         String answer = message.getSubmitAnswer();
@@ -40,6 +43,8 @@ public class GameSocketController {
      */
     @MessageMapping("/games/hint")
     public void requestHint(GameHintRequestMessage message, Principal principal){
+        if (principal == null) throw new AccessDeniedException("Unauthenticated");
+
         Long userId = extractUserIdFromPrincipal(principal);
         Long roomId = message.getRoomId();
 
@@ -52,6 +57,8 @@ public class GameSocketController {
      * 인증 유저 정보 추출
      */
     private Long extractUserIdFromPrincipal(Principal principal) {
+        if (principal == null) throw new AccessDeniedException("Unauthenticated");
+
         if(principal instanceof Authentication authentication &&
         authentication.getPrincipal() instanceof CustomOAuth2User user) {
             return user.getUserId();

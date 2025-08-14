@@ -69,8 +69,6 @@ public class GameStartSocketTest {
         // 2) 게임방 (라운드/시대/카테고리 설정)
         GameRoom room = gameRoomRepository.save(GameRoom.builder()
                 .gameRound(2)               // 테스트에 필요한 만큼
-                .musicEra("80s")
-                .category("ballad")
                 .gameStatus(GameStatus.WAITING)
                 .build());
         gameRoomRepository.flush();
@@ -84,8 +82,8 @@ public class GameStartSocketTest {
         gameRoomUserRepository.flush();
 
         // 4) 퀴즈 최소 2개 (조건 일치)
-        trotQuizRepository.save(TrotQuiz.builder().musicEra("80s").category("ballad").url("https://y.t/1").build());
-        trotQuizRepository.save(TrotQuiz.builder().musicEra("80s").category("ballad").url("https://y.t/2").build());
+        trotQuizRepository.save(TrotQuiz.builder().url("https://y.t/1").build());
+        trotQuizRepository.save(TrotQuiz.builder().url("https://y.t/2").build());
         trotQuizRepository.flush();
     }
 
@@ -94,10 +92,6 @@ public class GameStartSocketTest {
     void startGame_socket_2_user() throws Exception {
         System.out.println("▶ TEST-START: wsUrl=ws://localhost:" + port + "/ws-game"
                 + ", roomId=" + roomId + ", user1=" + user1 + ", user2=" + user2);
-
-        long roomId = 1L;
-        long user1 = 101L;
-        long user2 = 202L;
 
         String wsUrl = "ws://localhost:" + port + "/ws-game";
         CountDownLatch connected = new CountDownLatch(1);
@@ -111,7 +105,7 @@ public class GameStartSocketTest {
 
                 // ★ broadcaster가 실제로 보내는 목적지와 동일하게!
                 // 예: broadcaster.broadcastToRoom(roomId, msg) 가 "/sub/games/{roomId}" 로 보낸다면:
-                String dest = "/sub/game/" + roomId;
+                String dest = "/sub/games/" + roomId;
                 System.out.println("[TEST] subscribe dest = " + dest);
 
                 session.subscribe(dest, new StompFrameHandler() {
