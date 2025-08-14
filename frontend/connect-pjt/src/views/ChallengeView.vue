@@ -81,7 +81,6 @@
                 <button class="create-btn" @click.stop="moveToCreate()">생성</button>
               </div>
             </div>
-            <p>{{ truncateDescription(getDisplayDescription(challenge, index)) }}</p>
           </div>
           <!-- 완료/미완료 상태 표시만 (클릭 불가) -->
           <div 
@@ -141,10 +140,23 @@
             완료된 도전입니다
           </div>
           
+          
           <!-- 수정/삭제 버튼 (ADMIN이고 커스텀 도전과제인 경우) -->
           <div v-if="shouldShowEditDeleteButtons(selectedChallenge)" class="modal-edit-delete-buttons">
-            <button class="modal-edit-btn" @click="editChallenge(getSelectedChallengeIndex())">수정</button>
-            <button class="modal-delete-btn" @click="showDeleteConfirm(getSelectedChallengeIndex())">삭제</button>
+            <button 
+              v-if="shouldShowEditButton(selectedChallenge)" 
+              class="modal-edit-btn" 
+              @click="editChallenge(getSelectedChallengeIndex())"
+            >
+              수정
+            </button>
+            <button 
+              v-if="shouldShowDeleteButton(selectedChallenge)" 
+              class="modal-delete-btn" 
+              @click="showDeleteConfirm(getSelectedChallengeIndex())"
+            >
+              삭제
+            </button>
           </div>
         </div>
       </div>
@@ -291,11 +303,24 @@ const shouldShowCreateButton = (challenge, index) => {
   return userRole.value === 'ADMIN' && index >= 2 && challenge.isEmpty
 }
 
-// 모달 내 수정/삭제 버튼 표시 조건
-const shouldShowEditDeleteButtons = (challenge) => {
+// 수정 버튼 표시 조건 (완료 전에만)
+const shouldShowEditButton = (challenge) => {
+  return userRole.value === 'ADMIN' && 
+         !challenge.isEmpty && 
+         challenge.challengeType === 'CUSTOM' &&
+         !isCompleted(challenge)
+}
+
+// 삭제 버튼 표시 조건 (완료 전후 모두)
+const shouldShowDeleteButton = (challenge) => {
   return userRole.value === 'ADMIN' && 
          !challenge.isEmpty && 
          challenge.challengeType === 'CUSTOM'
+}
+
+// 수정/삭제 버튼 영역 표시 조건 (둘 중 하나라도 보여야 할 때)
+const shouldShowEditDeleteButtons = (challenge) => {
+  return shouldShowEditButton(challenge) || shouldShowDeleteButton(challenge)
 }
 
 // 선택된 도전과제의 인덱스 찾기
@@ -304,35 +329,6 @@ const getSelectedChallengeIndex = () => {
   return challenges.value.findIndex(challenge => challenge.id === selectedId)
 }
 
-// 텍스트 길이 제한 함수 (공백 제외 30자)
-const truncateDescription = (text) => {
-  if (!text) return ''
-  
-  // 공백을 제거한 텍스트의 길이 확인
-  const textWithoutSpaces = text.replace(/\s/g, '')
-  
-  if (textWithoutSpaces.length <= 30) {
-    return text
-  }
-  
-  // 공백 포함하여 대략적으로 자르되, 30자 기준으로 조정
-  let truncated = ''
-  let charCount = 0
-  
-  for (let i = 0; i < text.length; i++) {
-    if (text[i] !== ' ') {
-      charCount++
-    }
-    
-    truncated += text[i]
-    
-    if (charCount >= 30) {
-      break
-    }
-  }
-  
-  return truncated + '...'
-}
 
 // AI 신문 버튼 활성화 조건
 const isAINewsButtonEnabled = computed(() => {
@@ -981,7 +977,7 @@ watch(percent, updateMessage)
     /* AI 신문 가이드 팝업 */
     .ai-news-guide-popup {
         position: absolute;
-        right: -340px; /* 버튼 오른쪽에 표시 */
+        right: -270px; /* 버튼 오른쪽에 표시 */
         top: 50%;
         transform: translateY(-50%);
         z-index: 1000;

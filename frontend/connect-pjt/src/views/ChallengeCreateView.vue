@@ -1,8 +1,7 @@
 <template>
   <div class="container">
     <div class="header">
-      <h1>경로당 맞춤형 도전을 생성하시겠어요?</h1>
-      <h2>몇 가지만 작성해주세요</h2>
+      <h1>경로당 맞춤형 도전을 생성해주세요</h1>
     </div>
     
     <div class="form-group">
