@@ -68,7 +68,7 @@ const form = ref({
 const detail = ref(null)
 const me = ref(null)
 
-// 토큰 헤더
+// 토큰이 있으면 헤더에 추가(없으면 쿠키로만 요청)
 const headersWithToken = () => {
   const token = getAccessToken?.()
   return token ? { Authorization: `Bearer ${token}` } : {}
@@ -94,7 +94,7 @@ const fetchMe = async () => {
   try {
     const { data } = await api.get('/api/v1/users/me', { headers: headersWithToken() })
     me.value = data
-  } catch {}
+  } catch { /* 미제공/비로그인 시 무시 */ }
 }
 
 const fetchDetail = async () => {
@@ -114,6 +114,7 @@ onMounted(async () => {
   loading.value = true
   try {
     await Promise.all([fetchMe(), fetchDetail()])
+    // 소유자 여부를 판단할 근거가 있을 때만 선제 차단
     if (canDecideOwnership.value && !isOwner.value) {
       alert('수정 권한이 없습니다.')
       router.replace({ name: 'communityDetail', params: { boardId: boardId.value }, query: route.query })
@@ -142,6 +143,7 @@ onMounted(async () => {
 const submitEdit = async () => {
   if (submitting.value) return
 
+  // 간단 검증
   if (!form.value.title?.trim() || !form.value.content?.trim()) {
     alert('제목과 내용을 입력해 주세요.')
     return
@@ -152,8 +154,8 @@ const submitEdit = async () => {
     const body = {
       title: form.value.title.trim(),
       content: form.value.content.trim(),
-      boardCategory: uiToApiLower[form.value.category] || 'chat' // 필요시 .toUpperCase()
-      // 이미지 변경 없음: 이미지 필드 전송하지 않음
+      boardCategory: uiToApiLower[form.value.category] || 'chat', // 소문자
+      imageFile: form.value.boardImage || null, // 이미지 변경은 보류
     }
 
     await api.put(`/api/v1/boards/${boardId.value}`, body, {

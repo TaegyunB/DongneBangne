@@ -148,7 +148,8 @@ const sections = [
   {
     image: onboarding3,
     alt: '트로트 게임',
-    headline: '트로트 제목 맞추기',
+    shout: true,
+    headline: '먼저 트로트 제목 맞추기!',
     body: '다른 경로당과 실시간 화상 통화로 소통하면서 게임을 해보아요.'
   },
   // 4. AI 신문
@@ -164,7 +165,7 @@ const sections = [
     image: onboarding5,
     alt: '랭킹',
     shout: true,
-    headline: '다른 경로당과의 경쟁!',
+    headline: '다른 경로당의 순위와 활동을!',
     body: '경로당 활동 순위를 확인하고 다른 경로당의 활동을 구경하며 동네방네를 즐겨보아요.'
   },
   // 6. 게시판
@@ -172,7 +173,7 @@ const sections = [
     image: onboarding6,
     alt: '게시판',
     shout: true,
-    headline: '게시판을 통해 여러 사람과 소통을!',
+    headline: '타 경로당 사람들과 소통을!',
     body: '일상을 공유하며 동네방네 사람들과 다양한 이야기를 나누어보아요.'
   },
   // 7. 마무리
@@ -271,7 +272,7 @@ const handleKakaoLogin = () => {
 .brand .brand-name{
   display:inline-block;
   font-weight:800;          /* ExtraBold */
-  font-size: clamp(40px, 7.2vw, 92px);
+  font-size: clamp(40px, 7.2vw, 80px);
   letter-spacing:-0.02em;
   line-height:1.08;
   color:#111;
@@ -280,7 +281,7 @@ const handleKakaoLogin = () => {
 /* 헤드라인 */
 .headline{
   font-weight:700;          /* 기본 Bold */
-  font-size: clamp(28px, 4.6vw, 56px);
+  font-size: clamp(28px, 4.6vw, 50px);
   line-height:1.18;
   letter-spacing:-0.01em;
   color:#222;
@@ -335,4 +336,77 @@ const handleKakaoLogin = () => {
 :deep(.swiper-pagination-bullet){ width:12px; height:12px; opacity:.5; background:#bbb }
 :deep(.swiper-pagination-bullet-active){ opacity:1; background:var(--accent) }
 :deep(.swiper-pagination){ top:20px; bottom:auto; left:50%; transform:translateX(-50%); z-index:40 }
+
+/* 변수: 톤만 바꾸고 싶을 때 여기 숫자만 조절하세요 */
+.onboarding-root{
+  --accent:#f5b301;
+  /* 화면 전체 배경 */
+  --bg-top:#F7F1E6;         /* 조금 더 크리미한 상단 */
+  --bg-bottom:#EBE2D2;      /* 부드럽게 내려오는 하단 */
+  --bg-spot:rgba(255,255,255,.55); /* 은은한 하이라이트 */
+
+  /* 오른쪽 비주얼 패널 배경 */
+  --panel-vis-top:#E7D6BE;  /* 기존보다 노랑끼 살짝 낮춤 */
+  --panel-vis-btm:#D8C7AE;
+
+  /* 왼쪽 텍스트 패널 배경(유리 느낌 살짝) */
+  --panel-text-bg:rgba(255,255,255,.78);
+}
+
+/* ===== 화면 전체 배경 ===== */
+.onboarding-swiper{
+  width:100vw; height:100vh;
+  /* 라디얼 하이라이트 + 그라데이션을 레이어로 쌓음 */
+  background:
+    radial-gradient(1200px 720px at 14% 10%, var(--bg-spot) 0%, transparent 62%),
+    radial-gradient(980px 620px at 88% 86%, var(--bg-spot) 0%, transparent 68%),
+    linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+  position: relative; z-index: 1;
+}
+
+/* ===== 반반 레이아웃 공통 ===== */
+.split-panels{
+  display:grid; grid-template-columns: 50% 50%;
+  width:100%; height:100%; position: relative;
+}
+/* 중앙 가이드 라인 살짝 더 옅게 */
+.split-panels::before{
+  content:""; position:absolute; left:50%; top:0; bottom:0; width:1px;
+  transform:translateX(-0.5px); background: rgba(0,0,0,.04);
+}
+
+/* 패널 공통 */
+.panel{
+  position:relative; overflow:hidden;
+  display:flex; align-items:center; justify-content:center;
+  padding: clamp(24px, 4vw, 64px);
+  width:100%; height:100%; z-index: 1;
+}
+/* 왼쪽 텍스트 패널: 살짝 투명 + 아주 미세한 블러로 자연스럽게 */
+.panel-text{
+  background: var(--panel-text-bg);
+  backdrop-filter: saturate(110%) blur(1.2px);
+}
+
+/* 오른쪽 비주얼 패널: 클레이 톤을 부드럽게 */
+.panel-visual{
+  background:
+    radial-gradient(58% 60% at 80% 18%, rgba(255,245,220,.28) 0%, rgba(255,245,220,0) 62%),
+    linear-gradient(180deg, var(--panel-vis-top) 0%, var(--panel-vis-btm) 100%);
+  overflow: visible;
+}
+/* 기존 보조 하이라이트/비네트 톤을 더 자연스럽게 */
+.panel-visual::before{
+  content:""; position:absolute; inset:-12% -8% -8% -12%;
+  background:
+    radial-gradient(60% 60% at 78% 22%, rgba(255,255,255,.28) 0%, rgba(255,255,255,0) 60%),
+    radial-gradient(50% 50% at 12% 86%, rgba(255,255,255,.18) 0%, rgba(255,255,255,0) 60%);
+  pointer-events:none; z-index:0;
+}
+.panel-visual::after{
+  content:""; position:absolute; inset:0;
+  /* 아주 옅은 비네트로 가장자리 결 정리 */
+  background: radial-gradient(120% 100% at 50% 50%, transparent 70%, rgba(0,0,0,.03) 100%);
+  pointer-events:none; z-index:0;
+}
 </style>

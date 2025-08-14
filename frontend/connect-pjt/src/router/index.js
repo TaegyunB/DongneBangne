@@ -6,6 +6,7 @@ import ChallengeCreateView from '@/views/ChallengeCreateView.vue'
 import ChallengeFinishView from '@/views/ChallengeFinishView.vue'
 import SeniorCenter from '@/views/seniorCenter.vue'
 import SeniorCenterProfile from '@/views/seniorCenterProfile.vue'
+import Profile from '@/views/profile.vue'
 import MainPage from '@/views/MainpageView.vue'
 import CommunityBoards from '@/views/communityBoards.vue'
 import CommunityDetail from '@/views/communityDetail.vue'
@@ -47,6 +48,12 @@ const router = createRouter({
       name: 'seniorCenterProfile',
       component: SeniorCenterProfile,
       meta: { hideToolbar: true },
+    },
+    {
+      path: '/profile',
+      name: 'profile',
+      component: Profile,
+      meta: { hideToolbar: false }
     },
     { 
       path: '/mainpage',

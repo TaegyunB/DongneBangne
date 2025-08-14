@@ -65,9 +65,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import api from '@/api/axios'
+import api from '@/api/axios' // ✅ 전역 axios 인스턴스만 사용
 
 const router = useRouter()
 const route = useRoute()
@@ -79,7 +79,7 @@ const uiToApiLower = { 잡담: 'chat', 나눔: 'share', 취미: 'hobby', 정보:
 
 // 폼 상태
 const form = ref({ category: '', title: '', content: '' })
-const imageFile = ref(null)
+const imageFile = ref(null)   // File 객체 저장
 const previewUrl = ref('')
 const submitting = ref(false)
 const errors = ref({ category: '', title: '', content: '', image: '' })
@@ -91,23 +91,28 @@ onMounted(() => {
   if (q && map[q]) form.value.category = map[q]
 })
 
-// presign 도우미(선택적으로 사용)
+// [ADD] presign URL/path를 baseURL와 안전하게 합쳐주는 도우미
 const resolvePresignEndpoint = (raw) => {
   const base = (api?.defaults?.baseURL || '').replace(/\/$/, '')
-  if (!raw) return `${base}/v1/uploads/presign`
-  if (/^https?:\/\//i.test(raw)) return raw
-  if (raw.startsWith('/')) return `${base}${raw}`
+  if (!raw) return `${base}/v1/uploads/presign`   // 디폴트 경로
+  if (/^https?:\/\//i.test(raw)) return raw       // 풀 URL
+  if (raw.startsWith('/')) return `${base}${raw}` // 경로만 온 경우
   return `${base}/${raw.replace(/^\//, '')}`
 }
+
+// [ADD] S3로 실제 업로드 수행 (POST policy or PUT presign 둘 다 지원)
 const uploadToS3 = async (presign, file) => {
+  // POST 정책 방식
   if (presign?.fields && presign?.uploadUrl) {
     const fd = new FormData()
     Object.entries(presign.fields).forEach(([k, v]) => fd.append(k, String(v)))
-    fd.append('file', file)
+    fd.append('file', file) // 필드명은 'file' 고정
     const res = await fetch(presign.uploadUrl, { method: 'POST', body: fd })
     if (!res.ok) throw new Error(`S3 POST 업로드 실패: ${res.status}`)
     return presign.fileUrl || (presign.uploadUrl.replace(/\/$/, '') + '/' + presign.fields.key)
   }
+
+  // PUT 방식
   if (presign?.uploadUrl) {
     const res = await fetch(presign.uploadUrl, {
       method: 'PUT',
@@ -117,38 +122,51 @@ const uploadToS3 = async (presign, file) => {
     if (!res.ok) throw new Error(`S3 PUT 업로드 실패: ${res.status}`)
     return presign.fileUrl || presign.uploadUrl.split('?')[0]
   }
+
   throw new Error('presign 응답에 uploadUrl이 없음')
 }
-const uploadImageIfNeeded = async () => {
-  if (!imageFile.value) return null
-  const raw = import.meta.env.VITE_IMAGE_PRESIGN_URL || import.meta.env.VITE_IMAGE_PRESIGN_PATH
-  const presignEndpoint = resolvePresignEndpoint(String(raw || ''))
-  const filename = `${crypto.randomUUID?.() || Date.now()}_${imageFile.value.name}`
-  const { data: presign } = await api.post(
-    presignEndpoint,
-    { filename, contentType: imageFile.value.type }
-  )
-  const finalUrl = await uploadToS3(presign, imageFile.value)
-  return finalUrl
-}
 
-// 업로드 입력 처리
+ // [ADD] 필요하면 presign → S3 업로드 → 최종 URL 반환 (쿠키 인증만 사용)
+ const uploadImageIfNeeded = async () => {
+   if (!imageFile.value) return null
+
+   // presign 엔드포인트 결정
+   const raw = import.meta.env.VITE_IMAGE_PRESIGN_URL || import.meta.env.VITE_IMAGE_PRESIGN_PATH
+   const presignEndpoint = resolvePresignEndpoint(String(raw || ''))
+
+   // 1) presign 요청 (백 응답 예: { uploadUrl, fileUrl, fields? })
+   const filename = `${crypto.randomUUID?.() || Date.now()}_${imageFile.value.name}`
+   const { data: presign } = await api.post(
+     presignEndpoint,
+     { filename, contentType: imageFile.value.type }
+     // 헤더는 추가하지 않음: 세션 쿠키(withCredentials)로 인증
+   )
+
+   // 2) S3 업로드
+   const finalUrl = await uploadToS3(presign, imageFile.value)
+   return finalUrl
+ }
+// 업로드 오류 수정
+// 이미지 미리보기만 처리
 const onFileChange = (e) => {
   const file = e.target.files?.[0]
   if (!file) { 
     clearImage()
     return 
   }
+  
   if (!file.type.startsWith('image/')) {
     errors.value.image = '이미지 파일만 업로드 가능합니다.'
     e.target.value = ''
     return
   }
+  
   if (file.size > 5 * 1024 * 1024) {
     errors.value.image = '파일 크기는 5MB 이하여야 합니다.'
     e.target.value = ''
     return
   }
+  
   errors.value.image = ''
   imageFile.value = file
   previewUrl.value = URL.createObjectURL(file)
@@ -156,8 +174,11 @@ const onFileChange = (e) => {
 
 const clearImage = () => {
   imageFile.value = null
-  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
+  if (previewUrl.value) {
+    URL.revokeObjectURL(previewUrl.value)
+  }
   previewUrl.value = ''
+  // 파일 input 초기화
   const fileInput = document.getElementById('image')
   if (fileInput) fileInput.value = ''
 }
@@ -165,40 +186,75 @@ const clearImage = () => {
 const validate = () => {
   errors.value = { category: '', title: '', content: '', image: '' }
   let ok = true
-  if (!form.value.category) { errors.value.category = '카테고리를 선택해 주세요.'; ok = false }
-  if (!form.value.title || form.value.title.length < 2) { errors.value.title = '제목을 2자 이상 입력해 주세요.'; ok = false }
-  if (!form.value.content || form.value.content.length < 2) { errors.value.content = '내용을 2자 이상 입력해 주세요.'; ok = false }
+  
+  if (!form.value.category) { 
+    errors.value.category = '카테고리를 선택해 주세요.'
+    ok = false 
+  }
+  
+  if (!form.value.title || form.value.title.length < 2) { 
+    errors.value.title = '제목을 2자 이상 입력해 주세요.'
+    ok = false 
+  }
+  
+  if (!form.value.content || form.value.content.length < 2) { 
+    errors.value.content = '내용을 2자 이상 입력해 주세요.'
+    ok = false 
+  }
+  
   return ok
 }
 
-// FormData 방식 등록
+// FormData 방식으로 게시글 등록
 const submitPost = async () => {
   if (submitting.value) return
   if (!validate()) return
 
   submitting.value = true
+  
   try {
+    // FormData 생성
     const formData = new FormData()
     formData.append('title', form.value.title)
     formData.append('content', form.value.content)
-    formData.append('boardCategory', uiToApiLower[form.value.category] || 'chat') // 필요시 .toUpperCase()
-
+    formData.append('boardCategory', uiToApiLower[form.value.category] || 'chat')
+    
+    // 이미지 파일이 있으면 추가
     if (imageFile.value) {
       formData.append('imageFile', imageFile.value)
-      // presign을 쓰려면 대신:
-      // const url = await uploadImageIfNeeded()
-      // formData.delete('imageFile')
-      // formData.append('boardImageUrl', url)
     }
 
-    const response = await api.post('/api/v1/boards', formData)
+    // Authorization 헤더 처리 (선택적)
+    const headers = {}
+    try {
+      const { getAccessToken } = await import('@/utils/token')
+      const token = getAccessToken?.()
+      if (token) {
+        headers.Authorization = `Bearer ${token}`
+      }
+    } catch (e) { 
+      // 토큰 유틸이 없거나 에러가 나면 쿠키 인증으로 진행
+      console.log('토큰 처리 건너뜀:', e.message)
+    }
+    
+    // FormData 전송 (Content-Type은 자동으로 multipart/form-data)
+    const response = await api.post('/api/v1/boards', formData, {
+      headers
+    })
+
     console.log('등록 성공:', response.data)
     alert('글이 등록되었습니다.')
-
+    
+    // 등록된 카테고리로 게시판 목록 페이지로 이동
     const categoryParam = uiToApiLower[form.value.category] || 'chat'
-    router.push({ name: 'boards', query: { category: categoryParam } })
+    router.push({ 
+      name: 'boards', 
+      query: { category: categoryParam } 
+    })
+    
   } catch (err) {
     console.error('등록 실패:', err)
+    
     if (err?.response?.status === 401) {
       alert('세션이 만료되었어요. 다시 로그인해 주세요.')
       router.push({ name: 'onboarding' })
@@ -212,16 +268,24 @@ const submitPost = async () => {
   } finally {
     submitting.value = false
   }
-}
 
 const goBack = () => {
-  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
+  // 미리보기 URL 정리
+  if (previewUrl.value) {
+    URL.revokeObjectURL(previewUrl.value)
+  }
   router.back()
 }
 
-onBeforeUnmount(() => {
-  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
+// 컴포넌트 언마운트 시 URL 정리
+onMounted(() => {
+  return () => {
+    if (previewUrl.value) {
+      URL.revokeObjectURL(previewUrl.value)
+    }
+  }
 })
+}
 </script>
 
 <style scoped>
@@ -302,6 +366,7 @@ textarea {
 .cancel-button { background-color: #f3f4f6; color: #111827; }
 .cancel-button:hover { background-color: #e5e7eb; transform: translateY(-1px); }
 
+/* 이미지 미리보기 */
 .preview {
   margin-top: 10px;
   display: flex;
@@ -325,6 +390,7 @@ textarea {
 }
 .preview-remove:hover { background: #e11d48; }
 
+/* 포커스 링 명확히 */
 .submit-button:focus-visible,
 .cancel-button:focus-visible,
 input:focus-visible,
@@ -334,6 +400,7 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
+/* 모션 최소화 */
 @media (prefers-reduced-motion: reduce) {
   .submit-button:hover, .cancel-button:hover { transform: none; }
 }

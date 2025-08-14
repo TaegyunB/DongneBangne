@@ -61,7 +61,7 @@
           role="button"
           tabindex="0"
           @keyup.enter="goToDetail(item.boardId)"
-          :aria-label="`게시글 열기: ${item.title || item.content}`"
+          :aria-label="`게시글 열기: ${item.content}`"
         >
           <div class="card-body">
             <div class="card-main">
@@ -69,13 +69,14 @@
                 <span :class="badgeClass(displayCategory(item.category))">
                   {{ displayCategory(item.category) }}
                 </span>
+                <!-- 이미지 첨부 표시 추가 -->
                 <span v-if="item.boardImage" class="image-indicator" title="이미지 첨부됨">
                   사진 첨부
                 </span>
               </div>
 
-              <div class="card-title" :title="item.title || item.content">
-                {{ item.title || item.content }}
+              <div class="card-title" :title="item.content">
+                {{ item.content }}
               </div>
 
               <div class="card-meta">
@@ -84,9 +85,6 @@
                 </span>
                 <span class="meta">
                   <span class="meta-icon">🗓️</span>{{ formatCreatedAt(item.createdAt) }}
-                </span>
-                <span class="meta" v-if="item.commentCount != null">
-                  <span class="meta-icon">💬</span>{{ item.commentCount }}
                 </span>
               </div>
             </div>
@@ -121,7 +119,6 @@ const notices = ref([])
 // 표시↔요청 매핑
 const categoryToApi = { 전체: 'all', 인기: 'popular', 잡담: 'chat', 나눔: 'share', 정보: 'info', 취미: 'hobby' }
 const apiToKorean = { ALL: '전체', POPULAR: '인기', CHAT: '잡담', SHARE: '나눔', INFO: '정보', HOBBY: '취미' }
-const queryToKo = { all: '전체', popular: '인기', chat: '잡담', share: '나눔', info: '정보', hobby: '취미' }
 
 const displayCategory = code => apiToKorean[code] || code
 const getMappedCategory = category => categoryToApi[category] || 'all'
@@ -131,11 +128,10 @@ const normalizeBoard = b => ({
   ...b,
   likeCount: Number(b?.likeCount ?? b?.likes ?? b?.likeCnt ?? b?.like ?? 0),
   category: (b?.category || '').toString().toUpperCase(),
-  boardImage: b?.boardImage || b?.image || null,
-  commentCount: b?.commentCount != null ? Number(b.commentCount) : null
+  boardImage: b?.boardImage || b?.image || null // 이미지 필드 정규화
 })
 
-// 목록 조회
+// 목록 조회 (요청은 영문 코드로)
 const fetchNotices = async () => {
   try {
     const res = await api.get('/api/v1/boards', {
@@ -144,11 +140,6 @@ const fetchNotices = async () => {
     const rows = Array.isArray(res.data) ? res.data : []
     notices.value = rows.map(normalizeBoard)
     searched.value = true
-
-    // 목록에 commentCount가 없으면 일부만 하이드레이트
-    if (rows.some(r => r.commentCount == null)) {
-      await hydrateCommentCounts()
-    }
   } catch (error) {
     console.error('게시글 로드 실패:', error)
     searched.value = true
@@ -156,42 +147,26 @@ const fetchNotices = async () => {
   }
 }
 
-// 댓글 수 하이드레이트 (최대 20개만)
-const MAX_COUNT_FETCH = 20
-const hydrateCommentCounts = async () => {
-  const targets = notices.value.slice(0, MAX_COUNT_FETCH)
-  const jobs = targets.map(n =>
-    api.get(`/api/v1/boards/${n.boardId}/comments/count`)
-      .then(r => ({
-        id: n.boardId,
-        count: typeof r.data === 'number' ? r.data : Number(r.data?.count ?? 0)
-      }))
-      .catch(() => null)
-  )
-  const results = await Promise.all(jobs)
-  const mapCount = Object.fromEntries(results.filter(Boolean).map(x => [x.id, x.count]))
-  notices.value = notices.value.map(n => ({ ...n, commentCount: mapCount[n.boardId] ?? n.commentCount ?? 0 }))
-}
-
 const onClickCategory = category => {
   if (selectedCategory.value === category) return
   selectedCategory.value = category
+  // URL 동기화(선택 사항)
   router.replace({ name: 'boards', query: { category: getMappedCategory(category) } })
 }
 
 const filteredNotices = computed(() => {
   const q = searchQuery.value.trim()
   if (!q) return notices.value
-  return notices.value.filter(n =>
-    n.title?.includes(q) || n.content?.includes(q) || n.nickname?.includes(q)
-  )
+  return notices.value.filter(n => n.content?.includes(q) || n.nickname?.includes(q))
 })
 
 // 24시간 이내면 상대시간, 아니면 날짜
 const formatCreatedAt = (s, { thresholdHours = 24 } = {}) => {
   if (!s) return ''
   const d = new Date(s)
-  if (Number.isNaN(d.getTime())) return String(s).replace('T', ' ').slice(0, 16)
+  if (Number.isNaN(d.getTime())) {
+    return String(s).replace('T', ' ').slice(0, 16)
+  }
   let diffSec = Math.floor((Date.now() - d.getTime()) / 1000)
   if (diffSec < 0) diffSec = 0
   const diffMin = Math.floor(diffSec / 60)
@@ -224,18 +199,12 @@ const badgeClass = (ko) => {
 
 watch(selectedCategory, fetchNotices)
 
-// 초기값 + 첫 로드
+// URL에 ?category=chat 등 들어온 경우 초기값 적용
 onMounted(() => {
   const qcat = route.query.category
-  if (typeof qcat === 'string' && queryToKo[qcat]) selectedCategory.value = queryToKo[qcat]
+  const map = { all: '전체', popular: '인기', chat: '잡담', share: '나눔', info: '정보', hobby: '취미' }
+  if (typeof qcat === 'string' && map[qcat]) selectedCategory.value = map[qcat]
   fetchNotices()
-})
-
-// 뒤로가기 등 쿼리 변경 동기화
-watch(() => route.query.category, (q) => {
-  if (typeof q === 'string' && queryToKo[q]) {
-    if (selectedCategory.value !== queryToKo[q]) selectedCategory.value = queryToKo[q]
-  }
 })
 
 const goToDetail = boardId => {
@@ -254,9 +223,10 @@ const goToDetail = boardId => {
   margin: 0 auto;
   padding: 32px 16px 48px;
   font-family: 'Noto Sans KR', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  font-size: 18px;
+  font-size: 18px; /* 기본 글자 키움 */
 }
 
+/* 제목 더 크고 굵게 */
 .title {
   font-size: 30px;
   font-weight: 800;
@@ -264,6 +234,7 @@ const goToDetail = boardId => {
   margin: 0 0 16px;
 }
 
+/* 카테고리 & 글쓰기 줄 */
 .category-row {
   display: flex;
   align-items: center;
@@ -272,6 +243,7 @@ const goToDetail = boardId => {
   margin-bottom: 20px;
 }
 
+/* 카테고리 버튼 */
 .category-buttons {
   display: flex;
   flex-wrap: wrap;
@@ -279,11 +251,11 @@ const goToDetail = boardId => {
   flex: 1;
 }
 .category-button {
-  border: 1px solid #9aa3af;
+  border: 1px solid #9aa3af; /* 대비 강화 */
   background: #fff;
   color: #374151;
-  padding: 10px 16px;
-  min-height: 44px;
+  padding: 10px 16px;         /* 터치 영역 확대 */
+  min-height: 44px;           /* 접근성 권장 높이 */
   border-radius: 9999px;
   font-size: 16px;
   cursor: pointer;
@@ -295,17 +267,18 @@ const goToDetail = boardId => {
   color: #1d4ed8;
 }
 .category-button.active {
-  background: #0b57d0;
+  background: #0b57d0; /* 더 진한 파랑 */
   color: #fff;
   border-color: #0b57d0;
   box-shadow: 0 2px 8px rgba(11, 87, 208, .25);
 }
 
+/* 글쓰기 버튼 */
 .write-button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 16px;
+  padding: 10px 16px;     /* 터치 영역 확대 */
   min-height: 44px;
   font-size: 16px;
   color: #fff;
@@ -323,14 +296,16 @@ const goToDetail = boardId => {
 }
 .write-button .icon { width: 16px; height: 16px; }
 
+/* 포커스 링 명확히 (키보드/저시력 사용자) */
 .category-button:focus-visible,
 .write-button:focus-visible,
 .search-input:focus-visible,
 .card:focus-visible {
-  outline: 3px solid #ffbf47;
+  outline: 3px solid #ffbf47; /* 노란 포커스 */
   outline-offset: 2px;
 }
 
+/* 검색 */
 .search-box { position: relative; margin: 16px 0 24px; }
 .search-icon {
   position: absolute; left: 12px; top: 50%;
@@ -339,7 +314,7 @@ const goToDetail = boardId => {
 }
 .search-input {
   width: 100%;
-  padding: 14px 14px 14px 40px;
+  padding: 14px 14px 14px 40px; /* 더 큰 입력 */
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   font-size: 16px;
@@ -352,6 +327,7 @@ const goToDetail = boardId => {
   box-shadow: 0 0 0 4px rgba(96, 165, 250, .15);
 }
 
+/* 리스트/카드 */
 .list { display: grid; gap: 12px; }
 .card {
   background: #fff;
@@ -375,6 +351,7 @@ const goToDetail = boardId => {
 }
 .card-main { flex: 1; min-width: 0; }
 
+/* 카드 헤더 - 뱃지와 이미지 표시기를 나란히 */
 .card-header { 
   margin-bottom: 8px; 
   display: flex;
@@ -384,7 +361,7 @@ const goToDetail = boardId => {
 }
 
 .card-title {
-  font-size: 18px;
+  font-size: 18px;  /* 가독성 향상 */
   font-weight: 700;
   color: #0f172a;
   margin: 6px 0 10px;
@@ -393,12 +370,13 @@ const goToDetail = boardId => {
 }
 .card-meta {
   display: flex; flex-wrap: wrap; gap: 14px;
-  font-size: 16px;
+  font-size: 16px; /* 가독성 향상 */
   color: #4b5563;
 }
 .meta { display: inline-flex; align-items: center; gap: 6px; }
 .meta-icon { display: inline-block; width: 18px; text-align: center; }
 
+/* 좋아요 */
 .likes {
   display: inline-flex; align-items: center; gap: 6px;
   background: #eff6ff; color: #1d4ed8;
@@ -407,6 +385,7 @@ const goToDetail = boardId => {
 }
 .likes-count { min-width: 18px; text-align: right; }
 
+/* 뱃지 */
 .badge {
   display: inline-flex; align-items: center;
   padding: 6px 12px; border-radius: 9999px;
@@ -419,6 +398,7 @@ const goToDetail = boardId => {
 .badge--info    { background: #ede9fe; color: #6d28d9; }
 .badge--hobby   { background: #ffedd5; color: #9a3412; }
 
+/* 이미지 첨부 표시기 */
 .image-indicator {
   font-size: 11px;
   color: #6b7280;
@@ -430,13 +410,20 @@ const goToDetail = boardId => {
   white-space: nowrap;
 }
 
+/* 빈 상태 */
 .empty {
   background: #fff; border: 1px solid #e5e7eb;
   border-radius: 12px; text-align: center; padding: 40px 16px;
 }
-.empty-title { color: #9ca3af; font-size: 18px; margin-bottom: 6px }
-.empty-desc  { color: #6b7280; font-size: 16px }
+.empty-title { 
+  color: #9ca3af; 
+  font-size: 18px; 
+  margin-bottom: 6px; }
+.empty-desc  { 
+  color: #6b7280; 
+  font-size: 16px; }
 
+/* 모션 최소화(원하면 시스템 설정 따름) */
 @media (prefers-reduced-motion: reduce) {
   .card:hover, 
   .write-button:hover { transform: none; }
