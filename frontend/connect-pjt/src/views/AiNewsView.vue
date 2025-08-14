@@ -10,12 +10,12 @@
       <div class="table-header">
         <div class="col-month">발간 월</div>
         <div class="col-date">발간일자</div>
-        <div class="col-action">보기</div>
+        <div class="col-action">PDF</div>
       </div>
       
       <div class="table-body">
         <div 
-          v-for="news in sortedNewsList" 
+          v-for="news in displayNewsList" 
           :key="news.id"
           class="table-row"
         >
@@ -29,32 +29,65 @@
           </div>
           
           <div class="col-date">
-            {{ news.year }}.{{ String(news.month).padStart(2, '0') }}.{{ getLastDay(news.year, news.month) }}
+            {{ formatPublishDate(news) }}
           </div>
           
           <div class="col-action">
+            <!-- PDF가 생성된 경우: 보기 버튼 -->
             <button 
               v-if="news.pdfUrl"
-              @click="viewNews(news.id)"
+              @click="viewNewsPdf(news.id)"
               class="action-btn view-btn"
             >
-              보기
+              PDF 보기
             </button>
+            
+            <!-- AI 기사는 생성되었지만 PDF가 없는 경우: PDF 생성 버튼 -->
             <button 
-              v-else
-              @click="publishNews(news)"
-              :disabled="publishingIds.includes(news.id)"
-              class="action-btn publish-btn"
+              v-else-if="!news.pdfUrl && hasCompletedChallenges(news)"
+              @click="showPdfGenerator(news)"
+              class="action-btn generate-pdf-btn"
             >
-              {{ publishingIds.includes(news.id) ? '발간 중...' : '발간하기' }}
+              PDF 생성하기
             </button>
+            
+            <!-- 완료된 도전과제가 없는 경우 -->
+            <span 
+              v-else 
+              class="no-content-label"
+              title="이번 달은 완료된 도전과제가 없어 PDF를 생성할 수 없습니다."
+            >
+              PDF 생성 불가
+            </span>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- PDF 생성 모달 -->
+    <div v-if="showPdfModal" class="modal-overlay" @click.self="closePdfModal">
+      <div class="modal-content pdf-modal">
+        <button class="modal-close-btn" @click="closePdfModal">×</button>
+        <h2>AI 신문 PDF 생성</h2>
+        <p>{{ selectedNews?.year }}년 {{ selectedNews?.month }}월 AI 신문을 PDF로 생성합니다.</p>
+        
+        <!-- PDF 생성 컴포넌트 -->
+        <AINewsPDFGenerator 
+          v-if="selectedNews"
+          :newsData="selectedNews"
+          @pdf-generated="handlePdfGenerated"
+        />
+      </div>
+    </div>
+
+    <!-- 데이터가 없는 경우 -->
+    <div v-if="!loading && displayNewsList.length === 0" class="no-data">
+      <p>아직 생성된 신문이 없습니다.</p>
+      <p>도전과제를 완료하고 AI 신문을 생성해보세요!</p>
+    </div>
+
     <!-- 페이지네이션 -->
-    <div class="pagination">
+    <div v-if="totalPages > 1" class="pagination">
       <button 
         @click="changePage(currentPage - 1)"
         :disabled="currentPage === 1"
@@ -70,16 +103,6 @@
         :class="['page-btn', { active: currentPage === page }]"
       >
         {{ page }}
-      </button>
-      
-      <span v-if="totalPages > 5" class="page-dots">...</span>
-      
-      <button
-        v-if="totalPages > 5"
-        @click="changePage(totalPages)"
-        :class="['page-btn', { active: currentPage === totalPages }]"
-      >
-        {{ totalPages }}
       </button>
       
       <button 
@@ -100,199 +123,79 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import axios from 'axios'
+import { useRouter, useRoute } from 'vue-router'
+import api from '@/api/axios'
+import AINewsPDFGenerator from '@/components/AINewsPDFGenerator.vue'
 
 const router = useRouter()
+const route = useRoute()
 
 const loading = ref(false)
 const newsList = ref([])
-const seniorCenterName = ref('싸피 경로당')
-const publishingIds = ref([])
+const seniorCenterName = ref('경로당')
 const currentPage = ref(1)
 const itemsPerPage = 10
 
-// 더미 데이터 로드
+// PDF 생성 모달 관련
+const showPdfModal = ref(false)
+const selectedNews = ref(null)
+
+// 신문 목록 조회
 const fetchNews = async () => {
   loading.value = true
   try {
-    // 더미 데이터
-    const dummyData = [
-      {
-        id: 7,
-        newsTitle: "강일리버파크2단지, 무더위를 이기는 어르신들의 활기찬 7월 이야기",
-        newsContent: null,
-        year: 2025,
-        month: 7,
-        pdfUrl: "https://s13p11a708.s3.us-east-2.amazonaws.com/ai-news/강일리버파크2단지_2025_7_1.pdf",
-        seniorCenterName: "강일리버파크2단지",
-        challenges: [],
-        createdAt: "2025-07-31T14:20:00"
-      },
-      {
-        id: 6,
-        newsTitle: "강일리버파크2단지, 초여름을 맞이한 어르신들의 활동 현황",
-        newsContent: null,
-        year: 2025,
-        month: 6,
-        pdfUrl: "https://s13p11a708.s3.us-east-2.amazonaws.com/ai-news/강일리버파크2단지_2025_6_1.pdf",
-        seniorCenterName: "강일리버파크2단지",
-        challenges: [],
-        createdAt: "2025-06-30T13:30:45"
-      },
-      {
-        id: 5,
-        newsTitle: "강일리버파크2단지, 봄의 마지막을 장식한 어르신들의 5월 이야기",
-        newsContent: null,
-        year: 2025,
-        month: 5,
-        pdfUrl: "https://s13p11a708.s3.us-east-2.amazonaws.com/ai-news/강일리버파크2단지_2025_5_1.pdf",
-        seniorCenterName: "강일리버파크2단지",
-        challenges: [],
-        createdAt: "2025-05-31T17:10:22"
-      },
-      {
-        id: 4,
-        newsTitle: "강일리버파크2단지, 어르신들과 함께한 행복한 여름의 추억",
-        newsContent: null,
-        year: 2025,
-        month: 4,
-        pdfUrl: null, // 발간 안됨
-        seniorCenterName: "강일리버파크2단지",
-        challenges: [
-          {id: 1, challengeTitle: "백숙먹기", challengePlace: "경로당", description: "다같이 백숙먹기"},
-          {id: 2, challengeTitle: "산책하기", challengePlace: "경로당", description: "다같이 산책하기"},
-          {id: 3, challengeTitle: "책 읽기", challengePlace: "경로당", description: "더운데 다같이 모여서 책 읽기"}
-        ],
-        createdAt: "2025-04-30T16:28:02"
-      },
-      {
-        id: 3,
-        newsTitle: "강일리버파크2단지, 봄의 새싹과 함께한 3월 이야기",
-        newsContent: null,
-        year: 2025,
-        month: 3,
-        pdfUrl: null, // 발간 안됨
-        seniorCenterName: "강일리버파크2단지",
-        challenges: [],
-        createdAt: "2025-03-31T16:22:33"
-      },
-      {
-        id: 2,
-        newsTitle: "강일리버파크2단지, 무더위를 이기는 어르신들의 활기찬 7월 이야기",
-        newsContent: null,
-        year: 2025,
-        month: 7,
-        pdfUrl: "https://s13p11a708.s3.us-east-2.amazonaws.com/ai-news/강일리버파크2단지_2025_7_1.pdf",
-        seniorCenterName: "강일리버파크2단지",
-        challenges: [],
-        createdAt: "2025-07-31T14:20:00"
-      },
-      {
-        id: 1,
-        newsTitle: "강일리버파크2단지, 초여름을 맞이한 어르신들의 활동 현황",
-        newsContent: null,
-        year: 2025,
-        month: 6,
-        pdfUrl: "https://s13p11a708.s3.us-east-2.amazonaws.com/ai-news/강일리버파크2단지_2025_6_1.pdf",
-        seniorCenterName: "강일리버파크2단지",
-        challenges: [],
-        createdAt: "2025-06-30T13:30:45"
-      },
-      {
-        id: 8,
-        newsTitle: "강일리버파크2단지, 봄의 마지막을 장식한 어르신들의 5월 이야기",
-        newsContent: null,
-        year: 2025,
-        month: 5,
-        pdfUrl: "https://s13p11a708.s3.us-east-2.amazonaws.com/ai-news/강일리버파크2단지_2025_5_1.pdf",
-        seniorCenterName: "강일리버파크2단지",
-        challenges: [],
-        createdAt: "2025-05-31T17:10:22"
-      },
-      {
-        id: 9,
-        newsTitle: "강일리버파크2단지, 어르신들과 함께한 행복한 여름의 추억",
-        newsContent: null,
-        year: 2025,
-        month: 4,
-        pdfUrl: null, // 발간 안됨
-        seniorCenterName: "강일리버파크2단지",
-        challenges: [
-          {id: 1, challengeTitle: "백숙먹기", challengePlace: "경로당", description: "다같이 백숙먹기"},
-          {id: 2, challengeTitle: "산책하기", challengePlace: "경로당", description: "다같이 산책하기"},
-          {id: 3, challengeTitle: "책 읽기", challengePlace: "경로당", description: "더운데 다같이 모여서 책 읽기"}
-        ],
-        createdAt: "2025-04-30T16:28:02"
-      },
-      {
-        id: 10,
-        newsTitle: "강일리버파크2단지, 봄의 새싹과 함께한 3월 이야기",
-        newsContent: null,
-        year: 2025,
-        month: 3,
-        pdfUrl: null, // 발간 안됨
-        seniorCenterName: "강일리버파크2단지",
-        challenges: [],
-        createdAt: "2025-03-31T16:22:33"
-      },
-      {
-        id: 11,
-        newsTitle: "강일리버파크2단지, 봄의 새싹과 함께한 3월 이야기",
-        newsContent: null,
-        year: 2025,
-        month: 3,
-        pdfUrl: null, // 발간 안됨
-        seniorCenterName: "강일리버파크2단지",
-        challenges: [],
-        createdAt: "2025-03-31T16:22:33"
-      }
-    ]
+    console.log('API 요청 시작: /api/v1/ai-news')
     
-    newsList.value = dummyData
-    seniorCenterName.value = dummyData[0].seniorCenterName
+    const response = await api.get('/api/v1/ai-news')
+    
+    newsList.value = response.data || []
+    console.log('신문 목록 로드 완료:', response.data)
+    
+    // 센터명 업데이트 (첫 번째 신문에서 가져오기)
+    if (response.data && response.data.length > 0 && response.data[0].centerName) {
+      seniorCenterName.value = response.data[0].centerName
+    }
     
   } catch (error) {
-    console.error('신문 목록을 불러오는데 실패했습니다:', error)
+    console.error('신문 목록 로드 실패:', error)
+    newsList.value = [] // 에러 시 빈 배열로 초기화
+    
+    let errorMessage = '신문 목록을 불러오는데 실패했습니다.'
+    
+    if (error.response) {
+      const status = error.response.status
+      if (status === 403) {
+        errorMessage = '신문을 볼 권한이 없습니다.'
+      } else if (status === 404) {
+        errorMessage = '신문 데이터를 찾을 수 없습니다.'
+      }
+    } else if (error.request) {
+      errorMessage = '서버와 연결할 수 없습니다.'
+    }
+    
+    console.error(errorMessage)
   } finally {
     loading.value = false
   }
 }
 
-// 신문 리스트 정렬 및 페이지네이션 적용
-const sortedNewsList = computed(() => {
-  const sorted = [...newsList.value].sort((a, b) => {
+// 표시할 신문 목록 (실제로 생성된 신문만)
+const displayNewsList = computed(() => {
+  // API에서 받은 신문 목록을 년-월 내림차순으로 정렬
+  const sortedNews = [...newsList.value].sort((a, b) => {
     if (a.year !== b.year) return b.year - a.year
     return b.month - a.month
   })
-  
-  // 중복 제거 (id 기준)
-  const uniqueNews = sorted.filter((news, index, self) => 
-    index === self.findIndex(n => n.id === news.id)
-  )
   
   // 페이지네이션 적용
   const startIndex = (currentPage.value - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
-  return uniqueNews.slice(startIndex, endIndex)
+  return sortedNews.slice(startIndex, endIndex)
 })
 
-// 전체 데이터에서 중복 제거 후 총 페이지 계산
-const totalItems = computed(() => {
-  const sorted = [...newsList.value].sort((a, b) => {
-    if (a.year !== b.year) return b.year - a.year
-    return b.month - a.month
-  })
-  
-  const uniqueNews = sorted.filter((news, index, self) => 
-    index === self.findIndex(n => n.id === news.id)
-  )
-  
-  return uniqueNews.length
-})
+// 페이지네이션 계산 (실제 신문 개수 기준)
+const totalPages = computed(() => Math.ceil(newsList.value.length / itemsPerPage))
 
-// 페이지네이션 계산
-const totalPages = computed(() => Math.ceil(totalItems.value / itemsPerPage))
 const visiblePages = computed(() => {
   const pages = []
   const start = Math.max(1, currentPage.value - 2)
@@ -307,60 +210,95 @@ const visiblePages = computed(() => {
 // 신문 설명 생성
 const getNewsDescription = (news) => {
   if (news.challenges && news.challenges.length > 0) {
-    return `${news.challenges.map(c => c.challengeTitle).join(', ')} 수업을 하며 하하호호 추억을 나누...`
-  }
-  return '다 같이 근처 계곡으로 놀러가..'
-}
-
-// 해당 월의 마지막 날 구하기
-const getLastDay = (year, month) => {
-  return new Date(year, month, 0).getDate()
-}
-
-// 신문 발간하기
-const publishNews = async (news) => {
-  publishingIds.value.push(news.id)
-  
-  try {
-    // API 호출
-    const response = await axios.post('/api/v1/admin/ai-news', {
-      newsId: news.id,
-      year: news.year,
-      month: news.month
-    })
+    const challengeNames = news.challenges
+      .filter(c => c.challengeName || c.challengeTitle)
+      .map(c => c.challengeName || c.challengeTitle)
+      .slice(0, 3) // 최대 3개까지만 표시
+      .join(', ')
     
-    // 성공시 pdfUrl 업데이트
-    const newsIndex = newsList.value.findIndex(n => n.id === news.id)
-    if (newsIndex !== -1) {
-      newsList.value[newsIndex] = {
-        ...newsList.value[newsIndex],
-        ...response.data
-      }
+    if (challengeNames) {
+      return `${challengeNames} 활동을 하며 추억을 나누...`
     }
+  }
+  
+  return '이번 달의 도전과제 활동 내용입니다.'
+}
+
+// 발간일자 포맷팅 (현재 날짜 기준)
+const formatPublishDate = (news) => {
+  // 신문이 생성된 날짜가 있으면 그 날짜를 사용, 없으면 현재 날짜 사용
+  let publishDate
+  
+  if (news.createdAt) {
+    // API에서 생성일시를 제공하는 경우
+    publishDate = new Date(news.createdAt)
+  } else {
+    // 생성일시가 없으면 현재 날짜 사용
+    publishDate = new Date()
+  }
+  
+  const year = publishDate.getFullYear()
+  const month = String(publishDate.getMonth() + 1).padStart(2, '0')
+  const day = String(publishDate.getDate()).padStart(2, '0')
+  
+  return `${year}.${month}.${day}`
+}
+
+// 완료된 도전과제가 있는지 확인
+const hasCompletedChallenges = (news) => {
+  return news.challenges && news.challenges.some(challenge => 
+    challenge.isSuccess && challenge.aiDescription
+  )
+}
+
+// PDF 생성 모달 열기
+const showPdfGenerator = async (news) => {
+  try {
+    // 신문 상세 정보 가져오기 (도전과제 포함)
+    const response = await api.get(`/api/v1/ai-news/${news.id}`)
+    selectedNews.value = response.data
+    showPdfModal.value = true
+  } catch (error) {
+    console.error('신문 상세 정보 로드 실패:', error)
+    alert('신문 정보를 불러오는데 실패했습니다.')
+  }
+}
+
+// PDF 생성 모달 닫기
+const closePdfModal = () => {
+  showPdfModal.value = false
+  selectedNews.value = null
+}
+
+// PDF 생성 완료 처리
+const handlePdfGenerated = (result) => {
+  console.log('PDF 생성 완료:', result)
+  closePdfModal()
+  fetchNews() // 신문 목록 새로고침
+}
+
+// PDF 보기
+const viewNewsPdf = async (newsId) => {
+  try {
+    const response = await api.get(`/api/v1/admin/ai-news/${newsId}/pdf`)
+    const pdfUrl = response.data.pdfUrl
     
-    console.log('신문 발간 완료:', response.data)
+    // 새 탭에서 PDF 열기
+    window.open(pdfUrl, '_blank')
     
   } catch (error) {
-    console.error('신문 발간에 실패했습니다:', error)
+    console.error('PDF 조회 실패:', error)
     
-    // 에러 발생시 임시로 성공 처리 (개발용)
-    setTimeout(() => {
-      const newsIndex = newsList.value.findIndex(n => n.id === news.id)
-      if (newsIndex !== -1) {
-        newsList.value[newsIndex].pdfUrl = `https://s13p11a708.s3.us-east-2.amazonaws.com/ai-news/강일리버파크2단지_${news.year}_${news.month}.pdf`
-      }
-    }, 2000)
+    let errorMessage = 'PDF를 불러오는데 실패했습니다.'
     
-  } finally {
-    setTimeout(() => {
-      publishingIds.value = publishingIds.value.filter(id => id !== news.id)
-    }, 2000)
+    if (error.response?.status === 404) {
+      errorMessage = 'PDF 파일을 찾을 수 없습니다. PDF를 먼저 생성해주세요.'
+    } else if (error.response?.status === 403) {
+      errorMessage = 'PDF를 볼 권한이 없습니다.'
+    }
+    
+    alert(errorMessage)
   }
-}
-
-// 신문 보기
-const viewNews = (newsId) => {
-  router.push(`/news/${newsId}`)
 }
 
 // 페이지 변경
@@ -370,8 +308,18 @@ const changePage = (page) => {
   }
 }
 
-onMounted(() => {
-  fetchNews()
+onMounted(async () => {
+  await fetchNews()
+  
+  // URL 쿼리에서 PDF 생성 요청 확인
+  const generatePdfId = route.query.generatePdf
+  
+  if (generatePdfId) {
+    const news = newsList.value.find(n => n.id == generatePdfId)
+    if (news && !news.pdfUrl) {
+      showPdfGenerator(news)
+    }
+  }
 })
 </script>
 
@@ -499,6 +447,7 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.2s;
   min-width: 80px;
+  white-space: nowrap;
 }
 
 .view-btn {
@@ -511,20 +460,34 @@ onMounted(() => {
   transform: translateY(-1px);
 }
 
-.publish-btn {
+.generate-pdf-btn {
   background-color: #10b981;
   color: white;
 }
 
-.publish-btn:hover:not(:disabled) {
+.generate-pdf-btn:hover:not(:disabled) {
   background-color: #059669;
   transform: translateY(-1px);
 }
 
-.publish-btn:disabled {
-  background-color: #9ca3af;
-  cursor: not-allowed;
-  transform: none;
+.no-content-label {
+  font-size: 12px;
+  color: #9ca3af;
+  background-color: #f3f4f6;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  cursor: help;
+}
+
+.no-data {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6b7280;
+  font-size: 16px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .pagination {
@@ -568,16 +531,63 @@ onMounted(() => {
   cursor: not-allowed;
 }
 
-.page-dots {
-  color: #9ca3af;
-  padding: 0 8px;
-}
-
 .loading {
   text-align: center;
   padding: 60px 20px;
   color: #6b7280;
   font-size: 16px;
+}
+
+.pdf-modal {
+  max-width: 600px;
+  min-height: 400px;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: white;
+  border-radius: 20px;
+  padding: 32px;
+  width: 90%;
+  max-width: 480px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  text-align: center;
+  z-index: 1001;
+  position: relative;
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s ease;
+}
+
+.modal-close-btn:hover {
+  background-color: #f3f4f6;
 }
 
 @media (max-width: 768px) {

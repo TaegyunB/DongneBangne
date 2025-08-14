@@ -3,64 +3,288 @@
     <h2 class="page-title">게시글 작성</h2>
 
     <div class="form-group">
-      <label>카테고리</label>
-      <select v-model="form.category">
+      <label for="category">카테고리</label>
+      <select id="category" v-model="form.category" :disabled="submitting">
         <option disabled value="">카테고리를 선택하세요</option>
         <option v-for="category in categories" :key="category" :value="category">
           {{ category }}
         </option>
       </select>
+      <p v-if="errors.category" class="error">{{ errors.category }}</p>
     </div>
 
     <div class="form-group">
-      <label>제목</label>
-      <input type="text" v-model="form.title" placeholder="제목을 입력하세요" />
+      <label for="title">제목</label>
+      <input
+        id="title"
+        type="text"
+        v-model.trim="form.title"
+        :disabled="submitting"
+        placeholder="제목을 입력하세요"
+      />
+      <p v-if="errors.title" class="error">{{ errors.title }}</p>
     </div>
 
     <div class="form-group">
-      <label>내용</label>
-      <textarea v-model="form.content" placeholder="내용을 입력하세요" />
+      <label for="content">내용</label>
+      <textarea
+        id="content"
+        v-model.trim="form.content"
+        :disabled="submitting"
+        placeholder="내용을 입력하세요"
+      ></textarea>
+      <p v-if="errors.content" class="error">{{ errors.content }}</p>
     </div>
 
-    <button class="submit-button" @click="submitPost">등록하기</button>
+    <!-- 이미지 업로드 -->
+    <div class="form-group">
+      <label for="image">이미지 (선택)</label>
+      <input
+        id="image"
+        type="file"
+        accept="image/*"
+        :disabled="submitting"
+        @change="onFileChange"
+      />
+      <div v-if="previewUrl" class="preview">
+        <img :src="previewUrl" alt="미리보기" />
+        <button class="preview-remove" type="button" @click="clearImage" :disabled="submitting">
+          이미지 제거
+        </button>
+      </div>
+      <p v-if="errors.image" class="error">{{ errors.image }}</p>
+    </div>
+
+    <div class="button-row">
+      <button class="submit-button" :disabled="submitting" @click="submitPost">
+        {{ submitting ? '등록 중...' : '등록하기' }}
+      </button>
+      <button class="cancel-button" :disabled="submitting" @click="goBack">취소</button>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-// import axios from 'axios' // 실제 API 연동 시 주석 해제
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import api from '@/api/axios' // ✅ 전역 axios 인스턴스만 사용
 
 const router = useRouter()
+const route = useRoute()
 
-const categories = ['잡담', '나눔', '취미', '정보', '인기'] // 인기 -> 인기는 좋아요 10 이상이면 조회되도록 필터링
-const form = ref({
-  category: '',
-  title: '',
-  content: '',
+// 글쓰기 선택 가능한 카테고리 (인기는 제외)
+const categories = ['잡담', '나눔', '취미', '정보']
+// UI ↔ API(백엔드 요청은 소문자 코드)
+const uiToApiLower = { 잡담: 'chat', 나눔: 'share', 취미: 'hobby', 정보: 'info' }
+
+// 폼 상태
+const form = ref({ category: '', title: '', content: '' })
+const imageFile = ref(null)   // File 객체 저장
+const previewUrl = ref('')
+const submitting = ref(false)
+const errors = ref({ category: '', title: '', content: '', image: '' })
+
+// URL 쿼리로 넘어온 category 프리셋 적용
+onMounted(() => {
+  const map = { all: '잡담', popular: '잡담', chat: '잡담', share: '나눔', hobby: '취미', info: '정보' }
+  const q = typeof route.query.category === 'string' ? route.query.category : ''
+  if (q && map[q]) form.value.category = map[q]
 })
 
-const submitPost = async () => {
-  if (!form.value.category || !form.value.title || !form.value.content) {
-    alert('모든 항목을 입력해주세요.')
+// [ADD] presign URL/path를 baseURL와 안전하게 합쳐주는 도우미
+const resolvePresignEndpoint = (raw) => {
+  const base = (api?.defaults?.baseURL || '').replace(/\/$/, '')
+  if (!raw) return `${base}/v1/uploads/presign`   // 디폴트 경로
+  if (/^https?:\/\//i.test(raw)) return raw       // 풀 URL
+  if (raw.startsWith('/')) return `${base}${raw}` // 경로만 온 경우
+  return `${base}/${raw.replace(/^\//, '')}`
+}
+
+// [ADD] S3로 실제 업로드 수행 (POST policy or PUT presign 둘 다 지원)
+const uploadToS3 = async (presign, file) => {
+  // POST 정책 방식
+  if (presign?.fields && presign?.uploadUrl) {
+    const fd = new FormData()
+    Object.entries(presign.fields).forEach(([k, v]) => fd.append(k, String(v)))
+    fd.append('file', file) // 필드명은 'file' 고정
+    const res = await fetch(presign.uploadUrl, { method: 'POST', body: fd })
+    if (!res.ok) throw new Error(`S3 POST 업로드 실패: ${res.status}`)
+    return presign.fileUrl || (presign.uploadUrl.replace(/\/$/, '') + '/' + presign.fields.key)
+  }
+
+  // PUT 방식
+  if (presign?.uploadUrl) {
+    const res = await fetch(presign.uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type },
+      body: file,
+    })
+    if (!res.ok) throw new Error(`S3 PUT 업로드 실패: ${res.status}`)
+    return presign.fileUrl || presign.uploadUrl.split('?')[0]
+  }
+
+  throw new Error('presign 응답에 uploadUrl이 없음')
+}
+
+ // [ADD] 필요하면 presign → S3 업로드 → 최종 URL 반환 (쿠키 인증만 사용)
+ const uploadImageIfNeeded = async () => {
+   if (!imageFile.value) return null
+
+   // presign 엔드포인트 결정
+   const raw = import.meta.env.VITE_IMAGE_PRESIGN_URL || import.meta.env.VITE_IMAGE_PRESIGN_PATH
+   const presignEndpoint = resolvePresignEndpoint(String(raw || ''))
+
+   // 1) presign 요청 (백 응답 예: { uploadUrl, fileUrl, fields? })
+   const filename = `${crypto.randomUUID?.() || Date.now()}_${imageFile.value.name}`
+   const { data: presign } = await api.post(
+     presignEndpoint,
+     { filename, contentType: imageFile.value.type }
+     // 헤더는 추가하지 않음: 세션 쿠키(withCredentials)로 인증
+   )
+
+   // 2) S3 업로드
+   const finalUrl = await uploadToS3(presign, imageFile.value)
+   return finalUrl
+ }
+// 업로드 오류 수정
+// 이미지 미리보기만 처리
+const onFileChange = (e) => {
+  const file = e.target.files?.[0]
+  if (!file) { 
+    clearImage()
+    return 
+  }
+  
+  if (!file.type.startsWith('image/')) {
+    errors.value.image = '이미지 파일만 업로드 가능합니다.'
+    e.target.value = ''
     return
   }
-
-  // API 요청 (현재는 더미 처리)
-  /*
-  try {
-    await axios.post('/api/v1/boards', form.value)
-    alert('글이 등록되었습니다.')
-    router.push('/boards')
-  } catch (err) {
-    console.error(err)
-    alert('등록 실패')
+  
+  if (file.size > 5 * 1024 * 1024) {
+    errors.value.image = '파일 크기는 5MB 이하여야 합니다.'
+    e.target.value = ''
+    return
   }
-  */
+  
+  errors.value.image = ''
+  imageFile.value = file
+  previewUrl.value = URL.createObjectURL(file)
+}
 
-  // 더미 처리용
-  alert('글이 등록되었습니다.')
-  router.push('/boards')
+const clearImage = () => {
+  imageFile.value = null
+  if (previewUrl.value) {
+    URL.revokeObjectURL(previewUrl.value)
+  }
+  previewUrl.value = ''
+  // 파일 input 초기화
+  const fileInput = document.getElementById('image')
+  if (fileInput) fileInput.value = ''
+}
+
+const validate = () => {
+  errors.value = { category: '', title: '', content: '', image: '' }
+  let ok = true
+  
+  if (!form.value.category) { 
+    errors.value.category = '카테고리를 선택해 주세요.'
+    ok = false 
+  }
+  
+  if (!form.value.title || form.value.title.length < 2) { 
+    errors.value.title = '제목을 2자 이상 입력해 주세요.'
+    ok = false 
+  }
+  
+  if (!form.value.content || form.value.content.length < 2) { 
+    errors.value.content = '내용을 2자 이상 입력해 주세요.'
+    ok = false 
+  }
+  
+  return ok
+}
+
+// FormData 방식으로 게시글 등록
+const submitPost = async () => {
+  if (submitting.value) return
+  if (!validate()) return
+
+  submitting.value = true
+  
+  try {
+    // FormData 생성
+    const formData = new FormData()
+    formData.append('title', form.value.title)
+    formData.append('content', form.value.content)
+    formData.append('boardCategory', uiToApiLower[form.value.category] || 'chat')
+    
+    // 이미지 파일이 있으면 추가
+    if (imageFile.value) {
+      formData.append('imageFile', imageFile.value)
+    }
+
+    // Authorization 헤더 처리 (선택적)
+    const headers = {}
+    try {
+      const { getAccessToken } = await import('@/utils/token')
+      const token = getAccessToken?.()
+      if (token) {
+        headers.Authorization = `Bearer ${token}`
+      }
+    } catch (e) { 
+      // 토큰 유틸이 없거나 에러가 나면 쿠키 인증으로 진행
+      console.log('토큰 처리 건너뜀:', e.message)
+    }
+    
+    // FormData 전송 (Content-Type은 자동으로 multipart/form-data)
+    const response = await api.post('/api/v1/boards', formData, {
+      headers
+    })
+
+    console.log('등록 성공:', response.data)
+    alert('글이 등록되었습니다.')
+    
+    // 등록된 카테고리로 게시판 목록 페이지로 이동
+    const categoryParam = uiToApiLower[form.value.category] || 'chat'
+    router.push({ 
+      name: 'boards', 
+      query: { category: categoryParam } 
+    })
+    
+  } catch (err) {
+    console.error('등록 실패:', err)
+    
+    if (err?.response?.status === 401) {
+      alert('세션이 만료되었어요. 다시 로그인해 주세요.')
+      router.push({ name: 'onboarding' })
+    } else if (err?.response?.status === 400) {
+      alert('입력한 정보를 다시 확인해 주세요.')
+    } else if (err?.response?.status === 413) {
+      alert('파일 크기가 너무 큽니다. 5MB 이하의 이미지를 선택해 주세요.')
+    } else {
+      alert('등록에 실패했습니다. 잠시 후 다시 시도해 주세요.')
+    }
+  } finally {
+    submitting.value = false
+  }
+
+const goBack = () => {
+  // 미리보기 URL 정리
+  if (previewUrl.value) {
+    URL.revokeObjectURL(previewUrl.value)
+  }
+  router.back()
+}
+
+// 컴포넌트 언마운트 시 URL 정리
+onMounted(() => {
+  return () => {
+    if (previewUrl.value) {
+      URL.revokeObjectURL(previewUrl.value)
+    }
+  }
+})
 }
 </script>
 
@@ -73,47 +297,111 @@ const submitPost = async () => {
   border-radius: 12px;
   background-color: #fff;
   font-family: 'Noto Sans KR', sans-serif;
+  font-size: 18px;
 }
-
 .page-title {
-  font-size: 22px;
-  font-weight: bold;
+  font-size: 26px;
+  font-weight: 800;
   margin-bottom: 24px;
+  color: #0f172a;
 }
-
-.form-group {
-  margin-bottom: 20px;
-}
-
+.form-group { margin-bottom: 20px; }
 label {
   display: block;
-  margin-bottom: 6px;
-  font-weight: bold;
+  margin-bottom: 8px;
+  font-weight: 700;
+  color: #111827;
 }
-
-input,
-select,
-textarea {
+input, select, textarea {
   width: 100%;
-  padding: 10px 12px;
+  padding: 12px 14px;
   border: 1px solid #ccc;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: 10px;
+  font-size: 16px;
   box-sizing: border-box;
+  outline: none;
+  transition: box-shadow .2s, border-color .2s;
 }
-
+input:focus, select:focus, textarea:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 4px rgba(96,165,250,.15);
+}
 textarea {
-  min-height: 180px;
+  min-height: 200px;
   resize: vertical;
+  line-height: 1.6;
 }
-
+.error {
+  color: #d32f2f;
+  font-size: 14px;
+  margin-top: 6px;
+}
+.button-row {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+.submit-button, .cancel-button {
+  cursor: pointer;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 18px;
+  font-size: 16px;
+  min-height: 44px;
+  transition: background .2s, transform .1s, box-shadow .2s;
+}
 .submit-button {
-  background-color: #284cea;
-  color: white;
-  font-size: 15px;
-  padding: 10px 20px;
+  background-color: #2563eb;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(37,99,235,.25);
+}
+.submit-button:hover { background-color: #1e40af; transform: translateY(-1px); }
+.submit-button:disabled {
+  background-color: #9db6f7;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+.cancel-button { background-color: #f3f4f6; color: #111827; }
+.cancel-button:hover { background-color: #e5e7eb; transform: translateY(-1px); }
+
+/* 이미지 미리보기 */
+.preview {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.preview img {
+  width: 140px;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
+.preview-remove {
+  background: #f43f5e;
+  color: #fff;
   border: none;
   border-radius: 8px;
+  padding: 8px 12px;
   cursor: pointer;
+}
+.preview-remove:hover { background: #e11d48; }
+
+/* 포커스 링 명확히 */
+.submit-button:focus-visible,
+.cancel-button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid #ffbf47;
+  outline-offset: 2px;
+}
+
+/* 모션 최소화 */
+@media (prefers-reduced-motion: reduce) {
+  .submit-button:hover, .cancel-button:hover { transform: none; }
 }
 </style>

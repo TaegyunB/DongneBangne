@@ -48,7 +48,7 @@ public class JWTFilter extends OncePerRequestFilter {
         boolean skip = uri.startsWith("/api/v1/senior-centers")
             || uri.startsWith("/oauth2")
             || uri.startsWith("/login")
-            || uri.equals("/");
+            || uri.equals("/") || uri.startsWith("/signal");
 
         System.out.println("🚫 shouldNotFilter → " + uri + " → " + skip);
         return skip;

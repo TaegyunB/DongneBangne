@@ -19,13 +19,14 @@
                 />
             </div>
             
-            <!-- 이미지 업로드 (선택사항) -->
+            <!-- 이미지 업로드 (필수) -->
             <div class="section">
-                <h3>이미지 업로드 (선택사항)</h3>
+                <h3>이미지 업로드 <span class="required">*필수</span></h3>
                 <div class="upload-area" @click="triggerFileInput">
                     <div v-if="!form.image" class="upload-placeholder">
                         <div class="upload-icon">📁</div>
                         <button type="button" class="upload-btn">파일 선택</button>
+                        <p>도전 인증을 위한 이미지를<br>업로드해주세요</p>
                     </div>
                     <div v-else class="preview">
                         <img :src="previewUrl" alt="preview" />
@@ -44,11 +45,39 @@
             </button>
         </div>
         
-        <!-- 모달 -->
-        <div v-if="showModal" class="modal" @click="closeModal">
+<!-- 확인 모달 -->
+        <div v-if="showConfirmModal" class="modal" @click="closeConfirmModal">
             <div class="modal-content" @click.stop>
-                <h2>도전 인증 정보가 <br> 업로드되었습니다.</h2>
-                <p>관리자의 승인을 기다려주세요.</p>
+                <h2>도전 인증 내용을 확인해주세요</h2>
+                <div class="warning-message">
+                    <p>⚠️ 도전을 인증하면 수정이 불가합니다</p>
+                </div>
+                <div class="confirm-content">
+                    <div class="form-group">
+                        <label>도전 상세:</label>
+                        <p class="content-text">{{ form.description }}</p>
+                    </div>
+                    <div class="form-group">
+                        <label>업로드 이미지:</label>
+                        <div class="confirm-image">
+                            <img :src="previewUrl" alt="확인 이미지" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-buttons">
+                    <button @click="closeConfirmModal" class="btn-modal-cancel">취소</button>
+                    <button @click="confirmSubmit" class="btn-modal-confirm" :disabled="confirming">
+                        {{ confirming ? '제출 중...' : '확인' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 성공 모달 -->
+        <div v-if="showSuccessModal" class="modal" @click="closeSuccessModal">
+            <div class="modal-content" @click.stop>
+                <h2>도전 인증이 <br> 완료되었습니다!</h2>
+                <p>도전이 성공적으로 인증되어 완료 상태로 변경되었습니다.</p>
                 <div class="modal-buttons">
                     <button @click="goToChallenge" class="btn-modal">도전 페이지로</button>
                 </div>
@@ -60,7 +89,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import axios from 'axios'
+import api from '@/api/axios' // 기존 API 클라이언트 import
 
 const router = useRouter()
 const route = useRoute()
@@ -68,26 +97,19 @@ const route = useRoute()
 const form = ref({ description: '', image: null })
 const previewUrl = ref('')
 const fileInput = ref(null)
-const showModal = ref(false)
+const showConfirmModal = ref(false)
+const showSuccessModal = ref(false)
 const loading = ref(false)
+const confirming = ref(false)
 
-const isValid = computed(() => form.value.description.trim())
+// 이미지 업로드도 필수로 변경
+const isValid = computed(() => form.value.description.trim() && form.value.image)
 
 const challengeId = ref(null)
-const challengeType = ref('system') // 'system' 또는 'admin'
 
 onMounted(() => {
   challengeId.value = route.params.challengeId
-  
-  // challengeId로 도전 타입 구분
-  // 우리가 제공하는 도전인지 ADMIN이 생성한 도전인지 확인
-  const adminChallenges = JSON.parse(localStorage.getItem('adminChallenges') || '[]')
-  const isAdminChallenge = adminChallenges.some(challenge => 
-    challenge.challengeId && challenge.challengeId.toString() === challengeId.value
-  )
-  
-  challengeType.value = isAdminChallenge ? 'admin' : 'system'
-  console.log('도전 타입:', challengeType.value, 'challengeId:', challengeId.value)
+  console.log('challengeId:', challengeId.value)
 })
 
 const triggerFileInput = () => fileInput.value?.click()
@@ -95,6 +117,19 @@ const triggerFileInput = () => fileInput.value?.click()
 const handleFileUpload = (event) => {
   const file = event.target.files[0]
   if (file) {
+    // 파일 크기 검사 (10MB 제한)
+    const maxSize = 10 * 1024 * 1024
+    if (file.size > maxSize) {
+      alert(`파일 크기가 너무 큽니다. 최대 ${Math.round(maxSize / 1024 / 1024)}MB까지 업로드 가능합니다.`)
+      return
+    }
+    
+    // 파일 타입 검사
+    if (!file.type.startsWith('image/')) {
+      alert('이미지 파일만 업로드 가능합니다.')
+      return
+    }
+    
     form.value.image = file
     const reader = new FileReader()
     reader.onload = (e) => previewUrl.value = e.target.result
@@ -110,73 +145,120 @@ const removeImage = () => {
 
 const cancel = () => router.go(-1)
 
-const submit = async () => {
-  if (!isValid.value) {
+const submit = () => {
+  if (!form.value.description.trim()) {
     alert('도전 상세 내용을 입력해주세요.')
     return
   }
+  
+  if (!form.value.image) {
+    alert('도전 인증을 위한 이미지를 업로드해주세요.')
+    return
+  }
+  
+  showConfirmModal.value = true
+}
 
-  loading.value = true
+const closeConfirmModal = () => {
+  showConfirmModal.value = false
+}
+
+const confirmSubmit = async () => {
+  confirming.value = true
 
   try {
-    const formData = new FormData()
-    formData.append('imageDescription', form.value.description)
-    if (form.value.image) {
-      formData.append('imageFile', form.value.image)
-    }
-
-    console.log('missionFinishUpdate API 호출:', {
-      challengeId: challengeId.value,
-      description: form.value.description,
-      image: form.value.image,
-      challengeType: challengeType.value
+    console.log('=== 도전 인증 시작 ===')
+    console.log('challengeId:', challengeId.value)
+    console.log('파일 정보:', {
+      name: form.value.image.name,
+      size: `${(form.value.image.size / 1024 / 1024).toFixed(2)}MB`,
+      type: form.value.image.type
     })
-
-    const response = await axios.post(
+    
+    // FormData 생성
+    const formData = new FormData()
+    formData.append('imageFile', form.value.image)
+    formData.append('imageDescription', form.value.description)
+    
+    console.log('🚀 missionFinishUpdate API 호출 시작...')
+    
+    // 첫 번째 API: 이미지 업로드 및 설명 저장
+    const response = await api.post(
       `/api/v1/admin/challenges/${challengeId.value}/missionFinishUpdate`, 
       formData,
       {
-        withCredentials: true,
         headers: {
           'Content-Type': 'multipart/form-data'
+        },
+        timeout: 60000, // 60초
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+          console.log(`업로드 진행률: ${percentCompleted}%`)
+          
+          if (percentCompleted === 100) {
+            console.log('⏳ 파일 업로드 완료, 서버 처리 중...')
+          }
         }
       }
     )
 
-    console.log('서버 응답:', response.data)
+    console.log('✅ missionFinishUpdate 성공:', response.data)
 
-    const uploadedChallenge = {
-      challengeId: parseInt(challengeId.value),
-      description: form.value.description,
-      image: form.value.image ? previewUrl.value : null,
-      uploadedAt: new Date().toISOString(),
-      is_success: false,
-      is_uploaded: true,
-      serverData: response.data
-    }
+    // 두 번째 API: 도전 완료 처리
+    console.log('🚀 complete API 호출 시작...')
+    
+    const completeResponse = await api.post(
+      `/api/v1/admin/challenges/${challengeId.value}/complete`,
+      {}
+    )
 
-    // 도전 타입에 따라 다른 localStorage 키 사용
-    if (challengeType.value === 'admin') {
-      // ADMIN이 생성한 도전과제
-      localStorage.setItem(`admin_challenge_${challengeId.value}`, JSON.stringify(uploadedChallenge))
-    } else {
-      // 우리가 제공하는 도전과제 (기존 방식 유지)
-      localStorage.setItem(`challenge_${challengeId.value}`, JSON.stringify(uploadedChallenge))
+    console.log('✅ complete API 성공:', completeResponse.data)
+
+    // 성공 처리
+    showConfirmModal.value = false
+    showSuccessModal.value = true
+
+  } catch (error) {
+    console.error('❌ API 호출 에러:', error)
+    
+    let errorMessage = '알 수 없는 오류가 발생했습니다.'
+    
+    if (error.code === 'ERR_NETWORK') {
+      errorMessage = `네트워크 오류가 발생했습니다.
+
+가능한 원인:
+1. 서버에서 파일 처리 중 오류 발생
+2. 파일 업로드 실패
+3. 서버 연결 문제
+
+잠시 후 다시 시도해주세요.`
+      
+    } else if (error.code === 'ECONNABORTED') {
+      errorMessage = '요청 시간이 초과되었습니다. 파일 크기를 줄이거나 나중에 다시 시도해주세요.'
+    } else if (error.response) {
+      const status = error.response.status
+      const serverMessage = error.response.data?.message || `서버 오류 (${status})`
+      
+      if (status === 401 || status === 403) {
+        errorMessage = '로그인이 필요합니다. 다시 로그인해주세요.'
+      } else if (status === 413) {
+        errorMessage = '파일 크기가 너무 큽니다. 더 작은 파일을 선택해주세요.'
+      } else {
+        errorMessage = `서버 오류: ${serverMessage}`
+      }
     }
     
-    showModal.value = true
-  } catch (error) {
-    console.error('업로드 오류:', error)
-    alert('도전 인증 업로드 중 오류가 발생했습니다.')
+    alert(errorMessage)
+    
   } finally {
-    loading.value = false
+    confirming.value = false
   }
 }
 
-const closeModal = () => showModal.value = false
+const closeSuccessModal = () => showSuccessModal.value = false
 
 const goToChallenge = () => {
-  showModal.value = false
+  showSuccessModal.value = false
   router.push('/challenges')
 }
 </script>
@@ -197,6 +279,13 @@ const goToChallenge = () => {
 .content { display: flex; gap: 40px; margin-bottom: 40px; }
 .section { flex: 1; }
 .section h3 { font-size: 20px; font-weight: bold; margin-bottom: 15px; }
+
+.required {
+    color: #FF4444;
+    font-size: 16px;
+    font-weight: normal;
+    margin-left: 8px;
+}
 
 .textarea {
     width: 100%; height: 200px; padding: 15px; border: 2px solid #e0e0e0;
@@ -245,22 +334,59 @@ const goToChallenge = () => {
 }
 .modal-content {
     background: white; padding: 40px; border-radius: 12px; text-align: center;
-    max-width: 500px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    max-width: 600px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
 }
-.modal-content h2 { font-size: 32px; margin-bottom: 10px; }
-.modal-content p { color: #666; margin-bottom: 30px; font-size: 20px; }
+.modal-content h2 { font-size: 28px; margin-bottom: 20px; }
+.modal-content p { color: #666; margin-bottom: 30px; font-size: 18px; }
+
+.confirm-content { text-align: left; margin: 30px 0; }
+.form-group { margin-bottom: 20px; }
+.form-group label { 
+    display: block; margin-bottom: 8px; font-weight: bold; 
+    color: #333; font-size: 18px; 
+}
+.content-text { 
+    background: #f8f9fa; padding: 15px; border-radius: 8px; 
+    font-size: 16px; line-height: 1.5; border: 1px solid #e9ecef; 
+}
+.confirm-image { 
+    width: 200px; height: 150px; border-radius: 8px; 
+    overflow: hidden; border: 1px solid #e9ecef; 
+}
+.confirm-image img { width: 100%; height: 100%; object-fit: cover; }
+
 .modal-buttons { display: flex; gap: 15px; justify-content: center; }
-.btn-modal {
-    padding: 12px 24px; border: none; border-radius: 6px; background: #3074FF;
-    color: white; cursor: pointer; transition: background-color 0.3s;font-size: 20px;font-weight: bold;
+.btn-modal, .btn-modal-cancel, .btn-modal-confirm {
+    padding: 12px 24px; border: none; border-radius: 6px; 
+    cursor: pointer; transition: background-color 0.3s;font-size: 18px;font-weight: bold;
 }
-.btn-modal:hover { background: #6c9dff; }
+.btn-modal, .btn-modal-confirm { background: #3074FF; color: white; }
+.btn-modal:hover, .btn-modal-confirm:hover:not(:disabled) { background: #6c9dff; }
+.btn-modal-cancel { background: #f5f5f5; color: #666; }
+.btn-modal-cancel:hover { background: #e0e0e0; }
+.btn-modal-confirm:disabled { background: #ccc; cursor: not-allowed; }
+
+.warning-message {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 20px 0;
+    text-align: center;
+}
+
+.warning-message p {
+    margin: 0;
+    color: #856404;
+    font-size: 16px;
+    font-weight: bold;
+}
 
 @media (max-width: 768px) {
     .content { flex-direction: column; gap: 20px; }
     .buttons { flex-direction: column; align-items: center; }
     .btn-cancel, .btn-submit { width: 200px; }
     .modal-buttons { flex-direction: column; gap: 10px; }
-    .btn-modal { width: 100%; }
+    .btn-modal, .btn-modal-cancel, .btn-modal-confirm { width: 100%; }
 }
 </style>

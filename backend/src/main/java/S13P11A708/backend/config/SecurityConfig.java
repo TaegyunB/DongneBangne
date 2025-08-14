@@ -78,7 +78,10 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        config.setAllowedOrigins(List.of("http://localhost:5173")); // Vue 개발 서버 주소, 배포 시 실제 주소로 전환할 것
+        config.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "https://i13a708.p.ssafy.io"
+        )); // Vue 개발 서버 주소, 배포 시 실제 주소로 전환할 것
 //        config.setAllowedMethods(List.of("*"));
 //        config.setAllowedHeaders(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")); // *금지

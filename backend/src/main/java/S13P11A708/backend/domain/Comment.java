@@ -2,12 +2,16 @@ package S13P11A708.backend.domain;
 
 import S13P11A708.backend.domain.common.BaseEntity;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
+@Builder
 @NoArgsConstructor
+@AllArgsConstructor
 @Table(name = "comment")
 public class Comment extends BaseEntity {
 
@@ -25,6 +29,15 @@ public class Comment extends BaseEntity {
     private User user;
 
     private String content;
+
+    //== setter 메서드 ==//
+    /**
+     * 댓글 수정
+     */
+    public void updateContent(String content) {
+        this.content = content;
+    }
+
 
 
 }

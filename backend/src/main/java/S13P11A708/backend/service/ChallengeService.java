@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import S13P11A708.backend.domain.enums.ChallengeType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -37,6 +38,7 @@ public class ChallengeService {
     private final ChallengeRepository challengeRepository;
     private final S3Service s3Service;
 
+    private static final int MAX_CUSTOM_CHALLENGES_PER_MONTH = 2;  // 경로당 자체 미션 최대 개수
     private static final int MAX_MONTHLY_CHALLENGES = 4;  // 월별 최대 챌린지 개수
 
     //== 일반 사용자 메서드 ==//
@@ -119,11 +121,12 @@ public class ChallengeService {
         Integer currentYear = now.getYear();
         Integer currentMonth = now.getMonthValue();
 
-        // 현재 월의 도전 개수 확인
-        List<Challenge> existingChallenges = challengeRepository.findChallengesByYearAndMonth(seniorCenter.getId(), currentYear, currentMonth);
+        // 현재 월의 경로당 자체 미션 개수 확인
+        Long existingCustomChallenges = challengeRepository.countChallengesByYearAndMonthAndType(
+                seniorCenter.getId(), currentYear, currentMonth, ChallengeType.CUSTOM);
 
-        if(existingChallenges.size() > MAX_MONTHLY_CHALLENGES) {
-            throw new IllegalArgumentException("이번 달은 이미 최대 개수(" + MAX_MONTHLY_CHALLENGES + "개)의 도전이 생성되었습니다.");
+        if (existingCustomChallenges > MAX_CUSTOM_CHALLENGES_PER_MONTH) {
+            throw new IllegalArgumentException("이번 달은 이미 최대 개수 " + MAX_MONTHLY_CHALLENGES + "개를 생성하였습니다.");
         }
 
         // DTO -> Entity 권한
@@ -131,6 +134,7 @@ public class ChallengeService {
                 .challengeTitle(requestDto.getChallengeTitle())
                 .challengePlace(requestDto.getChallengePlace())
                 .description(requestDto.getDescription())
+                .challengeType(ChallengeType.CUSTOM)
                 .isSuccess(false)
                 .seniorCenter(seniorCenter)
                 .build();

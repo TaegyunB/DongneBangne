@@ -1,5 +1,15 @@
 package S13P11A708.backend.controller.admin;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+
+import lombok.Getter;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
 import S13P11A708.backend.dto.request.aiNews.SavedPdfRequestDto;
 import S13P11A708.backend.dto.response.aiNews.AiNewsResponseDto;
 import S13P11A708.backend.dto.response.aiNews.GeneratePdfUrlResponseDto;
@@ -8,13 +18,7 @@ import S13P11A708.backend.service.AiNewsService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/admin/ai-news")
@@ -51,31 +55,48 @@ public class AiNewsAdminController {
     }
 
     /**
-     * 프론트에서 생성된 PDF URL을 받아서 S3에 저장
+     * PDF 업로드
      */
-    @PostMapping("/save-pdf")
-    public ResponseEntity<GeneratePdfUrlResponseDto> savePdfFromUrl(
-            @Valid @RequestBody SavedPdfRequestDto requestDto,
+    @PostMapping("/upload-pdf")
+    public ResponseEntity<Map<String, Object>> uploadNewsPdf(
+            @RequestParam("pdfFile") MultipartFile pdfFile,
+            @RequestParam("newsId") Long newsId,
             @AuthenticationPrincipal CustomOAuth2User customUser) {
 
         try {
             Long userId = customUser.getUserId();
+            String pdfUrl = aiNewsService.uploadNewsPdf(userId, newsId, pdfFile);
 
-            GeneratePdfUrlResponseDto response = aiNewsService.savePdfFromUrl(requestDto, userId);
+            Map<String, Object> response = new HashMap<>();
+            response.put("pdfUrl", pdfUrl);
+            response.put("message", "PDF 업로드 성공");
 
             return ResponseEntity.ok(response);
 
-        } catch (IllegalArgumentException e) {
+        } catch (Exception e) {
+            throw new RuntimeException("PDF 업로드에 실패했습니다.", e);
+        }
+    }
 
-            GeneratePdfUrlResponseDto errorResponse = GeneratePdfUrlResponseDto.error(requestDto.getNewsId());
-            return ResponseEntity.badRequest().body(errorResponse);
+    /**
+     * PDF 조회 엔드포인트
+     */
+    @GetMapping("/{newsId}/pdf")
+    public ResponseEntity<Map<String, Object>> getNewsPdf(
+            @PathVariable Long newsId,
+            @AuthenticationPrincipal CustomOAuth2User customUser) {
+
+        try {
+            Long userId = customUser.getUserId();
+            String pdfUrl = aiNewsService.getNewsPdfUrl(userId, newsId);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("pdfUrl", pdfUrl);
+
+            return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-
-            GeneratePdfUrlResponseDto errorResponse = GeneratePdfUrlResponseDto.error(
-                    requestDto != null ? requestDto.getNewsId() : null);
-
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            throw new RuntimeException("PDF를 찾을 수 없습니다.", e);
         }
     }
 }

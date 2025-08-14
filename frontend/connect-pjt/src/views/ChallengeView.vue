@@ -11,8 +11,22 @@
       <h3>{{percent}}%</h3>
     </div>
      
-    <div class="message-box">
-      <p>{{ currentMessage }}</p>
+    <div class="message-and-ai-container">
+      <div class="message-box">
+        <p>{{ currentMessage }}</p>
+      </div>
+
+      <!-- AI 신문 생성 버튼을 메시지 박스 우측에 배치 -->
+      <div v-if="userRole === 'ADMIN'" class="ai-news-section">
+        <button 
+          @click="goToAINews" 
+          class="btn-ai-news" 
+          :disabled="creatingAINews || !isAINewsButtonEnabled"
+          :title="getAINewsButtonTooltip"
+        >
+          {{ creatingAINews ? ' AI 신문 생성 중...' : '✨ AI 신문 생성하기' }}
+        </button>
+      </div>
     </div>
      
     <!-- 도전과제 목록 -->
@@ -26,10 +40,23 @@
       >
         <!-- 이미지 영역 -->
         <div class="challenge-image">
+          <!-- 인증되지 않은 도전: 역할별 텍스트 표시 -->
+          <div 
+            v-if="!challenge.isEmpty && !isCompleted(challenge)" 
+            class="challenge-placeholder"
+          >
+            <p v-if="userRole === 'ADMIN'">도전 인증을 해주세요!</p>
+            <p v-else>도전 인증은 관리자만 가능합니다</p>
+          </div>
+          <!-- 인증된 도전 또는 빈 도전: 이미지 표시 -->
           <img 
+            v-else
             :src="getChallengeImage(challenge)" 
             :alt="challenge.challengeTitle || challenge.title"
             class="challenge-img"
+            crossorigin="anonymous"
+            @error="onImageError($event, challenge)"
+            @load="onImageLoad($event, challenge)"
           />
         </div>
         
@@ -37,24 +64,37 @@
         <div class="challenge-content">
           <div class="text-content">
             <div class="title-with-buttons">
-              <h2>{{ challenge.challengeTitle || challenge.title }}</h2>
-              <!-- userRole이 admin일 때만 수정/삭제 버튼 표시 -->
-              <div v-if="userRole === 'ADMIN' && index >= 2 && !challenge.isEmpty" class="action-buttons">
-                <button class="edit-btn" @click.stop="editChallenge(index)">수정</button>
-                <button class="delete-btn" @click.stop="showDeleteConfirm(index)">삭제</button>
+              <h2>{{ getDisplayTitle(challenge, index) }}</h2>
+              <!-- 기존 수정/삭제 버튼 또는 새로운 생성 버튼 -->
+              <div v-if="shouldShowActionButtons(challenge, index)" class="action-buttons">
+                <!-- 도전이 있을 때: 수정/삭제 버튼 (완료된 경우 버튼 숨김) -->
+                <template v-if="!challenge.isEmpty">
+                  <!-- 완료되지 않은 도전: 수정 + 삭제 버튼 -->
+                  <template v-if="!isCompleted(challenge)">
+                    <button class="edit-btn" @click.stop="editChallenge(index)">수정</button>
+                    <button class="delete-btn" @click.stop="showDeleteConfirm(index)">삭제</button>
+                  </template>
+                  <!-- 완료된 도전: 삭제 버튼만 -->
+                  <template v-else>
+                    <button class="delete-btn" @click.stop="showDeleteConfirm(index)">삭제</button>
+                  </template>
+                </template>
+                <!-- 도전이 없을 때: 생성 버튼 -->
+                <template v-else>
+                  <button class="create-btn" @click.stop="moveToCreate()">생성</button>
+                </template>
               </div>
             </div>
-            <p>{{ challenge.description }}</p>
+            <p>{{ getDisplayDescription(challenge, index) }}</p>
           </div>
-          <!-- ADMIN만 완료/미완료 버튼을 클릭할 수 있도록 수정 -->
-          <button 
+          <!-- 완료/미완료 상태 표시만 (클릭 불가) -->
+          <div 
+            v-if="!challenge.isEmpty"
             class="challenge-complete-btn"
-            :class="{ 'completed': isCompleted(challenge), 'uploaded': isUploaded(challenge) && !isCompleted(challenge) }"
-            @click.stop="userRole === 'ADMIN' ? toggleChallengeStatus(challenge) : null"
-            :disabled="userRole !== 'ADMIN'"
+            :class="{ 'completed': isCompleted(challenge) }"
           >
             {{ getButtonText(challenge) }}
-          </button>
+          </div>
         </div>
       </div>
     </div>
@@ -70,6 +110,22 @@
           장소: {{ selectedChallenge.challengePlace || selectedChallenge.place || '장소 정보 없음' }}
         </div>
         
+        <!-- 모달 내 이미지 표시 -->
+        <div v-if="selectedChallenge.challengeImage && isCompleted(selectedChallenge)" class="modal-image">
+          <img 
+            :src="getChallengeImage(selectedChallenge)" 
+            :alt="selectedChallenge.challengeTitle"
+            crossorigin="anonymous"
+            @error="onImageError($event, selectedChallenge)"
+            @load="onImageLoad($event, selectedChallenge)"
+          />
+        </div>
+        
+        <!-- 인증되지 않은 도전의 경우 텍스트 표시 -->
+        <div v-else-if="!selectedChallenge.isEmpty && !isCompleted(selectedChallenge)" class="modal-placeholder">
+          <p>도전 인증을 해주세요!</p>
+        </div>
+        
         <button 
           v-if="userRole === 'ADMIN' && !selectedChallenge.isEmpty && !isCompleted(selectedChallenge)" 
           class="modal-button" 
@@ -83,14 +139,6 @@
           class="completed-message"
         >
           완료된 도전입니다
-        </div>
-
-        <!-- 업로드된 상태 표시 -->
-        <div 
-          v-if="!selectedChallenge.isEmpty && isUploaded(selectedChallenge) && !isCompleted(selectedChallenge)"
-          class="uploaded-message"
-        >
-          관리자 승인 대기 중입니다
         </div>
       </div>
     </div>
@@ -155,21 +203,6 @@
         </div>
       </div>
     </div>
-
-    <!-- 상태 변경 성공 모달 -->
-    <div v-if="showStatusModal" class="modal-overlay" @click.self="closeStatusModal">
-      <div class="modal-content delete-modal">
-        <h2>{{ statusModalMessage }}</h2>
-        <div class="modal-buttons">
-          <button class="delete-success-btn" @click="closeStatusModal">확인</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 생성 버튼 - userRole이 admin일 때만 표시 -->
-    <div class="create-challenge" v-if="userRole === 'ADMIN' && shouldShowCreateButton">
-      <button class="challenge-btn" @click="moveToCreate()">도전과제 생성하기</button>
-    </div>
   </div>
 </template>
 
@@ -177,7 +210,9 @@
 import { ref, computed, onMounted, watch } from 'vue' 
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user' 
-import axios from 'axios'
+import api from '@/api/axios' // 기존 API 클라이언트 import
+
+import defaultImage from '@/assets/default_image.png'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -194,21 +229,16 @@ const progressMessages = ref([])
 const currentMessage = ref('')
 const challenges = ref([])
 const challengeDetails = ref({}) // 도전 상세 정보 캐시
+const creatingAINews = ref(false) // AI 신문 생성 중 상태
 
-// 모달 상태 
+// 모달 상태
 const modals = ref({
   detail: { show: false, selectedChallenge: { challengeTitle: '', description: '', challengePlace: '' }, selectedChallengeId: null },
   edit: { show: false, form: { title: '', description: '', place: '' }, editingIndex: null, showSuccess: false },
-  delete: { show: false, showFinal: false, selectedChallenge: null, selectedIndex: null },
-  status: { show: false, message: '' }
+  delete: { show: false, showFinal: false, selectedChallenge: null, selectedIndex: null }
 })
 
-// 계산된 속성
-const shouldShowCreateButton = computed(() => 
-  JSON.parse(localStorage.getItem('adminChallenges') || '[]').length < 2
-)
-
-// 모달 상태 단축 접근 
+// 모달 상태 단축 접근
 const showModal = computed(() => modals.value.detail.show)
 const selectedChallenge = computed(() => modals.value.detail.selectedChallenge)
 const selectedChallengeId = computed(() => modals.value.detail.selectedChallengeId)
@@ -217,33 +247,71 @@ const showEditSuccessModal = computed(() => modals.value.edit.showSuccess)
 const editForm = computed(() => modals.value.edit.form)
 const showDeleteModal = computed(() => modals.value.delete.show)
 const showFinalDeleteModal = computed(() => modals.value.delete.showFinal)
-const selectedDeleteChallenge = computed(() => modals.value.delete.selectedChallenge)
-const showStatusModal = computed(() => modals.value.status.show)
-const statusModalMessage = computed(() => modals.value.status.message)
 
-// 핵심 기능 함수들 
-const isCompleted = (challenge) => {
-  if (challenge.id) {
-    // API에서 받은 도전과제 (우리가 제공하는 도전)
-    return challenge.isSuccess === true
-  } else if (challenge.challengeId) {
-    // ADMIN이 생성한 도전과제
-    const data = localStorage.getItem(`admin_challenge_${challenge.challengeId}`)
-    return data ? JSON.parse(data).is_success === true : false
-  } else {
-    // 빈 칸
-    return false
+// 새로운 유틸리티 함수들
+const getDisplayTitle = (challenge, index) => {
+  if (!challenge.isEmpty) {
+    return challenge.challengeTitle || challenge.title
+  }
+  
+  // 빈 도전인 경우
+  if (index >= 2) { // 3, 4번째 칸 (커스텀 도전)
+    return userRole.value === 'ADMIN' 
+      ? '도전과제를 생성해주세요' 
+      : '아직 도전과제가 등록되지 않았습니다'
+  } else { // 1, 2번째 칸 (서비스 제공 도전)
+    return '준비 중입니다.'
   }
 }
 
-const isUploaded = (challenge) => {
+const getDisplayDescription = (challenge, index) => {
+  if (!challenge.isEmpty) {
+    return challenge.description
+  }
+  
+  // 빈 도전인 경우
+  if (index >= 2) { // 3, 4번째 칸 (커스텀 도전)
+    return userRole.value === 'ADMIN' 
+      ? '새로운 도전과제를 만들어보세요.' 
+      : '관리자가 도전과제를 등록하면 참여할 수 있습니다.'
+  } else { // 1, 2번째 칸 (서비스 제공 도전)
+    return '곧 새로운 도전과제가 업데이트됩니다.'
+  }
+}
+
+const shouldShowActionButtons = (challenge, index) => {
+  // ADMIN이고 3,4번째 칸(커스텀 도전과제)인 경우 버튼 표시
+  // 완료된 경우에는 버튼을 숨김
+  return userRole.value === 'ADMIN' && index >= 2
+}
+
+// AI 신문 버튼 활성화 조건
+const isAINewsButtonEnabled = computed(() => {
+  // 완료된 도전이 1개 이상 있을 때만 활성화
+  return count.value > 0
+})
+
+// AI 신문 버튼 툴팁 메시지
+const getAINewsButtonTooltip = computed(() => {
+  if (count.value === 0) {
+    return '미션을 하나라도 인증해야 활성화됩니다'
+  }
+  return `완료된 ${count.value}개의 도전과제로 AI 신문을 생성합니다`
+})
+
+// AI 신문 설명 텍스트
+const getAINewsDescription = computed(() => {
+  if (count.value === 0) {
+    return '미션을 한 개라도 인증해야 AI 신문을 생성할 수 있습니다.'
+  }
+  return '완료된 도전과제들을 바탕으로 특별한 신문을 생성할 수 있습니다.'
+})
+
+// 기존 핵심 기능 함수들 
+const isCompleted = (challenge) => {
   if (challenge.id) {
-    // API에서 받은 도전과제 (우리가 제공하는 도전)
-    return challenge.imageDescription !== null && challenge.imageDescription !== undefined
-  } else if (challenge.challengeId) {
-    // ADMIN이 생성한 도전과제
-    const data = localStorage.getItem(`admin_challenge_${challenge.challengeId}`)
-    return data ? JSON.parse(data).is_uploaded === true : false
+    // API에서 받은 도전과제 (서비스 제공 또는 커스텀)
+    return challenge.isSuccess === true
   } else {
     // 빈 칸
     return false
@@ -253,23 +321,65 @@ const isUploaded = (challenge) => {
 const getButtonText = (challenge) => {
   if (isCompleted(challenge)) {
     return '완료'
-  } else if (isUploaded(challenge)) {
-    return '대기'
   } else {
-    return '미완료'
+    return '도전 인증하기'
   }
 }
 
+// 이미지 처리 함수 (S3 디버깅 포함)
 const getChallengeImage = (challenge) => {
-  if (challenge.id && challenge.challengeImage) {
-    // API에서 받은 도전과제 (우리가 제공하는 도전)
-    return challenge.challengeImage
-  } else if (challenge.challengeId) {
-    // ADMIN이 생성한 도전과제
-    const data = localStorage.getItem(`admin_challenge_${challenge.challengeId}`)
-    return data && JSON.parse(data).image ? JSON.parse(data).image : '/src/assets/default_image.png'
+  console.log('=== 이미지 디버깅 ===')
+  console.log('Challenge 전체 객체:', challenge)
+  console.log('Challenge ID:', challenge.id)
+  console.log('Challenge Image URL:', challenge.challengeImage)
+  console.log('Challenge isEmpty:', challenge.isEmpty)
+  console.log('URL 타입:', typeof challenge.challengeImage)
+  
+  // 빈 도전인 경우 기본 이미지
+  if (challenge.isEmpty) {
+    console.log('📷 빈 도전 - 기본 이미지 사용')
+    return defaultImage
   }
-  return '/src/assets/default_image.png'
+  
+  if (challenge.id && challenge.challengeImage) {
+    // S3 URL 확인
+    if (challenge.challengeImage.includes('amazonaws.com') || 
+        challenge.challengeImage.includes('s3')) {
+      console.log('✅ S3 URL 감지:', challenge.challengeImage)
+    } else {
+      console.log('⚠️ S3 URL이 아닐 수 있음:', challenge.challengeImage)
+    }
+    return challenge.challengeImage
+  }
+  
+  console.log('📷 ID 또는 이미지 URL 없음 - 기본 이미지 사용')
+  return defaultImage
+}
+
+// 이미지 에러 핸들링
+const onImageError = (event, challenge) => {
+  console.error('❌ 이미지 로드 실패:', {
+    src: event.target.src,
+    challengeId: challenge.id,
+    challengeImage: challenge.challengeImage,
+    error: event,
+    errorType: event.target.src.includes('s3') ? 'S3 CORS/권한 문제' : '기타 오류'
+  })
+  
+  // S3 이미지 에러인 경우 특별 처리
+  if (event.target.src.includes('s3') || event.target.src.includes('amazonaws')) {
+    console.warn('🔒 S3 이미지 로드 실패 - CORS 또는 권한 문제일 가능성')
+  }
+  
+  // 기본 이미지로 대체
+  event.target.src = defaultImage
+}
+
+const onImageLoad = (event, challenge) => {
+  console.log('✅ 이미지 로드 성공:', {
+    src: event.target.src,
+    challengeId: challenge.id
+  })
 }
 
 const updateCompletedCount = () => {
@@ -286,41 +396,90 @@ const updateMessage = () => {
 // API에서 도전과제 목록 가져오기
 const fetchChallenges = async () => {
   try {
-    const response = await axios.get('/api/v1/challenges', {
-      withCredentials: true,  // 쿠키 포함하여 요청
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
+    // 기존 api 인스턴스 사용
+    const response = await api.get('/api/v1/challenges')
     console.log('도전과제 목록 응답:', response.data)
+
+    const data = response.data
+    console.log('data:', data)
+
+    console.log('=== 각 도전과제별 이미지 확인 ===')
+    challenges.value.forEach((challenge, index) => {
+      console.log(`Challenge ${index + 1}:`, {
+        id: challenge.id,
+        title: challenge.challengeTitle,
+        hasImage: !!challenge.challengeImage,
+        imageUrl: challenge.challengeImage,
+        imageType: typeof challenge.challengeImage
+      })
+    })
     
-    const apiChallenges = response.data || []
-    const customChallenges = JSON.parse(localStorage.getItem('adminChallenges') || '[]')
+    // 현재 월 업데이트
+    if (data.month) {
+      currentMonth.value = data.month
+    }
     
-    // 첫 번째, 두 번째는 API에서 받은 도전과제 (우리가 제공하는 도전)
-    // 세 번째, 네 번째는 ADMIN이 생성한 도전과제
+    // 서비스 제공 도전과제
+    const serviceChallenges = data.serviceChallenges || []
+    
+    // 커스텀 도전과제
+    const customChallenges = data.customChallenges || []
+
+    // 디버깅 - 이미지 URL 확인
+    console.log('=== 전체 API 응답 확인 ===')
+    console.log('Full API response:', JSON.stringify(data, null, 2))
+    
+    console.log('=== 서비스 도전과제 이미지 확인 ===')
+    serviceChallenges.forEach((challenge, index) => {
+      console.log(`Service Challenge ${index + 1}:`, {
+        id: challenge.id,
+        title: challenge.challengeTitle,
+        image: challenge.challengeImage,
+        fullObject: challenge
+      })
+    })
+    
+    console.log('=== 커스텀 도전과제 이미지 확인 ===')
+    customChallenges.forEach((challenge, index) => {
+      console.log(`Custom Challenge ${index + 1}:`, {
+        id: challenge.id,
+        title: challenge.challengeTitle,
+        image: challenge.challengeImage,
+        fullObject: challenge
+      })
+    })
+    
+    // 4개의 슬롯에 배치
     challenges.value = [
-      apiChallenges[0] || { challengeTitle: '준비 중입니다.', description: '', isEmpty: true },
-      apiChallenges[1] || { challengeTitle: '준비 중입니다.', description: '', isEmpty: true },
+      // 첫 번째, 두 번째는 서비스 제공 도전과제
+      serviceChallenges[0] || { challengeTitle: '준비 중입니다.', description: '', isEmpty: true },
+      serviceChallenges[1] || { challengeTitle: '준비 중입니다.', description: '', isEmpty: true },
+      
+      // 세 번째, 네 번째는 커스텀 도전과제
       customChallenges[0] || { title: '도전과제를 생성해주세요', description: '', isEmpty: true, index: 3 },
       customChallenges[1] || { title: '도전과제를 생성해주세요', description: '', isEmpty: true, index: 4 }
     ]
     
-    // 월 정보 업데이트
-    if (apiChallenges.length > 0 && apiChallenges[0].month) {
-      currentMonth.value = apiChallenges[0].month
-    }
+    console.log('=== 최종 challenges 배열 확인 ===')
+    challenges.value.forEach((challenge, index) => {
+      console.log(`Final Challenge ${index + 1}:`, {
+        id: challenge.id,
+        title: challenge.challengeTitle || challenge.title,
+        image: challenge.challengeImage,
+        isEmpty: challenge.isEmpty,
+        fullObject: challenge
+      })
+    })
     
     updateCompletedCount()
   } catch (error) {
     console.error('도전과제 목록 불러오기 실패:', error)
-    // 실패 시 기존 로직으로 fallback
-    const customChallenges = JSON.parse(localStorage.getItem('adminChallenges') || '[]')
+    // 에러 시 기본값 설정
     challenges.value = [
       { challengeTitle: '준비 중입니다.', description: '', isEmpty: true },
       { challengeTitle: '준비 중입니다.', description: '', isEmpty: true },
-      customChallenges[0] || { title: '도전과제를 생성해주세요', description: '', isEmpty: true, index: 3 },
-      customChallenges[1] || { title: '도전과제를 생성해주세요', description: '', isEmpty: true, index: 4 }
+      { title: '도전과제를 생성해주세요', description: '', isEmpty: true, index: 3 },
+      { title: '도전과제를 생성해주세요', description: '', isEmpty: true, index: 4 }
     ]
   }
 }
@@ -328,7 +487,8 @@ const fetchChallenges = async () => {
 // 도전과제 상세 정보 가져오기
 const fetchChallengeDetail = async (challengeId) => {
   try {
-    const response = await axios.get(`/api/v1/challenges/${challengeId}`)
+    // 기존 api 인스턴스 사용
+    const response = await api.get(`/api/v1/challenges/${challengeId}`)
     console.log('도전과제 상세 응답:', response.data)
     challengeDetails.value[challengeId] = response.data
     return response.data
@@ -338,141 +498,10 @@ const fetchChallengeDetail = async (challengeId) => {
   }
 }
 
-// 도전과제 상태 토글 함수
-const toggleChallengeStatus = async (challenge) => {
-  if (userRole.value !== 'ADMIN') return
-
-  // API 도전과제인 경우 (우리가 제공하는 도전)
-  if (challenge.id) {
-    const challengeId = challenge.id
-    const currentlyCompleted = isCompleted(challenge)
-    const currentlyUploaded = isUploaded(challenge)
-
-    // 업로드되지 않은 상태에서는 토글 불가
-    if (!currentlyUploaded && !currentlyCompleted) {
-      alert('먼저 도전 인증을 업로드해주세요.')
-      return
-    }
-
-    try {
-      if (currentlyCompleted) {
-        // 완료 → 미완료 (cancel API)
-        const response = await axios.put(`/api/v1/admin/challenges/${challengeId}/cancel`,{},{
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        })
-        console.log('Cancel API 응답:', response.data)
-        
-        // 로컬 상태 업데이트
-        challenge.isSuccess = false
-        
-        modals.value.status = { 
-          show: true, 
-          message: `도전이 취소되었습니다.<br>${response.data.subtractedPoint}점이 차감되었습니다.` 
-        }
-      } else {
-        // 미완료(업로드됨) → 완료 (complete API)
-        const response = await axios.post(`/api/v1/admin/challenges/${challengeId}/complete`, {}, {
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        })
-        console.log('Complete API 응답:', response.data)
-        
-        // 로컬 상태 업데이트
-        challenge.isSuccess = true
-        
-        modals.value.status = { 
-          show: true, 
-          message: `도전이 완료되었습니다!<br>${response.data.earnedPoint}점이 부여되었습니다.` 
-        }
-      }
-      
-      updateCompletedCount()
-      
-    } catch (error) {
-      console.error('상태 변경 오류:', error)
-      alert('도전 상태 변경 중 오류가 발생했습니다.')
-    }
-  } 
-  // ADMIN이 생성한 도전과제인 경우
-  else if (challenge.challengeId) {
-    const challengeId = challenge.challengeId
-    const currentlyCompleted = isCompleted(challenge)
-    const currentlyUploaded = isUploaded(challenge)
-
-    if (!currentlyUploaded && !currentlyCompleted) {
-      alert('먼저 도전 인증을 업로드해주세요.')
-      return
-    }
-
-    try {
-      if (currentlyCompleted) {
-        // Cancel API - withCredentials 추가!
-        const response = await axios.put(`/api/v1/admin/challenges/${challengeId}/cancel`, {}, {
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        })
-        console.log('Cancel API 응답:', response.data)
-        
-        const data = localStorage.getItem(`admin_challenge_${challengeId}`)
-        if (data) {
-          const challengeData = JSON.parse(data)
-          challengeData.is_success = false
-          localStorage.setItem(`admin_challenge_${challengeId}`, JSON.stringify(challengeData))
-        }
-        
-        modals.value.status = { 
-          show: true, 
-          message: `도전이 취소되었습니다.<br>${response.data.subtractedPoint}점이 차감되었습니다.` 
-        }
-      } else {
-        const response = await axios.post(`/api/v1/admin/challenges/${challengeId}/complete`,{},{
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        })
-        console.log('Complete API 응답:', response.data)
-        
-        const data = localStorage.getItem(`admin_challenge_${challengeId}`)
-        if (data) {
-          const challengeData = JSON.parse(data)
-          challengeData.is_success = true
-          challengeData.completedAt = new Date().toISOString()
-          challengeData.earnedPoints = response.data.earnedPoint
-          localStorage.setItem(`admin_challenge_${challengeId}`, JSON.stringify(challengeData))
-        }
-        
-        modals.value.status = { 
-          show: true, 
-          message: `도전이 완료되었습니다!<br>${response.data.earnedPoint}점이 부여되었습니다.` 
-        }
-      }
-      
-      updateCompletedCount()
-      
-    } catch (error) {
-      console.error('상태 변경 오류:', error)
-      alert('도전 상태 변경 중 오류가 발생했습니다.')
-    }
-  }
-}
-
-const closeStatusModal = () => {
-  modals.value.status.show = false
-}
-
 // 모달 함수
 const openModal = async (challenge, index) => {
   if (challenge.isEmpty) return
   
-  // API 도전과제인 경우 (우리가 제공하는 도전) 상세 정보 가져오기
   if (challenge.id) {
     const detailChallenge = await fetchChallengeDetail(challenge.id)
     if (detailChallenge) {
@@ -483,11 +512,10 @@ const openModal = async (challenge, index) => {
       }
     }
   } else {
-    // ADMIN이 생성한 도전과제
     modals.value.detail = { 
       show: true, 
       selectedChallenge: challenge, 
-      selectedChallengeId: challenge.challengeId 
+      selectedChallengeId: challenge.id 
     }
   }
 }
@@ -528,46 +556,27 @@ const saveEditChallenge = async () => {
   try {
     const challenge = challenges.value[editingIndex]
     
-    // API 도전과제인 경우 (우리가 제공하는 도전) - 수정 불가
-    if (challenge.id) {
-      alert('시스템 제공 도전과제는 수정할 수 없습니다.')
+    if (challenge.challengeType === 'SERVICE') {
+      alert('서비스 제공 도전과제는 수정할 수 없습니다.')
       return
     } 
-    // ADMIN이 생성한 도전과제인 경우
-    else if (challenge.challengeId) {
-      const challengeId = challenge.challengeId
+    else if (challenge.challengeType === 'CUSTOM' && challenge.id) {
+      const challengeId = challenge.id
 
-      const response = await axios.put(`/api/v1/admin/challenges/${challengeId}`, {
+      // 기존 api 인스턴스 사용
+      const response = await api.put(`/api/v1/admin/challenges/${challengeId}`, {
         challengeTitle: form.title.trim(),
         challengePlace: form.place.trim(),
         description: form.description.trim()
-      }, {
-        withCredentials: true,
-        headers: {
-          'Content-Type': 'application/json'
-        }
       })
 
-      // 로컬 상태 업데이트
+      // 성공 시 로컬 상태 업데이트
       challenges.value[editingIndex] = {
         ...challenges.value[editingIndex],
         challengeTitle: response.data.challengeTitle,
         challengePlace: response.data.challengePlace,
         description: response.data.description
       }
-
-      // localStorage 업데이트
-      const adminChallenges = JSON.parse(localStorage.getItem('adminChallenges') || '[]')
-      const adminIndex = editingIndex - 2
-      
-      adminChallenges[adminIndex] = {
-        ...adminChallenges[adminIndex],
-        challengeTitle: response.data.challengeTitle,
-        challengePlace: response.data.challengePlace,
-        description: response.data.description
-      }
-      
-      localStorage.setItem('adminChallenges', JSON.stringify(adminChallenges))
     }
 
     modals.value.edit.show = false
@@ -613,29 +622,17 @@ const confirmDelete = async () => {
     const challenge = challenges.value[selectedIndex]
     
     try {
-      // API 도전과제인 경우 (우리가 제공하는 도전) - 삭제 불가
-      if (challenge.id) {
-        alert('시스템 제공 도전과제는 삭제할 수 없습니다.')
+      if (challenge.challengeType === 'SERVICE') {
+        alert('서비스 제공 도전과제는 삭제할 수 없습니다.')
         return
       } 
-      // ADMIN이 생성한 도전과제인 경우
-      else if (challenge.challengeId) {
-        const response = await axios.delete(`/api/v1/admin/challenges/${challenge.challengeId}`, {
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        })
+      else if (challenge.challengeType === 'CUSTOM' && challenge.id) {
+        // 기존 api 인스턴스 사용
+        const response = await api.delete(`/api/v1/admin/challenges/${challenge.id}`)
         console.log(response.data.message)
-
-        // localStorage에서도 제거
-        const adminChallenges = JSON.parse(localStorage.getItem('adminChallenges') || '[]')
-        const adminIndex = selectedIndex - 2
-        adminChallenges.splice(adminIndex, 1)
-        localStorage.setItem('adminChallenges', JSON.stringify(adminChallenges))
       }
       
-      // 목록에서 제거하고 다시 불러오기
+      // 삭제 후 목록 다시 불러오기
       await fetchChallenges()
 
     } catch (error) {
@@ -667,13 +664,72 @@ const loadMessages = async () => {
 const moveToCreate = () => router.push({ name: 'challengeCreate' })
 
 const moveToFinish = () => {
-  const challengeId = selectedChallenge.value.id || selectedChallenge.value.challengeId || selectedChallengeId.value
+  const challengeId = selectedChallenge.value.id || selectedChallengeId.value
   router.push(`/admin/challenges/${challengeId}/complete`)
+}
+
+const goToAINews = async () => {
+  // 완료된 도전이 없으면 실행하지 않음
+  if (!isAINewsButtonEnabled.value) {
+    alert('미션을 하나라도 인증해야 AI 신문을 생성할 수 있습니다.')
+    return
+  }
+  
+  // AI 신문 생성 API 호출
+  creatingAINews.value = true
+  
+  try {
+    console.log('AI 신문 생성 시작...')
+    
+    const response = await api.post('/api/v1/admin/ai-news/create', {
+      year: new Date().getFullYear(),
+      month: new Date().getMonth() + 1
+    })
+    
+    console.log('AI 신문 생성 완료:', response.data)
+    
+    // 생성된 신문의 ID가 있다면 해당 상세 페이지로, 없다면 목록으로
+    if (response.data && response.data.id) {
+      router.push(`/news`)
+    } else {
+      router.push('/news')
+    }
+    
+    alert('AI 신문이 성공적으로 생성되었습니다!')
+    
+  } catch (error) {
+    console.error('AI 신문 생성 실패:', error)
+    
+    let errorMessage = 'AI 신문 생성에 실패했습니다.'
+    
+    if (error.response) {
+      const status = error.response.status
+      const message = error.response.data?.message || '서버 오류'
+      
+      if (status === 400) {
+        errorMessage = `신문 생성 조건이 맞지 않습니다: ${message}`
+      } else if (status === 403) {
+        errorMessage = 'AI 신문을 생성할 권한이 없습니다.'
+      } else if (status === 409) {
+        errorMessage = '이미 생성된 신문이 있습니다.'
+      } else {
+        errorMessage = `AI 신문 생성에 실패했습니다: ${message}`
+      }
+    } else if (error.request) {
+      errorMessage = 'AI 신문 생성에 실패했습니다: 서버와 연결할 수 없습니다.'
+    }
+    
+    alert(errorMessage)
+    
+    // 에러가 발생해도 신문 목록 페이지로 이동 (선택사항)
+    router.push('/news')
+  } finally {
+    creatingAINews.value = false
+  }
 }
 
 // 라이프사이클 훅
 onMounted(async () => {
-  // userRole이 없으면 가져오기
   if (!userStore.userRole) {
     await userStore.fetchUserRole()
   }
@@ -682,213 +738,710 @@ onMounted(async () => {
   console.log('ChallengeView currentMonth:', currentMonth.value)
   
   loadMessages()
-  await fetchChallenges() // API에서 도전과제 목록 가져오기
+  await fetchChallenges()
 })
 
 watch(percent, updateMessage)
-watch(() => router.currentRoute.value, async () => {
-  await fetchChallenges()
-  updateCompletedCount()
-}, { immediate: true })
 </script>
 
-<style scoped>
-/* 레이아웃 */
-.header { text-align: center; margin: 20px auto; }
+<style>
+ /* 글꼴 정의 */
+    @font-face {
+      font-family: 'KoddiUD';
+      src: url('@/assets/fonts/KoddiUDOnGothic-Regular.ttf') format('truetype');
+      font-weight: 400;
+      font-style: normal;
+    }
 
-.progress-container, .message-box {
-  max-width: 800px; width: 90%; margin: 20px auto;
-}
+    @font-face {
+      font-family: 'KoddiUD';
+      src: url('@/assets/fonts/KoddiUDOnGothic-Bold.ttf') format('truetype');
+      font-weight: 700;
+      font-style: normal;
+    }
 
-.progress-container {
-  display: flex; align-items: center; gap: 15px;
-}
+    @font-face {
+      font-family: 'KoddiUD';
+      src: url('@/assets/fonts/KoddiUDOnGothic-ExtraBold.ttf') format('truetype');
+      font-weight: 800;
+      font-style: normal;
+    }
 
-.progress-bar { 
-  flex: 1; height: 15px; border-radius: 10px; background: #E6E6E6; 
-}
+/* 기본 스타일 */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'KoddiUD', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
 
-.inner-bar { 
-  height: 100%; border-radius: 10px; background: #107C10; 
-}
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background-color: #f8f9fa;
+        color: #333;
+        line-height: 1.6;
+    }
+    
+    /* body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background-color: #f8f9fa;
+        color: #333;
+        line-height: 1.6;
+        background-image: url('@/assets/background/back3.jpg');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+    } */
 
-.message-box {
-  color: #115EA3; font-weight: bold; text-align: center; 
-  padding: 5px; background: #EBF3FC; border-radius: 30px; font-size: 20px; 
-}
+    /* 메인 컬러 변수 */
+    :root {
+        --primary-orange: #FF6B35;
+        --secondary-orange: #FFE5DE;
+        --primary-blue: #4A90E2;
+        --secondary-blue: #E8F4FD;
+        --primary-green: #28a745;
+        --neutral-gray: #f5f5f5;
+        --dark-gray: #666;
+        --text-black: #333;
+        --border-light: #e0e0e0;
+        --pastel-yellow: #FFF9C4;
+        --sky-blue: #87CEEB;
+    }
 
-/* 도전과제 컨테이너 */
-.challenge-container {
-  display: flex; justify-content: space-between; align-items: stretch;
-  max-width: 1200px; width: 90%; margin: 20px auto; gap: 20px;
-}
+    /* 헤더 */
+    .header {
+        text-align: center;
+        margin: 30px auto;
+        font-size: 32px;
+        font-weight: 700;
+        color: var(--text-black);
+        font-family: 'KoddiUD', sans-serif;
+    }
 
-.single-challenge {
-  flex: 1; color: black; font-weight: bold; border-radius: 10px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4); cursor: pointer;
-  position: relative; overflow: hidden; display: flex; flex-direction: column; height: 480px;
-}
+    /* 진행률 섹션 */
+    .progress-container {
+        max-width: 800px;
+        width: 90%;
+        margin: 30px auto;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        background: white;
+        padding: 25px;
+        border-radius: 16px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+        position: relative;
+    }
 
-.challenge-image { width: 100%; aspect-ratio: 1; overflow: hidden; }
-.challenge-img { width: 100%; height: 100%; object-fit: cover; object-position: center; }
+    .progress-container h3 {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--text-black);
+        min-width: 80px;
+        font-family: 'KoddiUD', sans-serif;
+    }
 
-.challenge-content { 
-  position: relative; padding: 15px; display: flex; flex-direction: column; flex: 1;
-}
+    .progress-bar {
+        flex: 1;
+        height: 12px;
+        border-radius: 8px;
+        background: var(--neutral-gray);
+        overflow: hidden;
+    }
 
-.text-content { flex: 1; }
-.text-content p {font-size: 18px !important;}
-.title-with-buttons {
-  display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;
-}
+    .inner-bar {
+        height: 100%;
+        border-radius: 8px;
+        background: linear-gradient(90deg, var(--pastel-yellow), var(--sky-blue));
+        transition: width 0.3s ease;
+    }
 
-.challenge-content h2 { margin: 0; font-size: 23px; flex: 1; }
+    /* 메시지 박스와 AI 신문 버튼 컨테이너 */
+    .message-and-ai-container {
+        max-width: 800px;
+        width: 90%;
+        margin: 15px auto;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
 
-.action-buttons { display: flex; gap: 5px; margin-left: 10px; }
+    /* 메시지 박스 */
+    .message-box {
+        flex: 1;
+        color: rgb(0, 0, 0);
+        font-weight: 600;
+        text-align: center;
+        padding: 20px;
+        background: rgba(248, 205, 104, 0.225);
+        border-radius: 16px;
+        font-size: 18px;
+        border: 2px solid var(--primary-orange);
+        box-shadow: 0 4px 16px rgba(255, 107, 53, 0.15);
+        font-family: 'KoddiUD', sans-serif;
+        margin: 0;
+    }
 
-.edit-btn, .delete-btn {
-  padding: 4px 8px; border: none; border-radius: 4px; font-size: 16px; 
-  font-weight: bold; cursor: pointer; color: white;
-}
+    .message-box p {
+        margin: 0;
+    }
 
-.edit-btn { background-color: #28a745; }
-.edit-btn:hover { background-color: #218838; }
-.delete-btn { background-color: #dc3545; }
-.delete-btn:hover { background-color: #c82333; }
+    /* AI 신문 생성 섹션 - 메시지 박스 우측 */
+    .ai-news-section {
+        flex-shrink: 0;
+    }
 
-.challenge-content p { 
-  margin: 5px 0 15px 0; font-size: 16px; font-weight: normal; line-height: 1.4; 
-}
+    .btn-ai-news {
+        background: var(--primary-orange);
+        color: white;
+        border: none;
+        padding: 14px 20px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+        font-family: 'KoddiUD', sans-serif;
+    }
 
-/* 도전과제 배경색 */
-.challenge-1 .challenge-content { background: #FFBF8F; }
-.challenge-1:hover .challenge-content { background: #FFD4B3; }
-.challenge-2 .challenge-content { background: #97B9FF; }
-.challenge-2:hover .challenge-content { background: #B3D1FF; }
-.challenge-3 .challenge-content { background: #ABBAF9; }
-.challenge-3:hover .challenge-content { background: #C4D0FB; }
-.challenge-4 .challenge-content { background: #F1C399; }
-.challenge-4:hover .challenge-content { background: #F5D6B8; }
+    .btn-ai-news:hover:not(:disabled) {
+        background: #e55a2b;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(255, 107, 53, 0.4);
+    }
 
-.challenge-complete-btn {
-  position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-  font-weight: bold; color: white; width: 120px; height: 35px; border: none;
-  cursor: pointer; font-size: 20px; border-radius: 15px; 
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1); background-color: #FF8120;
-}
+    .btn-ai-news:disabled {
+        background: #9ca3af;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: 0 2px 8px rgba(156, 163, 175, 0.3);
+        opacity: 0.6;
+    }
 
-.challenge-complete-btn.completed { background-color: #3074FF; }
-.challenge-complete-btn.uploaded { background-color: #FFA500; }
-.challenge-complete-btn:disabled { 
-  cursor: not-allowed; 
-  opacity: 0.7;
-}
+    .btn-ai-news:disabled:hover {
+        background: #9ca3af;
+        transform: none;
+        box-shadow: 0 2px 8px rgba(156, 163, 175, 0.3);
+    }
 
-/* 생성 버튼 */
-.create-challenge { display: flex; justify-content: center; align-items: center; width: 100%; }
+    /* 도전과제 컨테이너 */
+    .challenge-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        max-width: 1200px;
+        width: 90%;
+        margin: 20px auto;
+        gap: 20px;
+    }
 
-.challenge-btn {
-  margin: 10px; background-color: #3074FF; font-weight: bold; color: white;
-  width: 320px; height: 65px; border: none; cursor: pointer;
-  font-size: 23px; border-radius: 15px; 
-}
+    .single-challenge {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        cursor: pointer;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        min-height: 420px;
+        transition: all 0.2s ease;
+        border: 2px solid transparent;
+    }
 
-.challenge-btn:hover { background-color: #a2b7e3; }
+    .single-challenge:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        border-color: var(--primary-orange);
+    }
 
-/* 모달 공통 스타일 */
-.modal-overlay {
-  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-  background: rgba(0, 0, 0, 0.4); z-index: 1000;
-  display: flex; align-items: center; justify-content: center;
-}
+    .challenge-image {
+        width: 100%;
+        height: 200px;
+        overflow: hidden;
+        background: var(--neutral-gray);
+        position: relative;
+    }
 
-.modal-content {
-  background: white; border-radius: 16px; padding: 30px 40px;
-  width: 90%; max-width: 480px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-  text-align: center; z-index: 1001; position: relative;
-}
+    .challenge-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center;
+    }
 
-.modal-close-btn {
-  position: absolute; top: 15px; right: 15px; width: 30px; height: 30px;
-  border: none; background: none; font-size: 24px; font-weight: bold;
-  color: #666; cursor: pointer; border-radius: 50%;
-}
+    /* 인증 전 플레이스홀더 텍스트 스타일 */
+    .challenge-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, var(--secondary-blue), var(--secondary-orange));
+        color: var(--text-black);
+        font-family: 'KoddiUD', sans-serif;
+    }
 
-.modal-close-btn:hover { background-color: #f0f0f0; color: #333; }
+    .challenge-placeholder p {
+        font-size: 18px;
+        font-weight: 600;
+        text-align: center;
+        margin: 0;
+        padding: 20px;
+        color: var(--primary-blue);
+    }
 
-.modal-content h2 { font-size: 28px; font-weight: bold; margin-bottom: 15px; }
+    .challenge-content {
+        position: relative;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        background: white;
+    }
 
-.modal-description { font-size: 20px; line-height: 1.6; margin-bottom: 20px; }
+    .text-content {
+        flex: 1;
+    }
 
-.modal-place { font-size: 20px; color: #444; margin-bottom: 25px; }
+    .title-with-buttons {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+    }
 
-.modal-button {
-  background-color: #3074FF; color: white; padding: 12px 24px;
-  font-size: 20px; border-radius: 10px; border: none; cursor: pointer;font-weight: bold;
-}
+    .challenge-content h2 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 700;
+        flex: 1;
+        color: var(--text-black);
+        line-height: 1.3;
+        font-family: 'KoddiUD', sans-serif;
+    }
 
-.modal-button:hover { background-color: #6c9dff; }
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+        margin-left: 12px;
+    }
 
-.completed-message {
-  background-color: #e8f5e8; color: #2d5a2d; padding: 12px 24px;
-  border-radius: 10px; font-size: 20px; font-weight: 600;
-}
+    .edit-btn, .delete-btn, .create-btn {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        color: white;
+        transition: all 0.2s ease;
+        font-family: 'KoddiUD', sans-serif;
+    }
 
-.uploaded-message {
-  background-color: #fff3cd; color: #856404; padding: 12px 24px;
-  border-radius: 10px; font-size: 20px; font-weight: 600;
-}
+    .edit-btn {
+        background-color: var(--primary-blue);
+    }
 
-/* 수정 모달 */
-.edit-modal { max-width: 500px; text-align: left; }
+    .edit-btn:hover {
+        background-color: #357abd;
+    }
 
-.edit-form { margin-bottom: 25px; }
+    .delete-btn {
+        background-color: #e74c3c;
+    }
 
-.form-group { margin-bottom: 20px; margin-top: 20px;}
+    .delete-btn:hover {
+        background-color: #c0392b;
+    }
 
-.form-group label { display: block; margin-bottom: 8px; font-weight: bold; color: #333; font-size: 20px;}
+    .create-btn {
+        background-color: var(--primary-green);
+    }
 
-.form-input, .form-textarea {
-  width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;
-  font-size: 18px; transition: border-color 0.3s;
-}
+    .create-btn:hover {
+        background-color: #218838;
+    }
 
-.form-input:focus, .form-textarea:focus { outline: none; border-color: #3074FF; }
+    .challenge-content p {
+        margin: 8px 0 20px 0;
+        font-size: 16px;
+        font-weight: 400;
+        line-height: 1.5;
+        color: var(--dark-gray);
+        font-family: 'KoddiUD', sans-serif;
+    }
 
-.form-textarea { resize: vertical; min-height: 80px; font-family: inherit; }
+    /* 완료 버튼 */
+    .challenge-complete-btn {
+        position: absolute;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-weight: 600;
+        color: white;
+        width: 100px;
+        height: 36px;
+        border: none;
+        font-size: 16px;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--dark-gray);
+        transition: all 0.2s ease;
+        font-family: 'KoddiUD', sans-serif;
+    }
 
-/* 모달 버튼들 */
-.modal-buttons { display: flex; gap: 15px; justify-content: center; margin-top: 25px; }
+    .challenge-complete-btn.completed {
+        background-color: var(--primary-blue);
+    }
 
-.btn-cancel, .btn-save, .delete-confirm-btn, .delete-success-btn {
-  padding: 12px 24px; border: none; border-radius: 8px;
-  font-size: 20px; font-weight: bold; cursor: pointer;
-}
+    /* 모달 스타일 */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(4px);
+    }
 
-.btn-cancel { background-color: #f5f5f5; color: #666; }
-.btn-cancel:hover { background-color: #e0e0e0; }
+    .modal-content {
+        background: white;
+        border-radius: 20px;
+        padding: 32px;
+        width: 90%;
+        max-width: 480px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        text-align: center;
+        z-index: 1001;
+        position: relative;
+    }
 
-.btn-save, .delete-confirm-btn, .delete-success-btn { 
-  background-color: #3074FF; color: white; 
-}
+    .modal-close-btn {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: background-color 0.2s ease;
+    }
 
-.btn-save:hover:not(:disabled), .delete-confirm-btn:hover, .delete-success-btn:hover { 
-  background-color: #6c9dff; 
-}
+    .modal-close-btn:hover {
+        background-color: var(--border-light);
+        color: var(--text-black);
+    }
 
-.btn-save:disabled { background-color: #ccc; cursor: not-allowed; }
+    .modal-content h2 {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 16px;
+        color: var(--text-black);
+        font-family: 'KoddiUD', sans-serif;
+    }
 
-.delete-modal { max-width: 400px; }
-.delete-confirm-btn { width: 150px; }
-.delete-success-btn { width: 200px; }
+    .modal-description {
+        font-size: 16px;
+        line-height: 1.6;
+        margin-bottom: 20px;
+        color: var(--dark-gray);
+        font-family: 'KoddiUD', sans-serif;
+    }
 
-/* 반응형 */
-@media (max-width: 768px) {
-  .challenge-container { flex-direction: column; align-items: center; }
-  .single-challenge { width: 100%; max-width: 400px; }
-  .title-with-buttons { flex-direction: column; align-items: flex-start; }
-  .action-buttons { margin-left: 0; margin-top: 5px; }
-  .modal-buttons { flex-direction: column; gap: 10px; }
-  .btn-cancel, .btn-save { width: 100%; }
-}
+    .modal-place {
+        font-size: 16px;
+        color: var(--dark-gray);
+        margin-bottom: 24px;
+        padding: 12px;
+        background: var(--neutral-gray);
+        border-radius: 12px;
+        font-family: 'KoddiUD', sans-serif;
+    }
+
+    .modal-image {
+        margin: 20px 0;
+        border-radius: 12px;
+        overflow: hidden;
+        max-width: 100%;
+        max-height: 300px;
+    }
+
+    .modal-image img {
+        width: 100%;
+        height: auto;
+        object-fit: cover;
+    }
+
+    /* 모달 내 플레이스홀더 텍스트 스타일 */
+    .modal-placeholder {
+        margin: 20px 0;
+        padding: 40px 20px;
+        background: linear-gradient(135deg, var(--secondary-blue), var(--secondary-orange));
+        border-radius: 12px;
+        color: var(--primary-blue);
+    }
+
+    .modal-placeholder p {
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0;
+        font-family: 'KoddiUD', sans-serif;
+    }
+
+    .modal-button {
+        background-color: var(--primary-orange);
+        color: white;
+        padding: 14px 28px;
+        font-size: 16px;
+        font-weight: 600;
+        border-radius: 12px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-family: 'KoddiUD', sans-serif;
+    }
+
+    .modal-button:hover {
+        background-color: #e55a2b;
+        transform: translateY(-1px);
+    }
+
+    .completed-message {
+        background-color: var(--secondary-blue);
+        color: var(--primary-blue);
+        padding: 16px 24px;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        border: 2px solid rgba(74, 144, 226, 0.2);
+        font-family: 'KoddiUD', sans-serif;
+    }
+
+    /* 수정 모달 */
+    .edit-modal {
+        max-width: 520px;
+        text-align: left;
+    }
+
+    .edit-modal h1 {
+        font-family: 'KoddiUD', sans-serif;
+        text-align: center;
+        margin-bottom: 24px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: var(--text-black);
+        font-size: 16px;
+        font-family: 'KoddiUD', sans-serif;
+    }
+
+    .form-input, .form-textarea {
+        width: 100%;
+        padding: 14px;
+        border: 2px solid var(--border-light);
+        border-radius: 12px;
+        font-size: 16px;
+        transition: border-color 0.3s ease;
+        font-family: 'KoddiUD', sans-serif;
+    }
+
+    .form-input:focus, .form-textarea:focus {
+        outline: none;
+        border-color: var(--primary-orange);
+    }
+
+    .form-textarea {
+        resize: vertical;
+        min-height: 100px;
+    }
+
+    /* 모달 버튼들 */
+    .modal-buttons {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        margin-top: 24px;
+    }
+
+    .btn-cancel, .btn-save, .delete-confirm-btn, .delete-success-btn {
+        padding: 14px 24px;
+        border: none;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-family: 'KoddiUD', sans-serif;
+    }
+
+    .btn-cancel {
+        background-color: var(--neutral-gray);
+        color: var(--dark-gray);
+    }
+
+    .btn-cancel:hover {
+        background-color: var(--border-light);
+    }
+
+    .btn-save, .delete-confirm-btn, .delete-success-btn {
+        background-color: var(--primary-orange);
+        color: white;
+    }
+
+    .btn-save:hover:not(:disabled), .delete-confirm-btn:hover, .delete-success-btn:hover {
+        background-color: #e55a2b;
+        transform: translateY(-1px);
+    }
+
+    .btn-save:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .delete-modal {
+        max-width: 400px;
+    }
+
+    .delete-modal h2 {
+        font-family: 'KoddiUD', sans-serif;
+    }
+
+    .delete-confirm-btn {
+        width: 140px;
+    }
+
+    .delete-success-btn {
+        width: 180px;
+    }
+
+    /* 반응형 디자인 */
+    @media (max-width: 768px) {
+        .header {
+            font-size: 28px;
+            margin: 20px auto;
+        }
+
+        .progress-container {
+            flex-direction: column;
+            gap: 16px;
+            text-align: center;
+        }
+
+        .progress-container h3 {
+            min-width: auto;
+        }
+
+        .message-and-ai-container {
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .ai-news-section {
+            width: 100%;
+        }
+
+        .btn-ai-news {
+            width: 100%;
+            padding: 14px 20px;
+            font-size: 16px;
+        }
+
+        .challenge-container {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        .title-with-buttons {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .action-buttons {
+            margin-left: 0;
+            margin-top: 8px;
+        }
+
+        .modal-buttons {
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .btn-cancel, .btn-save {
+            width: 100%;
+        }
+
+        /* AI 신문 섹션 반응형 */
+        .message-and-ai-container {
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .ai-news-section {
+            width: 100%;
+        }
+
+        .btn-ai-news {
+            width: 100%;
+            padding: 14px 20px;
+            font-size: 16px;
+        }
+
+        .challenge-placeholder p {
+            font-size: 16px;
+        }
+
+        .modal-placeholder p {
+            font-size: 16px;
+        }
+    }
+
+    /* 접근성 개선 */
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }
+    }
+
+    /* 고대비 모드 지원 */
+    @media (prefers-contrast: high) {
+        .single-challenge {
+            border: 2px solid var(--text-black);
+        }
+        
+        .modal-content {
+            border: 2px solid var(--text-black);
+        }
+        
+        .ai-news-section .btn-ai-news {
+            border: 2px solid var(--text-black);
+        }
+        
+        .challenge-placeholder {
+            border: 2px solid var(--text-black);
+        }
+    }
 </style>

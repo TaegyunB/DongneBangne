@@ -2,6 +2,8 @@ package S13P11A708.backend.domain;
 
 import S13P11A708.backend.domain.common.BaseEntity;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
@@ -13,7 +15,9 @@ import java.util.List;
 
 @Entity
 @Getter
+@Builder
 @NoArgsConstructor
+@AllArgsConstructor
 @Table(name = "senior_center")
 public class SeniorCenter extends BaseEntity {
 
@@ -32,18 +36,21 @@ public class SeniorCenter extends BaseEntity {
     private String address;
 
     @Column(name = "trot_point")
+    @Builder.Default
     private Long trotPoint = 0L;
 
     @Column(name = "challenge_point")
+    @Builder.Default
     private Long challengePoint = 0L;
 
     @Column(name = "total_point")
+    @Builder.Default
     private Long totalPoint = 0L;
 
     @Column(name = "ranking_year")
     private Integer rankingYear;
 
-    @Column(name = "rankingMonth")
+    @Column(name = "ranking_month")
     private Integer rankingMonth;
 
     @CreatedDate
@@ -55,9 +62,11 @@ public class SeniorCenter extends BaseEntity {
 
     // 경로당 소속 회원들 - mappedBy로 User의 seniorCenter 필드와 연결
     @OneToMany(mappedBy = "seniorCenter", fetch = FetchType.LAZY)
+    @Builder.Default
     private List<User> members = new ArrayList<>();
 
     @OneToMany(mappedBy = "seniorCenter", fetch = FetchType.LAZY)
+    @Builder.Default
     private List<Challenge> challenges = new ArrayList<>();
 
     // JPA 라이프사이클 콜백으로 자동 설정
@@ -68,7 +77,7 @@ public class SeniorCenter extends BaseEntity {
         this.rankingMonth = now.getMonthValue();
     }
 
-
+    //
     //==Setter 메서드==//
 
     /**
@@ -83,6 +92,10 @@ public class SeniorCenter extends BaseEntity {
      */
     public void addChallengePoint(Integer point) {
         if (point != null && point > 0) {
+
+            if (this.challengePoint == null) {
+                this.challengePoint = 0L;
+            }
             this.challengePoint += point;
             updateTotalPoint();
         }
@@ -93,6 +106,10 @@ public class SeniorCenter extends BaseEntity {
      */
     public void subtractChallengePoint(Integer point) {
         if (point != null && point > 0) {
+
+            if (this.challengePoint == null) {
+                this.challengePoint = 0L;
+            }
             this.challengePoint -= point;
             updateTotalPoint();
         }
@@ -102,6 +119,9 @@ public class SeniorCenter extends BaseEntity {
      * 총 포인트 재계산
      */
     private void updateTotalPoint() {
-        this.totalPoint = this.trotPoint + this.challengePoint;
+
+        Long trot = this.trotPoint != null ? this.trotPoint : 0L;
+        Long challenge = this.challengePoint != null ? this.challengePoint : 0L;
+        this.totalPoint = trot + challenge;
     }
 }
