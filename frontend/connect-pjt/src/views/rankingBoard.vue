@@ -51,13 +51,13 @@
             <div class="status-box">
               <span
                 v-for="(s, i) in myCenter.challengeStatusesPadded"
-                :key="'my-s-'+i"
+                :key="'my-s-' + i"
                 :class="['status', s === 'success' ? 'success' : s === 'fail' ? 'fail' : 'unknown']"
               >
                 {{ s === 'success' ? '✓' : s === 'fail' ? '✕' : '?' }}
               </span>
             </div>
-            <button class="challenge-info-btn" @click="openModal(myCenter.id)">
+            <button class="challenge-info-btn" @click="openModal(myCenter.centerId)">
               <span class="lens" aria-hidden="true">🔍</span>
               <span class="describe-text">도전 미션 현황 보기</span>
             </button>
@@ -76,7 +76,7 @@
         <!-- 목록 행들(내 경로당은 filteredCenters에서 제외됨) -->
         <tr
           v-for="(center, index) in paginatedCenters"
-          :key="center.id"
+          :key="center.id || center.centerId"
           :class="medalClass(center.ranking ?? (index + 1 + (currentPage - 1) * pageSize))"
         >
           <td class="rank-cell">
@@ -100,7 +100,7 @@
             <div class="status-box">
               <span
                 v-for="(status, idx) in center.challengeStatusesPadded"
-                :key="'st-'+center.id+'-'+idx"
+                :key="'st-' + (center.id || center.centerId) + '-' + idx"
                 :class="[
                   'status',
                   status === 'success' ? 'success' : status === 'fail' ? 'fail' : 'unknown'
@@ -109,7 +109,7 @@
                 {{ status === 'success' ? '✓' : status === 'fail' ? '✕' : '?' }}
               </span>
             </div>
-            <button class="challenge-info-btn" @click="openModal(center.id)">
+            <button class="challenge-info-btn" @click="openModal(center.centerId)">
               <span class="lens" aria-hidden="true">🔍</span>
               <span class="describe-text">도전 미션 현황 보기</span>
             </button>
@@ -236,8 +236,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import api from '@/api/axios'
 import defaultImage from '@/assets/default_image.png'
-
-import defaultLogo from '@/assets/logo.png'
+// import defaultLogo from '@/assets/logo.png' // 필요 시 사용
 
 /** axios 인스턴스 baseURL을 이용해 상대경로를 절대경로로 보정 */
 const apiBase = (api.defaults?.baseURL || '').replace(/\/+$/, '')
@@ -247,24 +246,6 @@ const toAbsUrl = (u) => {
   if (u.startsWith('/')) return apiBase + u
   return apiBase + '/' + u
 }
-
-// const getCenterLogoSrc = (center) => {
-//   const u =
-//     center?.centerLogo ||                 // fetchRankings에서 정규화한 값
-//     center?.adminProfileImage ||
-//     center?.admin_profile_image ||
-//     center?.admin?.profileImage ||
-//     center?.admin?.profile_image ||
-//     center?.profileImage ||
-//     center?.profile_image || null
-
-//   return toAbsUrl(u) || defaultLogo
-// }
-
-// const onLogoError = (e) => {
-//   e.target.onerror = null
-//   e.target.src = defaultLogo
-// }
 
 const centers = ref([])
 const currentPage = ref(1)
@@ -276,56 +257,64 @@ const selectedCenter = ref(null)
 const showDetailModal = ref(false)
 const selectedChallenge = ref(null)
 
-/* 내 경로당 ID (스토어/백엔드/로컬 우선) */
-const myCenterId = ref(null)
+/* 로그인 사용자 정보 & 내 경로당 ID */
+const userInfo = ref(null)
+const userKey = computed(() => String(userInfo.value?.userId ?? userInfo.value?.id ?? userInfo.value?.email ?? 'guest'))
+const myCenterId = ref(null) // seniorCenterId가 들어감
 
-/* 내 경로당 객체 & 순위 */
+/* 내 경로당 객체 & 순위 (항상 centerId 기준으로 비교) */
 const myCenter = computed(() =>
-  centers.value.find(c => String(c.id) === String(myCenterId.value)) || null
+  centers.value.find(c => String(c.centerId) === String(myCenterId.value)) || null
 )
 
 const myCenterRank = computed(() => {
   if (!myCenter.value) return null
   const r = myCenter.value.ranking
   if (r != null) return Number(r)
-  const idx = centers.value.findIndex(c => Number(c.id) === Number(myCenter.value.id))
+  const idx = centers.value.findIndex(c => String(c.centerId) === String(myCenter.value.centerId))
   return idx >= 0 ? idx + 1 : null
 })
 
+/* 서버에서 내 센터 ID 가져오기 (성공 시에만 저장) */
 const fetchMyCenterIdFromServer = async () => {
   try {
-    const { data } = await api.get('/api/v1/main/me', { withCredentials: true });
-    const id =
+    const { data } = await api.get('/api/v1/main/me', { withCredentials: true })
+    userInfo.value = data
+
+    // ✅ 중첩 경로(seniorCenter.seniorCenterId) 우선
+    const rawId =
+      data?.seniorCenter?.seniorCenterId ??
       data?.seniorCenterId ??
       data?.senior_center_id ??
       data?.user?.seniorCenterId ??
       data?.user?.senior_center_id ??
-      null;
+      null
 
-    if (id != null) {
-      myCenterId.value = String(id);
-      // 보조 용도로 동기화
-      localStorage.setItem('mySeniorCenterId', String(id));
-      return true;
+    if (rawId != null) {
+      const id = String(rawId)
+      myCenterId.value = id
+      // 사용자별로 분리 저장
+      localStorage.setItem(`mySeniorCenterId:${userKey.value}`, id)
+      return true
     }
+    myCenterId.value = null
   } catch (e) {
-    console.warn('/api/v1/main/me 호출 실패:', e);
+    console.warn('/api/v1/main/me 호출 실패:', e)
   }
-  return false;
-};
+  return false
+}
 
-/* 로컬에서 소속 센터 ID 로드(임시) */
+/* 로컬 폴백: 같은 사용자 키에서만 복원 */
 const fetchMyCenterId = async () => {
   try {
-    const saved = localStorage.getItem('mySeniorCenterId');
-    if (saved) myCenterId.value = String(saved);
-  } catch (e) {}
-};
+    const saved = localStorage.getItem(`mySeniorCenterId:${userKey.value}`)
+    if (saved) myCenterId.value = String(saved)
+  } catch (_) {}
+}
 
 /* 목록 호출: /api/v1/rankings */
 const fetchRankings = async () => {
   const toNum = (v, fb = null) => (v == null || v === '') ? fb : Number(v)
-
   try {
     const { data } = await api.get('/api/v1/rankings')
 
@@ -337,7 +326,13 @@ const fetchRankings = async () => {
       : []
 
     const normalized = list.map(item => {
-      const id = toNum(item.seniorCenterId ?? item.senior_center_id ?? item.id)
+      // ✅ 항상 센터 식별자는 centerId로 분리 (seniorCenterId/centerId 계열)
+      const centerId = toNum(
+        item.seniorCenterId ?? item.senior_center_id ??
+        item.centerId      ?? item.center_id      ?? null
+      )
+      // 행 키는 별도 id 사용(랭킹 row id일 수 있음)
+      const rowId = toNum(item.id ?? centerId ?? Math.floor(Math.random() * 1e9))
 
       const name = String(
         item.seniorCenterName ??
@@ -355,27 +350,29 @@ const fetchRankings = async () => {
       while (rawStatuses.length < 4) rawStatuses.push('unknown')
 
       return {
-        id,                               // ← 숫자 확정
+        id: rowId,                 // v-for 등 행 키
+        centerId,                  // ✅ 내 센터 매칭/모달 호출은 이걸로
         centerName: name,
-        trotPoint:   toNum(item.trotPoint      ?? item.trot_point,      0),
-        missionPoint:toNum(item.challengePoint ?? item.challenge_point,  0),
-        monthlyPoint:toNum(item.totalPoint     ?? item.total_point,      0),
-        ranking:     toNum(item.ranking        ?? item.rank,             null),
+        trotPoint:    toNum(item.trotPoint      ?? item.trot_point,      0),
+        missionPoint: toNum(item.challengePoint ?? item.challenge_point,  0),
+        monthlyPoint: toNum(item.totalPoint     ?? item.total_point,      0),
+        ranking:      toNum(item.ranking        ?? item.rank,             null),
         challenges,
         challengeStatusesPadded: rawStatuses,
-        // (옵션) 관리자 프로필 이미지를 로고로 쓰고 싶다면 같이 받아두기
-        //centerLogo:
-        //  item.adminProfileImage ??
-        //  item.admin_profile_image ??
-        //  item.admin?.profileImage ??
-        //  item.admin?.profile_image ??
-        //  item.profileImage ??
-        //  item.profile_image ?? null,
       }
-    }).filter(r => r.id != null)
+    }).filter(r => r.centerId != null)
 
     normalized.sort((a, b) => (a.ranking ?? 1e9) - (b.ranking ?? 1e9))
     centers.value = normalized
+
+    // 내 센터 ID가 목록에 없으면 고정행 해제 (오표시 방지)
+    if (
+      myCenterId.value != null &&
+      !centers.value.some(c => String(c.centerId) === String(myCenterId.value))
+    ) {
+      myCenterId.value = null
+    }
+
     totalPages.value = Math.max(1, Math.ceil(filteredCenters.value.length / pageSize))
     currentPage.value = 1
   } catch (err) {
@@ -386,10 +383,10 @@ const fetchRankings = async () => {
   }
 }
 
-/* 검색 + 내 경로당 중복 제거 */
+/* 검색 + 내 경로당 중복 제거 (centerId 기준) */
 const filteredCenters = computed(() => {
   const base = myCenter.value
-    ? centers.value.filter(c => Number(c.id) !== Number(myCenterId.value))
+    ? centers.value.filter(c => String(c.centerId) !== String(myCenterId.value))
     : centers.value
 
   const q = searchQuery.value.trim().toLowerCase()
@@ -438,12 +435,12 @@ const normalizeChallenges = (challenges) => {
   })).filter(c => c.id != null)
 }
 
-/* 모달 열기: 센터별 도전 조회 */
+/* 모달 열기: 항상 centerId(seniorCenterId)로 호출 */
 const openModal = async (centerId) => {
   try {
     const res = await api.get(`/api/v1/rankings/senior-center/${centerId}/challenges`)
     const data = res.data
-    const centerInList = centers.value.find(c => Number(c.id) === Number(centerId))
+    const centerInList = centers.value.find(c => String(c.centerId) === String(centerId))
     selectedCenter.value = {
       seniorCenterId: data.seniorCenterId ?? centerId,
       seniorCenterName: data.seniorCenterName ?? centerInList?.centerName ?? '',
@@ -469,12 +466,9 @@ watch(filteredCenters, (filtered) => {
 })
 
 onMounted(async () => {
-  // 1) 서버에서 시도
-  const ok = await fetchMyCenterIdFromServer();
-  // 2) 실패하면 로컬스토리지 폴백
-  if (!ok) await fetchMyCenterId();
-
-  await fetchRankings();
+  const ok = await fetchMyCenterIdFromServer()
+  if (!ok) await fetchMyCenterId()
+  await fetchRankings()
 })
 
 /* 상세 모달 */
@@ -607,7 +601,7 @@ tr.rank-1 td:first-child { border-left:6px solid #f5b301 }
 tr.rank-2 td:first-child { border-left:6px solid #9aa3ae }
 tr.rank-3 td:first-child { border-left:6px solid #cd7f32 }
 .ranking-table tbody tr.rank-1:hover { background:#fff3c2 }
-.ranking-table tbody tr.rank-2:hover { background:#eceff3 }
+rinking-table tbody tr.rank-2:hover { background:#eceff3 }
 .ranking-table tbody tr.rank-3:hover { background:#ffe1c8 }
 
 /* 상태/뱃지: 4칸 고정, 간격 살짝 넓힘 */
