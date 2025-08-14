@@ -15,6 +15,7 @@ import RankingBoard from '@/views/rankingBoard.vue'
 import GameView from '@/views/GameView.vue'
 import WebRTCTestView from '@/views/WebRTCTestView.vue'
 import AiNewsView from '@/views/AiNewsView.vue'
+import UnityTestView from '@/views/UnityTestView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -109,6 +110,11 @@ const router = createRouter({
       path: '/news',
       name: 'news',
       component: AiNewsView,
+    },
+    {
+      path: '/unity',
+      name: 'unity',
+      component: UnityTestView,
     }
   ]
 })

@@ -1,670 +1,350 @@
 <template>
-  <div class="stomp-test-container">
-    <h1>STOMP WebSocket 연결 테스트</h1>
-    
-    <!-- 연결 상태 표시 -->
-    <div class="connection-status">
-      <h2>연결 상태</h2>
-      <div class="status-indicator" :class="{ connected: isConnected, disconnected: !isConnected }">
-        {{ isConnected ? '🟢 연결됨' : '🔴 연결 안됨' }}
+  <div class="game-lobby">
+    <!-- 나눔스퀘어라운드 폰트 -->
+    <link href="https://hangeul.pstatic.net/hangeul_static/css/nanum-square-round.css" rel="stylesheet">
+    <!-- 왼쪽 섹션: 방 목록 -->
+    <div class="left-section">
+      <div class="header">
+        <div class="title-section">
+          <div class="title">
+            <h1>게임 참가하기</h1>
+            <p>다른 사람의 방에 참가해보아요</p>
+          </div>
+          <div class="action-buttons">
+            <button class="btn btn-danger" @click="exitGame">
+              게임 종료
+            </button>
+            <button class="btn btn-primary" @click="createRoom">
+              방 만들기
+            </button>
+          </div>
+        </div>
       </div>
-      <div class="connection-info">
-        <p><strong>서버 URL:</strong> {{ brokerURL }}</p>
-        <p><strong>연결 시간:</strong> {{ connectionTime || '연결 안됨' }}</p>
-        <p><strong>재연결 시도:</strong> {{ reconnectCount }}회</p>
+
+      <div class="room-list">
+        <div 
+          v-for="room in roomList" 
+          :key="room.gameRoomId"
+          class="room-card"
+          :class="{ selected: selectedRoom?.gameRoomId === room.gameRoomId }"
+          @click="selectRoom(room)"
+        >
+          <div class="room-title">{{ room.roomTitle }}</div>
+          <div class="room-participants">
+            <span class="icon">👤</span>
+            {{ room.participantCount }}/2
+          </div>
+        </div>
       </div>
+
+      <div class="status-text">Logging...</div>
     </div>
 
-    <!-- 연결 제어 -->
-    <div class="connection-controls">
-      <h2>연결 제어</h2>
-      <div class="button-group">
-        <button @click="connectStomp" :disabled="isConnected" class="btn btn-primary">
-          🔌 STOMP 연결
-        </button>
-        <button @click="disconnectStomp" :disabled="!isConnected" class="btn btn-danger">
-          🔌 연결 해제
-        </button>
-        <button @click="testConnection" :disabled="!isConnected" class="btn btn-success">
-          🧪 연결 테스트
-        </button>
+    <!-- 오른쪽 섹션: 선택된 방 정보 -->
+    <div class="right-section" v-if="selectedRoom">
+      <div class="user-info">
+        <div class="avatar">👨‍🦳</div>
+        <div class="user-details">
+          <div class="username">{{ userInfo.nickname || '유저 이름' }}</div>
+          <div class="points">포인트: {{ userInfo.personalPoint || 0 }}p</div>
+        </div>
+      </div>
+
+      <div class="room-details-card">
+        <div class="room-header">
+          <div class="header-content">
+            <span class="music-icon">🎵</span>
+            <div class="round-info">
+              <div class="round-label">최대 라운드</div>
+              <div class="round-number">{{ selectedRoom.gameRound }} 라운드</div>
+            </div>
+          </div>
+        </div>
+        <div class="room-title">{{ selectedRoom.roomTitle }}</div>
+      </div>
+
+      <button class="btn btn-success join-btn" @click="joinRoom">
+        참가하기
+      </button>
+    </div>
+
+    <!-- 방이 선택되지 않았을 때 -->
+    <div class="right-section empty" v-else>
+      <div class="empty-state">
+        <div class="empty-icon">🎮</div>
+        <h3>방을 선택해주세요</h3>
+        <p>왼쪽에서 참가하고 싶은 방을 클릭하세요</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 방 만들기 팝업 -->
+  <div class="modal-overlay" v-if="showCreateRoomModal" @click="closeCreateRoomModal">
+    <div class="modal-content" @click.stop>
+      <button class="close-btn" @click="closeCreateRoomModal">×</button>
+      
+      <h2 class="modal-title">방 만들기</h2>
+      
+      <div class="input-group">
+        <input 
+          v-model="newRoom.roomTitle" 
+          type="text" 
+          placeholder="방 이름을 입력해주세요"
+          maxlength="10"
+          class="form-input"
+        >
+        <div class="char-count">{{ newRoom.roomTitle.length }}/10</div>
       </div>
       
-      <!-- WebRTC Signaling 테스트 -->
-      <div class="webrtc-test-section">
-        <h3>WebRTC Signaling 테스트</h3>
-        <div class="input-group">
-          <label>방 ID:</label>
-          <input v-model="webrtcRoomId" placeholder="1" class="form-input" style="width: 100px;">
-        </div>
-        <div class="button-group">
-          <button @click="connectWebRTCSignaling" :disabled="isWebRTCConnected" class="btn btn-info">
-            📡 WebRTC Signaling 연결
-          </button>
-          <button @click="disconnectWebRTCSignaling" :disabled="!isWebRTCConnected" class="btn btn-warning">
-            📡 WebRTC 연결 해제
-          </button>
-          <button @click="testWebRTCConnection" :disabled="!isWebRTCConnected" class="btn btn-secondary">
-            🧪 WebRTC 테스트
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 메시지 전송 테스트 -->
-    <div class="message-test" v-if="isConnected">
-      <h2>메시지 전송 테스트</h2>
-      <div class="test-messages">
-        <button @click="sendTestMessage('/games/answer')" class="btn btn-info">
-          📤 정답 제출 테스트
-        </button>
-        <button @click="sendTestMessage('/games/hint')" class="btn btn-warning">
-          💡 힌트 요청 테스트
-        </button>
-        <button @click="sendCustomMessage" class="btn btn-secondary">
-          ✏️ 커스텀 메시지
-        </button>
+      <div class="input-group">
+        <select v-model="newRoom.gameRound" class="form-select">
+          <option value="" disabled>라운드를 선택하세요</option>
+          <option value="3">3 라운드</option>
+          <option value="5">5 라운드</option>
+          <option value="7">7 라운드</option>
+        </select>
       </div>
       
-      <!-- 커스텀 메시지 입력 -->
-      <div class="custom-message" v-if="showCustomMessage">
-        <h3>커스텀 메시지 전송</h3>
-        <div class="input-group">
-          <label>목적지:</label>
-          <input v-model="customDestination" placeholder="/pub/test" class="form-input">
-        </div>
-        <div class="input-group">
-          <label>메시지:</label>
-          <textarea v-model="customMessage" placeholder='{"type": "TEST", "data": "test message"}' class="form-textarea"></textarea>
-        </div>
-        <button @click="sendCustomMessageToServer" class="btn btn-primary">전송</button>
-      </div>
-    </div>
-
-    <!-- 구독 관리 -->
-    <div class="subscription-management" v-if="isConnected">
-      <h2>구독 관리</h2>
-      <div class="subscription-controls">
-        <div class="input-group">
-          <label>구독할 토픽:</label>
-          <input v-model="subscribeTopic" placeholder="/sub/games/1" class="form-input">
-        </div>
-        <button @click="subscribeToTopic" class="btn btn-success">📡 구독</button>
-      </div>
-      
-      <div class="active-subscriptions">
-        <h3>활성 구독 목록</h3>
-        <ul>
-          <li v-for="topic in activeSubscriptions" :key="topic" class="subscription-item">
-            {{ topic }}
-            <button @click="unsubscribeFromTopic(topic)" class="btn btn-sm btn-danger">구독 해제</button>
-          </li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 로그 출력 -->
-    <div class="log-section">
-      <h2>연결 로그</h2>
-      <div class="log-controls">
-        <button @click="clearLogs" class="btn btn-secondary">🗑️ 로그 지우기</button>
-        <button @click="exportLogs" class="btn btn-info">📥 로그 다운로드</button>
-      </div>
-      <div class="log-container" ref="logContainer">
-        <div v-for="(log, index) in logs" :key="index" class="log-entry" :class="log.type">
-          <span class="log-time">{{ log.time }}</span>
-          <span class="log-level">{{ log.level }}</span>
-          <span class="log-message">{{ log.message }}</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- CSP 정보 -->
-    <div class="csp-info">
-      <h2>CSP (Content Security Policy) 정보</h2>
-      <div class="csp-details">
-        <p><strong>현재 도메인:</strong> {{ currentDomain }}</p>
-        <p><strong>WebSocket URL:</strong> {{ brokerURL }}</p>
-        <p><strong>CSP 우회 방법:</strong> nginx 프록시를 통한 WSS 연결</p>
-        <div class="csp-status" :class="{ success: isConnected, error: !isConnected && hasAttemptedConnection }">
-          {{ getCspStatus() }}
-        </div>
-      </div>
+      <button class="btn btn-primary create-room-btn" @click="submitCreateRoom">
+        방 만들기
+      </button>
     </div>
   </div>
 </template>
 
 <script>
-import { Client } from '@stomp/stompjs'
-import SockJS from 'sockjs-client'
-
 export default {
   name: 'WebRTCTestView',
   data() {
     return {
-      // STOMP 클라이언트
-      stompClient: null,
-      isConnected: false,
-      connectionTime: null,
-      reconnectCount: 0,
-      hasAttemptedConnection: false,
+      // 사용자 정보
+      userInfo: {
+        nickname: '유저 이름',
+        personalPoint: 0
+      },
       
-      // 연결 설정
-      brokerURL: 'wss://i13a708.p.ssafy.io/ws-game',
-      useSockJS: false, // SockJS 사용 여부
+      // 방 목록 (더미 데이터)
+      roomList: [
+        {
+          gameRoomId: 1,
+          roomTitle: '너만오면 고',
+          gameRound: 20,
+          gameStatus: 'WAITING',
+          participantCount: 1
+        },
+        {
+          gameRoomId: 2,
+          roomTitle: '트로트 마스터전',
+          gameRound: 15,
+          gameStatus: 'WAITING',
+          participantCount: 1
+        },
+        {
+          gameRoomId: 3,
+          roomTitle: '추억의 노래방',
+          gameRound: 10,
+          gameStatus: 'WAITING',
+          participantCount: 2
+        },
+        {
+          gameRoomId: 4,
+          roomTitle: '신나는 뮤직게임',
+          gameRound: 25,
+          gameStatus: 'WAITING',
+          participantCount: 1
+        },
+        {
+          gameRoomId: 5,
+          roomTitle: '클래식 명곡',
+          gameRound: 12,
+          gameStatus: 'WAITING',
+          participantCount: 1
+        }
+      ],
       
-      // 구독 관리
-      subscribeTopic: '/sub/games/1',
-      activeSubscriptions: [],
+      // 선택된 방
+      selectedRoom: null,
       
-      // 커스텀 메시지
-      showCustomMessage: false,
-      customDestination: '/pub/test',
-      customMessage: '{"type": "TEST", "data": "test message"}',
-      
-      // 로그 관리
-      logs: [],
-      maxLogs: 100,
-      
-      // 현재 도메인
-      currentDomain: window.location.origin,
-      
-      // WebRTC Signaling
-      webrtcWebSocket: null,
-      isWebRTCConnected: false,
-      webrtcRoomId: '1',
-      webrtcConnectionTime: null
+      // 방 만들기 모달
+      showCreateRoomModal: false,
+      newRoom: {
+        roomTitle: '',
+        gameRound: ''
+      }
     }
   },
   
   mounted() {
-    this.addLog('info', 'STOMP WebSocket 테스트 페이지 로드됨')
-    this.addLog('info', `현재 도메인: ${this.currentDomain}`)
-    this.addLog('info', `WebSocket URL: ${this.brokerURL}`)
-  },
-  
-  beforeDestroy() {
-    this.disconnectStomp()
-    this.disconnectWebRTCSignaling()
+    this.loadUserInfo()
+    this.loadRoomList()
   },
   
   methods: {
-    // STOMP 연결
-    connectStomp() {
-      if (this.isConnected) {
-        this.addLog('warn', '이미 연결되어 있습니다.')
-        return
-      }
-      
-      this.addLog('info', 'STOMP WebSocket 연결 시도 중...')
-      this.hasAttemptedConnection = true
-      
+    // 사용자 정보 로드
+    async loadUserInfo() {
       try {
-        // STOMP 클라이언트 생성
-        this.stompClient = new Client({
-          brokerURL: this.brokerURL,
-          debug: (str) => {
-            this.addLog('debug', `STOMP Debug: ${str}`)
-          },
-          reconnectDelay: 5000,
-          heartbeatIncoming: 4000,
-          heartbeatOutgoing: 4000,
-        })
-
-        // 연결 성공 콜백
-        this.stompClient.onConnect = (frame) => {
-          this.isConnected = true
-          this.connectionTime = new Date().toLocaleString()
-          this.addLog('success', `STOMP WebSocket 연결 성공! Frame: ${frame.command}`)
-          
-          // 기본 구독
-          this.subscribeToDefaultTopics()
-        }
-
-        // 연결 실패 콜백
-        this.stompClient.onStompError = (frame) => {
-          this.isConnected = false
-          this.addLog('error', `STOMP 연결 오류: ${frame.headers.message || '알 수 없는 오류'}`)
-        }
-
-        // 연결 해제 콜백
-        this.stompClient.onDisconnect = () => {
-          this.isConnected = false
-          this.connectionTime = null
-          this.activeSubscriptions = []
-          this.addLog('info', 'STOMP WebSocket 연결 해제됨')
-        }
-
-        // WebSocket 연결 활성화
-        this.stompClient.activate()
+        // API 호출 (실제 구현 시)
+        // const response = await api.get('/api/v1/main/me')
+        // this.userInfo = response.data
         
-      } catch (error) {
-        this.addLog('error', `STOMP 클라이언트 생성 오류: ${error.message}`)
-      }
-    },
-
-    // STOMP 연결 해제
-    disconnectStomp() {
-      if (this.stompClient) {
-        try {
-          this.stompClient.deactivate()
-          this.stompClient = null
-          this.isConnected = false
-          this.connectionTime = null
-          this.activeSubscriptions = []
-          this.addLog('info', 'STOMP WebSocket 연결 해제 완료')
-        } catch (error) {
-          this.addLog('error', `연결 해제 오류: ${error.message}`)
+        // 더미 데이터 사용
+        this.userInfo = {
+          nickname: '게임러버',
+          personalPoint: 1250
         }
-      }
-    },
-
-    // 기본 토픽 구독
-    subscribeToDefaultTopics() {
-      if (!this.stompClient || !this.stompClient.connected) {
-        this.addLog('warn', 'STOMP 클라이언트가 연결되지 않았습니다.')
-        return
-      }
-
-      try {
-        // 기본 구독 경로
-        this.stompClient.subscribe('/sub', (message) => {
-          this.addLog('info', `기본 메시지 수신: ${message.body}`)
-        })
-        this.activeSubscriptions.push('/sub')
-
-        this.addLog('success', '기본 토픽 구독 완료')
       } catch (error) {
-        this.addLog('error', `기본 토픽 구독 오류: ${error.message}`)
+        console.error('사용자 정보 로드 실패:', error)
       }
     },
-
-    // 특정 토픽 구독
-    subscribeToTopic() {
-      if (!this.stompClient || !this.stompClient.connected) {
-        this.addLog('warn', 'STOMP 클라이언트가 연결되지 않았습니다.')
-        return
-      }
-
-      if (!this.subscribeTopic) {
-        this.addLog('warn', '구독할 토픽을 입력해주세요.')
-        return
-      }
-
+    
+    // 방 목록 로드
+    async loadRoomList() {
       try {
-        this.stompClient.subscribe(this.subscribeTopic, (message) => {
-          this.addLog('info', `토픽 메시지 수신 [${this.subscribeTopic}]: ${message.body}`)
-        })
+        // API 호출 (실제 구현 시)
+        // const response = await api.get('/api/v1/game-rooms')
+        // this.roomList = response.data
         
-        this.activeSubscriptions.push(this.subscribeTopic)
-        this.addLog('success', `토픽 구독 완료: ${this.subscribeTopic}`)
-        this.subscribeTopic = ''
+        console.log('방 목록 로드 완료')
       } catch (error) {
-        this.addLog('error', `토픽 구독 오류: ${error.message}`)
+        console.error('방 목록 로드 실패:', error)
       }
     },
-
-    // 토픽 구독 해제
-    unsubscribeFromTopic(topic) {
-      if (!this.stompClient || !this.stompClient.connected) {
-        this.addLog('warn', 'STOMP 클라이언트가 연결되지 않았습니다.')
+    
+    // 방 선택
+    selectRoom(room) {
+      this.selectedRoom = room
+      console.log('방 선택:', room)
+    },
+    
+    // 방 참가
+    joinRoom() {
+      if (!this.selectedRoom) {
+        alert('참가할 방을 선택해주세요.')
         return
       }
-
-      try {
-        // 구독 해제 (실제로는 subscription 객체를 저장해야 하지만, 여기서는 간단히 처리)
-        const index = this.activeSubscriptions.indexOf(topic)
-        if (index > -1) {
-          this.activeSubscriptions.splice(index, 1)
-          this.addLog('info', `토픽 구독 해제: ${topic}`)
-        }
-      } catch (error) {
-        this.addLog('error', `토픽 구독 해제 오류: ${error.message}`)
+      
+      console.log('방 참가:', this.selectedRoom)
+      
+      // 방 참가 API 호출 (실제 구현 시)
+      // this.joinRoomAPI(this.selectedRoom.gameRoomId)
+      
+      // 방 내부로 이동 (실제 구현 시)
+      // this.$router.push(`/game/${this.selectedRoom.gameRoomId}`)
+      
+      alert(`${this.selectedRoom.roomTitle} 방에 참가합니다!`)
+    },
+    
+    // 방 만들기 모달 열기
+    createRoom() {
+      this.showCreateRoomModal = true
+      this.newRoom = {
+        roomTitle: '',
+        gameRound: ''
       }
     },
-
-    // 연결 테스트
-    testConnection() {
-      if (!this.isConnected) {
-        this.addLog('warn', '연결되지 않은 상태입니다.')
+    
+    // 방 만들기 모달 닫기
+    closeCreateRoomModal() {
+      this.showCreateRoomModal = false
+    },
+    
+    // 방 생성 제출
+    submitCreateRoom() {
+      if (!this.newRoom.roomTitle.trim()) {
+        alert('방 이름을 입력해주세요.')
         return
       }
-
-      this.addLog('info', '연결 테스트 시작...')
       
-      // 간단한 테스트 메시지 전송
-      this.sendStompMessage('/test', {
-        type: 'CONNECTION_TEST',
-        data: {
-          timestamp: new Date().toISOString(),
-          client: 'Vue.js STOMP Test'
-        }
-      })
-    },
-
-    // 테스트 메시지 전송
-    sendTestMessage(destination) {
-      const testMessages = {
-        '/games/answer': {
-          type: 'ANSWER_SUBMIT',
-          data: {
-            roomId: 1,
-            userId: 'test-user',
-            answer: '테스트 정답',
-            timestamp: new Date().toISOString()
-          }
-        },
-        '/games/hint': {
-          type: 'HINT_REQUEST',
-          data: {
-            roomId: 1,
-            userId: 'test-user',
-            hintType: 'FIRST_LETTER',
-            timestamp: new Date().toISOString()
-          }
-        }
-      }
-
-      const message = testMessages[destination]
-      if (message) {
-        this.sendStompMessage(destination, message)
-      }
-    },
-
-    // 커스텀 메시지 토글
-    sendCustomMessage() {
-      this.showCustomMessage = !this.showCustomMessage
-    },
-
-    // 커스텀 메시지 전송
-    sendCustomMessageToServer() {
-      if (!this.customDestination || !this.customMessage) {
-        this.addLog('warn', '목적지와 메시지를 모두 입력해주세요.')
+      if (!this.newRoom.gameRound) {
+        alert('라운드를 선택해주세요.')
         return
       }
-
-      try {
-        const message = JSON.parse(this.customMessage)
-        this.sendStompMessage(this.customDestination, message)
-      } catch (error) {
-        this.addLog('error', `JSON 파싱 오류: ${error.message}`)
-      }
-    },
-
-    // STOMP 메시지 전송
-    sendStompMessage(destination, message) {
-      if (!this.stompClient || !this.stompClient.connected) {
-        this.addLog('warn', 'STOMP 클라이언트가 연결되지 않았습니다.')
-        return
-      }
-
-      try {
-        // /pub 접두사 추가
-        const pubDestination = destination.startsWith('/pub') ? destination : `/pub${destination}`
-        
-        this.stompClient.publish({
-          destination: pubDestination,
-          body: JSON.stringify(message),
-          headers: {
-            'content-type': 'application/json'
-          }
-        })
-        
-        this.addLog('success', `메시지 전송 완료: ${pubDestination}`)
-        this.addLog('info', `전송 내용: ${JSON.stringify(message, null, 2)}`)
-      } catch (error) {
-        this.addLog('error', `메시지 전송 오류: ${error.message}`)
-      }
-    },
-
-    // 로그 추가
-    addLog(level, message) {
-      const log = {
-        time: new Date().toLocaleTimeString(),
-        level: level.toUpperCase(),
-        message: message,
-        type: level
-      }
       
-      this.logs.unshift(log)
+      console.log('방 생성:', this.newRoom)
       
-      // 최대 로그 수 제한
-      if (this.logs.length > this.maxLogs) {
-        this.logs = this.logs.slice(0, this.maxLogs)
-      }
+      // 방 생성 API 호출 (실제 구현 시)
+      // const response = await api.post('/api/v1/game-rooms', this.newRoom)
       
-      // 자동 스크롤
-      this.$nextTick(() => {
-        if (this.$refs.logContainer) {
-          this.$refs.logContainer.scrollTop = 0
-        }
-      })
+      // 성공 메시지
+      alert(`${this.newRoom.roomTitle} 방이 생성되었습니다!`)
+      
+      // 모달 닫기
+      this.closeCreateRoomModal()
+      
+      // 방 내부로 이동 (실제 구현 시)
+      // this.$router.push(`/game/${response.data.gameRoomId}`)
     },
-
-    // 로그 지우기
-    clearLogs() {
-      this.logs = []
-      this.addLog('info', '로그가 지워졌습니다.')
-    },
-
-    // 로그 다운로드
-    exportLogs() {
-      const logText = this.logs.map(log => 
-        `[${log.time}] ${log.level}: ${log.message}`
-      ).join('\n')
-      
-      const blob = new Blob([logText], { type: 'text/plain' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `stomp-test-logs-${new Date().toISOString().slice(0, 19)}.txt`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-      
-      this.addLog('info', '로그가 다운로드되었습니다.')
-    },
-
-         // CSP 상태 확인
-     getCspStatus() {
-       if (!this.hasAttemptedConnection) {
-         return '연결 시도 전'
-       }
-       
-       if (this.isConnected) {
-         return '✅ CSP 우회 성공 - WebSocket 연결됨'
-       } else {
-         return '❌ CSP 우회 실패 - 연결되지 않음'
-       }
-     },
-
-     // WebRTC Signaling 연결
-     connectWebRTCSignaling() {
-       if (this.isWebRTCConnected) {
-         this.addLog('warn', 'WebRTC Signaling이 이미 연결되어 있습니다.')
-         return
-       }
-       
-       this.addLog('info', 'WebRTC Signaling 연결 시도 중...')
-       
-       try {
-         const signalingURL = `wss://i13a708.p.ssafy.io/signal/${this.webrtcRoomId}`
-         this.webrtcWebSocket = new WebSocket(signalingURL)
-         
-         this.webrtcWebSocket.onopen = () => {
-           this.isWebRTCConnected = true
-           this.webrtcConnectionTime = new Date().toLocaleString()
-           this.addLog('success', `WebRTC Signaling 연결 성공! Room: ${this.webrtcRoomId}`)
-         }
-         
-         this.webrtcWebSocket.onmessage = (event) => {
-           try {
-             const data = JSON.parse(event.data)
-             this.addLog('info', `WebRTC 메시지 수신: ${JSON.stringify(data)}`)
-           } catch (error) {
-             this.addLog('info', `WebRTC 메시지 수신: ${event.data}`)
-           }
-         }
-         
-         this.webrtcWebSocket.onerror = (error) => {
-           this.addLog('error', `WebRTC Signaling 연결 오류: ${error}`)
-         }
-         
-         this.webrtcWebSocket.onclose = (event) => {
-           this.isWebRTCConnected = false
-           this.webrtcConnectionTime = null
-           this.addLog('info', `WebRTC Signaling 연결 종료: ${event.code} - ${event.reason}`)
-         }
-         
-       } catch (error) {
-         this.addLog('error', `WebRTC Signaling 연결 생성 오류: ${error.message}`)
-       }
-     },
-
-     // WebRTC Signaling 연결 해제
-     disconnectWebRTCSignaling() {
-       if (this.webrtcWebSocket) {
-         try {
-           this.webrtcWebSocket.close()
-           this.webrtcWebSocket = null
-           this.isWebRTCConnected = false
-           this.webrtcConnectionTime = null
-           this.addLog('info', 'WebRTC Signaling 연결 해제 완료')
-         } catch (error) {
-           this.addLog('error', `WebRTC 연결 해제 오류: ${error.message}`)
-         }
-       }
-     },
-
-     // WebRTC 연결 테스트
-     testWebRTCConnection() {
-       if (!this.isWebRTCConnected) {
-         this.addLog('warn', 'WebRTC Signaling이 연결되지 않았습니다.')
-         return
-       }
-
-       this.addLog('info', 'WebRTC 연결 테스트 시작...')
-       
-       // 간단한 테스트 메시지 전송
-       const testMessage = {
-         type: 'test',
-         roomId: this.webrtcRoomId,
-         timestamp: new Date().toISOString(),
-         client: 'Vue.js WebRTC Test'
-       }
-       
-       try {
-         this.webrtcWebSocket.send(JSON.stringify(testMessage))
-         this.addLog('success', 'WebRTC 테스트 메시지 전송 완료')
-       } catch (error) {
-         this.addLog('error', `WebRTC 테스트 메시지 전송 오류: ${error.message}`)
-       }
-     }
+    
+    // 게임 종료
+    exitGame() {
+      console.log('게임 종료')
+      // 메인 페이지로 이동
+      this.$router.push('/')
+    }
   }
 }
 </script>
 
 <style scoped>
-.stomp-test-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
-h1 {
-  color: #2c3e50;
-  text-align: center;
-  margin-bottom: 30px;
-  border-bottom: 3px solid #3498db;
-  padding-bottom: 10px;
-}
-
-h2 {
-  color: #34495e;
-  margin-top: 30px;
-  margin-bottom: 15px;
-  border-left: 4px solid #3498db;
-  padding-left: 15px;
-}
-
-h3 {
-  color: #7f8c8d;
-  margin-top: 20px;
-  margin-bottom: 10px;
-}
-
-/* 연결 상태 */
-.connection-status {
-  background: #f8f9fa;
-  padding: 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  border: 1px solid #e9ecef;
-}
-
-.status-indicator {
-  font-size: 18px;
-  font-weight: bold;
-  padding: 10px;
-  border-radius: 5px;
-  text-align: center;
-  margin-bottom: 15px;
-}
-
-.status-indicator.connected {
-  background: #d4edda;
-  color: #155724;
-  border: 1px solid #c3e6cb;
-}
-
-.status-indicator.disconnected {
-  background: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
-}
-
-.connection-info p {
-  margin: 5px 0;
-  font-family: 'Courier New', monospace;
-  background: #fff;
-  padding: 5px 10px;
-  border-radius: 3px;
-  border: 1px solid #dee2e6;
-}
-
-/* 버튼 스타일 */
-.button-group, .test-messages {
+.game-lobby {
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 15px;
+  height: 100vh;
+  width: 100vw;
+  background: white;
+  font-family: 'NanumSquareRound', sans-serif;
+  overflow: hidden;
+}
+
+/* 왼쪽 섹션 */
+.left-section {
+  flex: 1;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  color: #333;
+  overflow: hidden;
+}
+
+.header {
+  margin-bottom: 30px;
+}
+
+.title-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.title h1 {
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin: 0 0 10px 0;
+  text-align: left;
+}
+
+.title p {
+  font-size: 1.1rem;
+  opacity: 0.8;
+  margin: 0;
+  text-align: left;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 15px;
 }
 
 .btn {
-  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
   border: none;
-  border-radius: 5px;
-  cursor: pointer;
+  border-radius: 8px;
+  font-size: 14px;
   font-weight: bold;
+  cursor: pointer;
   transition: all 0.3s ease;
-  text-decoration: none;
-  display: inline-block;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: #007bff;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #0056b3;
 }
 
 .btn-danger {
@@ -672,231 +352,337 @@ h3 {
   color: white;
 }
 
-.btn-danger:hover:not(:disabled) {
+.btn-danger:hover {
   background: #c82333;
 }
 
+.btn-primary {
+  background: #007bff;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #0056b3;
+}
+
 .btn-success {
-  background: #28a745;
+  background: #007bff;
   color: white;
 }
 
-.btn-success:hover:not(:disabled) {
-  background: #218838;
+.btn-success:hover {
+  background: #0056b3;
 }
 
-.btn-info {
-  background: #17a2b8;
-  color: white;
+.icon {
+  font-size: 16px;
 }
 
-.btn-info:hover:not(:disabled) {
-  background: #138496;
-}
-
-.btn-warning {
-  background: #ffc107;
-  color: #212529;
-}
-
-.btn-warning:hover:not(:disabled) {
-  background: #e0a800;
-}
-
-.btn-secondary {
-  background: #6c757d;
-  color: white;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: #545b62;
-}
-
-.btn-sm {
-  padding: 5px 10px;
-  font-size: 12px;
-}
-
-/* 입력 폼 */
-.input-group {
-  margin-bottom: 15px;
-}
-
-.input-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
-  color: #495057;
-}
-
-.form-input, .form-textarea {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
-  font-size: 14px;
-  font-family: 'Courier New', monospace;
-}
-
-.form-textarea {
-  height: 100px;
-  resize: vertical;
-}
-
-.form-input:focus, .form-textarea:focus {
-  outline: none;
-  border-color: #80bdff;
-  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-}
-
-/* 커스텀 메시지 */
-.custom-message {
+/* 방 목록 */
+.room-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding-right: 10px;
   background: #f8f9fa;
-  padding: 20px;
   border-radius: 8px;
-  margin-top: 15px;
+  padding: 20px;
+  margin: 0 10px;
+}
+
+.room-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: #333;
   border: 1px solid #e9ecef;
 }
 
-/* 구독 관리 */
-.subscription-controls {
-  display: flex;
-  gap: 10px;
-  align-items: end;
-  margin-bottom: 20px;
+.room-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
-.subscription-controls .input-group {
-  flex: 1;
-  margin-bottom: 0;
+.room-card.selected {
+  border: 3px solid #007bff;
+  background: white;
 }
 
-.active-subscriptions ul {
-  list-style: none;
-  padding: 0;
-}
-
-.subscription-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px;
-  background: #fff;
-  border: 1px solid #dee2e6;
-  border-radius: 4px;
-  margin-bottom: 5px;
-  font-family: 'Courier New', monospace;
-}
-
-/* 로그 섹션 */
-.log-section {
-  margin-top: 30px;
-}
-
-.log-controls {
-  margin-bottom: 15px;
-}
-
-.log-container {
-  height: 400px;
-  overflow-y: auto;
-  background: #1e1e1e;
-  color: #fff;
-  padding: 15px;
-  border-radius: 5px;
-  font-family: 'Courier New', monospace;
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.log-entry {
-  margin-bottom: 5px;
-  padding: 2px 0;
-}
-
-.log-time {
-  color: #888;
-  margin-right: 10px;
-}
-
-.log-level {
+.room-title {
+  font-size: 1.2rem;
   font-weight: bold;
-  margin-right: 10px;
-  min-width: 60px;
-  display: inline-block;
+  margin-bottom: 10px;
+  color: #2c3e50;
 }
 
-.log-level.info {
-  color: #17a2b8;
-}
-
-.log-level.success {
-  color: #28a745;
-}
-
-.log-level.warn {
-  color: #ffc107;
-}
-
-.log-level.error {
-  color: #dc3545;
-}
-
-.log-level.debug {
+.room-participants {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.9rem;
   color: #6c757d;
 }
 
-/* CSP 정보 */
-.csp-info {
-  background: #e3f2fd;
-  padding: 20px;
-  border-radius: 8px;
-  margin-top: 30px;
-  border: 1px solid #bbdefb;
+.status-text {
+  margin-top: 20px;
+  font-size: 0.9rem;
+  opacity: 0.6;
 }
 
-.csp-details p {
-  margin: 5px 0;
-  font-family: 'Courier New', monospace;
+/* 오른쪽 섹션 */
+.right-section {
+  flex: 1;
+  padding: 30px;
+  background: #f8f9fa;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  overflow: hidden;
 }
 
-.csp-status {
-  margin-top: 15px;
-  padding: 10px;
-  border-radius: 5px;
-  font-weight: bold;
+.right-section.empty {
+  justify-content: center;
+  align-items: center;
+}
+
+.empty-state {
   text-align: center;
+  color: #333;
 }
 
-.csp-status.success {
-  background: #d4edda;
-  color: #155724;
-  border: 1px solid #c3e6cb;
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: 20px;
 }
 
-.csp-status.error {
-  background: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
+.empty-state h3 {
+  font-size: 1.5rem;
+  margin-bottom: 10px;
+}
+
+.empty-state p {
+  opacity: 0.8;
+}
+
+/* 사용자 정보 */
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  color: #333;
+}
+
+.avatar {
+  font-size: 3rem;
+  background: #007bff;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.user-details {
+  flex: 1;
+}
+
+.username {
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.points {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+/* 방 상세 정보 */
+.room-details-card {
+  background: white;
+  border-radius: 12px;
+  padding: 0;
+  color: #333;
+  border: 2px solid #e9ecef;
+  overflow: hidden;
+}
+
+.room-header {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  padding: 20px;
+  margin-bottom: 0;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.music-icon {
+  font-size: 2rem;
+}
+
+.round-info {
+  flex: 1;
+}
+
+.round-label {
+  font-size: 0.9rem;
+  color: #6c757d;
+  margin-bottom: 5px;
+}
+
+.round-number {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #007bff;
+}
+
+.room-details-card .room-title {
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: #007bff;
+  text-align: center;
+  margin: 0;
+  padding: 25px;
+}
+
+/* 참가하기 버튼 */
+.join-btn {
+  width: 100%;
+  padding: 50px 15px;
+  font-size: 1.1rem;
+  border-radius: 0;
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+  color: white;
+  text-align: center;
+  border: none;
 }
 
 /* 반응형 디자인 */
 @media (max-width: 768px) {
-  .stomp-test-container {
-    padding: 10px;
-  }
-  
-  .button-group, .test-messages {
+  .game-lobby {
     flex-direction: column;
   }
   
-  .subscription-controls {
-    flex-direction: column;
-    align-items: stretch;
+  .right-section {
+    flex: none;
+    height: auto;
   }
   
-  .log-container {
-    height: 300px;
+  .header {
+    flex-direction: column;
+    gap: 20px;
   }
+  
+  .action-buttons {
+    justify-content: center;
+  }
+}
+
+/* 모달 스타일 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  width: 400px;
+  max-width: 90vw;
+  position: relative;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.close-btn {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  background: #f8f9fa;
+  border: none;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  font-size: 20px;
+  color: #6c757d;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+  background: #e9ecef;
+  color: #495057;
+}
+
+.modal-title {
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 30px;
+  margin-top: 10px;
+}
+
+.input-group {
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.form-input, .form-select {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: 'NanumSquareRound', sans-serif;
+  background: white;
+}
+
+.form-input:focus, .form-select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.char-count {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  color: #6c757d;
+  background: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.create-room-btn {
+  width: 100%;
+  padding: 15px;
+  font-size: 1.1rem;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  border: none;
+  margin-top: 10px;
 }
 </style>
