@@ -14,7 +14,7 @@ public interface TrotQuizRepository extends JpaRepository<TrotQuiz, Long> {
         ORDER BY RAND()
         LIMIT :roundCount
     """, nativeQuery = true)
-    List<TrotQuiz> findRandomQuestionsByCondition(
+    List<TrotQuiz> findRandomQuestions(
             @Param("roundCount") int roundCount
     );
 }
