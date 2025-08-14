@@ -47,18 +47,14 @@ public class GameHintSocketTest {
         stomp.setMessageConverter(new MappingJackson2MessageConverter());
     }
 
-    // 1) 힌트 사용 불가 → HINT_REJECTED("힌트를 더 이상 사용할 수 없습니다.")
     @Test
     @Timeout(20)
     void hint_rejected_when_not_allowed() throws Exception {
         long roomId = 1L;
         long userId = 101L;
 
-        // Redis 상태 더미
         GameStatusRedis state = GameStatusRedis.builder()
-                .roomId(roomId)
-                .round(1)
-                .totalRound(2)
+                .roomId(roomId).round(1).totalRound(2)
                 .currentAnswer("고향역")
                 .quizIdList(List.of(10L, 20L))
                 .build();
@@ -75,22 +71,28 @@ public class GameHintSocketTest {
             @Override
             public void afterConnected(StompSession session, StompHeaders ch) {
                 connected.countDown();
-                String dest = "/queue/hint/" + userId; // ← sendToUser(userId) 가 이 경로로 보낸다고 가정
-                System.out.println("▶ [TEST] SUBSCRIBE " + dest);
+
+                String dest = "/queue/hint/" + userId;
                 session.subscribe(dest, new StompFrameHandler() {
                     @Override public java.lang.reflect.Type getPayloadType(StompHeaders headers) {
                         return GameHintSocketMessage.class;
                     }
                     @Override public void handleFrame(StompHeaders headers, Object payload) {
-                        GameHintSocketMessage msg = (GameHintSocketMessage) payload;
-                        System.out.println("📨 [TEST] RECV type=" + msg.getType() + ", payload='" + msg.getPayload() + "'");
-                        inbox.add(msg);
+                        inbox.add((GameHintSocketMessage) payload);
                         got1.countDown();
                     }
                 });
 
-                System.out.println("▶ [TEST] TRIGGER handleHint(not allowed)");
+                // ★ 구독 활성화 대기 (레이스 방지)
+                try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+
+                // 이제 안전하게 트리거
                 gameService.handleHint(roomId, userId);
+            }
+
+            @Override
+            public void handleTransportError(StompSession session, Throwable ex) {
+                ex.printStackTrace();
             }
         };
 
@@ -105,7 +107,79 @@ public class GameHintSocketTest {
         var types = inbox.stream().map(GameHintSocketMessage::getType).toList();
         assertTrue(types.contains(GameMessageType.HINT_REJECTED));
         assertEquals("힌트를 더 이상 사용할 수 없습니다.", inbox.get(0).getPayload());
+
+//        stomp.connectAsync(wsUrl, handler).get(5, TimeUnit.SECONDS);
+//        assertTrue(connected.await(5, TimeUnit.SECONDS), "STOMP 연결 실패");
+//
+//        // 테스트 전체 제한(20s)보다 짧게
+//        assertTrue(got1.await(10, TimeUnit.SECONDS), "힌트 거절 메시지 미수신");
+//
+//        assertFalse(inbox.isEmpty());
+//        var types = inbox.stream().map(GameHintSocketMessage::getType).toList();
+//        assertTrue(types.contains(GameMessageType.HINT_REJECTED));
+//        assertEquals("힌트를 더 이상 사용할 수 없습니다.", inbox.get(0).getPayload());
     }
+
+//    // 1) 힌트 사용 불가 → HINT_REJECTED("힌트를 더 이상 사용할 수 없습니다.")
+//    @Test
+//    @Timeout(20)
+//    void hint_rejected_when_not_allowed() throws Exception {
+//        long roomId = 1L;
+//        long userId = 101L;
+//
+//        // Redis 상태 더미
+//        GameStatusRedis state = GameStatusRedis.builder()
+//                .roomId(roomId)
+//                .round(1)
+//                .totalRound(2)
+//                .currentAnswer("고향역")
+//                .quizIdList(List.of(10L, 20L))
+//                .build();
+//
+//        when(gameRedisService.getGameStatusRedis(roomId)).thenReturn(state);
+//        when(gameRedisService.canUseHint(roomId, userId)).thenReturn(false);
+//
+//        String wsUrl = "ws://localhost:" + port + "/ws-game";
+//        CountDownLatch connected = new CountDownLatch(1);
+//        CountDownLatch got1 = new CountDownLatch(1);
+//
+//        CopyOnWriteArrayList<GameHintSocketMessage> inbox = new CopyOnWriteArrayList<>();
+//
+//        StompSessionHandler handler = new StompSessionHandlerAdapter() {
+//            @Override
+//            public void afterConnected(StompSession session, StompHeaders ch) {
+//                connected.countDown();
+//
+//                String dest = "/queue/hint/" + userId; // ← sendToUser(userId) 가 이 경로로 보낸다고 가정
+//                System.out.println("▶ [TEST] SUBSCRIBE " + dest);
+//                session.subscribe(dest, new StompFrameHandler() {
+//                    @Override public java.lang.reflect.Type getPayloadType(StompHeaders headers) {
+//                        return GameHintSocketMessage.class;
+//                    }
+//                    @Override public void handleFrame(StompHeaders headers, Object payload) {
+//                        GameHintSocketMessage msg = (GameHintSocketMessage) payload;
+//                        System.out.println("📨 [TEST] RECV type=" + msg.getType() + ", payload='" + msg.getPayload() + "'");
+//                        inbox.add(msg);
+//                        got1.countDown();
+//                    }
+//                });
+//                System.out.println("▶ [TEST] TRIGGER handleHint(not allowed)");
+//                gameService.handleHint(roomId, userId);
+//            }
+//        };
+//
+//        stomp.connectAsync(wsUrl, handler).get(5, TimeUnit.SECONDS);
+//        assertTrue(connected.await(5, TimeUnit.SECONDS));
+//
+//        boolean ok = got1.await(10, TimeUnit.SECONDS);
+//        System.out.println("⏱️ [TEST] await=" + ok + ", inboxSize=" + inbox.size());
+//        inbox.forEach(m -> System.out.println("🔎 [TEST] inbox type=" + m.getType() + ", payload='" + m.getPayload() + "'"));
+//        assertTrue(ok);
+//
+//        var types = inbox.stream().map(GameHintSocketMessage::getType).toList();
+//        assertTrue(types.contains(GameMessageType.HINT_REJECTED));
+//        assertEquals("힌트를 더 이상 사용할 수 없습니다.", inbox.get(0).getPayload());
+//    }
 
     // 2) 포인트 부족 → HINT_REJECTED("포인트가 부족합니다.")
     @Test

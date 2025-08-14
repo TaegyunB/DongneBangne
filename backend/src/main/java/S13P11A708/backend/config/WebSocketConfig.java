@@ -1,5 +1,9 @@
 package S13P11A708.backend.config;
 
+import S13P11A708.backend.jwt.JWTUtil;
+import S13P11A708.backend.jwt.JwtHandshakeInterceptor;
+import S13P11A708.backend.jwt.JwtPrincipalHandshakeHandler;
+import S13P11A708.backend.service.UserService;
 import org.springframework.boot.autoconfigure.graphql.GraphQlProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
@@ -12,15 +16,28 @@ import org.springframework.web.socket.server.support.HttpSessionHandshakeInterce
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
+    private final JwtHandshakeInterceptor handshakeInterceptor;
+    private final JwtPrincipalHandshakeHandler handshakeHandler;
+
+    public WebSocketConfig(JwtHandshakeInterceptor interceptor,
+                           JwtPrincipalHandshakeHandler handler) {
+        this.handshakeInterceptor = interceptor;
+        this.handshakeHandler = handler;
+    }
+
     /**
      * STOMP 엔드포인트 등록
      * 클라이언트가 WebSocket 연결을 맺기 위해 사용할 엔드포인트 url 설정
      */
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws-game")  // ★ 순수 WebSocket (Talend 용)
+        registry.addEndpoint("/ws-game")
+                .addInterceptors(handshakeInterceptor)
+                .setHandshakeHandler(handshakeHandler)
                 .setAllowedOriginPatterns("*");
         registry.addEndpoint("/ws-game")
+                .addInterceptors(handshakeInterceptor)
+                .setHandshakeHandler(handshakeHandler)
                 .setAllowedOriginPatterns("*")
                 .withSockJS();
     }
