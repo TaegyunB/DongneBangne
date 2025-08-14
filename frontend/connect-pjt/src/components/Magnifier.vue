@@ -76,7 +76,7 @@ export default {
       mouseY: 0,
       lensSize: 400, // 2배로 확대
       zoomLevel: 2,
-      excludedRoutes: ['/games', '/webrtc','/login'],
+      // excludedRoutes: ['/games', '/webrtc','/login'],
       showPopup: false,
       popupTimer: null,
       domObserver: null,
@@ -86,15 +86,20 @@ export default {
   },
   computed: {
     shouldShowMagnifier() {
-      const currentPath = this.$route?.path || '';
-      return !this.excludedRoutes.some(route => 
-        currentPath.startsWith(route)
-      );
+      // 기존 코드를 이것으로 교체
+      // const currentPath = this.$route?.path || '';
+      // return !this.excludedRoutes.some(route => 
+      //   currentPath.startsWith(route)
+      // );
+      
+      // 새로운 코드: 라우터 meta를 확인
+      return !this.$route?.meta?.hideMagnifier;
     },
+    
     isMainPage() {
-    const p = this.$route?.path || ''
-    return p === '/mainpage' || p === '/'   // 둘 다 메인으로 취급
-  },
+      const p = this.$route?.path || '';
+      return p === '/mainpage';
+    },
     
     lensStyle() {
       return {
