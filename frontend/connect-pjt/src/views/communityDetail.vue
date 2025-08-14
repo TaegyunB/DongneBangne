@@ -14,7 +14,7 @@
         </div>
 
         <div class="meta">
-          <span>작성자: {{ board.nickname }}</span>
+          <span>작성자: {{ boardAuthor }}</span>
           <span>경로당: {{ board.seniorCenterName }}</span>
           <span>{{ formatCreatedAt(board.createdAt) }}</span>
         </div>
@@ -32,6 +32,28 @@
       </div>
 
       <div class="content">{{ board.content }}</div>
+
+            <div class="footer">
+        <!-- 좋아요 -->
+        <button class="like-button" :disabled="likeBusy" @click="toggleLike">
+          <span class="thumb" :class="{ on: liked }">👍</span>
+          <span class="count">{{ likeCount }}</span>
+          <span class="label">{{ liked ? '좋아요 취소' : '좋아요' }}</span>
+        </button>
+
+        <div class="spacer"></div>
+
+        <!-- 작성자만 수정/삭제 노출 -->
+        <template v-if="isOwner">
+          <RouterLink
+            :to="{ name:'communityEdit', params:{ boardId: board.boardId }, query:{ category: listQueryCategory } }"
+            class="edit-button"
+          >수정</RouterLink>
+          <button class="delete-button" :disabled="deleting" @click="openConfirm">삭제</button>
+        </template>
+
+        <button class="back-button" @click="goBack">목록으로</button>
+      </div>
 
       <!-- ===== 댓글 섹션 ===== -->
       <div class="comments">
@@ -85,27 +107,6 @@
       </div>
       <!-- ===== /댓글 섹션 ===== -->
 
-      <div class="footer">
-        <!-- 좋아요 -->
-        <button class="like-button" :disabled="likeBusy" @click="toggleLike">
-          <span class="thumb" :class="{ on: liked }">👍</span>
-          <span class="count">{{ likeCount }}</span>
-          <span class="label">{{ liked ? '좋아요 취소' : '좋아요' }}</span>
-        </button>
-
-        <div class="spacer"></div>
-
-        <!-- 작성자만 수정/삭제 노출 -->
-        <template v-if="isOwner">
-          <RouterLink
-            :to="{ name:'communityEdit', params:{ boardId: board.boardId }, query:{ category: listQueryCategory } }"
-            class="edit-button"
-          >수정</RouterLink>
-          <button class="delete-button" :disabled="deleting" @click="openConfirm">삭제</button>
-        </template>
-
-        <button class="back-button" @click="goBack">목록으로</button>
-      </div>
     </template>
 
     <!-- 삭제 확인 모달 -->
@@ -182,7 +183,7 @@ const headersWithToken = () => {
 // 내 정보
 const fetchMe = async () => {
   try {
-    const { data } = await api.get('/api/v1/users/me', { headers: headersWithToken() })
+    const { data } = await api.get('/api/v1/main/me', { headers: headersWithToken() })
     me.value = data
   } catch {}
 }
@@ -244,7 +245,7 @@ const fetchDetail = async () => {
   loading.value = true
   error.value = false
   try {
-    const { data } = await api.get(`/api/v1/boards/${boardId.value}`, {
+    const { data } = await api.get(`/api/v1/boards/${boardId.value}`, {  // boardId
       headers: headersWithToken()
     })
     const row = normalize(data || {})
@@ -278,13 +279,41 @@ const isMyComment = (c) => {
   if (c.nickname && me.value?.nickname) return c.nickname === me.value.nickname
   return false
 }
-const normalizeComment = (raw) => ({
-  commentId: raw?.commentId ?? raw?.id,
-  userId: raw?.userId ?? null,
-  nickname: raw?.nickname ?? '익명',
-  content: raw?.content ?? '',
-  createdAt: raw?.createdAt ?? raw?.created_at ?? new Date().toISOString(),
+const normalizeComment = (raw) => {
+  const uid =
+    raw?.userId ??
+    raw?.user?.id ??
+    raw?.writerId ??
+    null
+
+  const nick =
+    raw?.nickname ??
+    raw?.authorNickname ??
+    raw?.writerNickname ??
+    raw?.userNickname ??
+    raw?.user?.nickname ??
+    (uid && me.value?.userId && uid === me.value.userId ? me.value?.nickname : null)
+
+  return {
+    commentId: raw?.commentId ?? raw?.id,
+    userId: uid,
+    nickname: nick || '익명',
+    content: raw?.content ?? '',
+    createdAt: raw?.createdAt ?? raw?.created_at ?? new Date().toISOString(),
+  }
+}
+
+const boardAuthor = computed(() => {
+  const b = board.value
+  const candidate =
+    b?.nickname ??
+    b?.userNickname ??
+    b?.authorNickname ??
+    b?.user?.nickname ??
+    (isOwner.value ? me.value?.nickname : null)
+  return candidate || '작성자'
 })
+
 const fetchCommentCount = async () => {
   try {
     const { data } = await api.get(`/api/v1/boards/${boardId.value}/comments/count`, { headers: headersWithToken() })
@@ -309,8 +338,22 @@ const createComment = async () => {
   commentBusy.value = true
   try {
     const body = { content: newComment.value }
-    const { data } = await api.post(`/api/v1/boards/${boardId.value}/comments`, body, { headers: headersWithToken() })
-    const created = normalizeComment(data || { content: newComment.value, nickname: me.value?.nickname, userId: me.value?.userId, createdAt: new Date().toISOString() })
+    // const { data } = await api.post(`/api/v1/boards/${boardId.value}/comments`, body, { headers: headersWithToken() })
+    // const created = normalizeComment(data || { content: newComment.value, nickname: me.value?.nickname, userId: me.value?.userId, createdAt: new Date().toISOString() })
+    const { data } = await api.post(
+    `/api/v1/boards/${boardId.value}/comments`,
+    body,
+    { headers: headersWithToken() }
+  )
+  const created = normalizeComment({
+    ...data,
+    // 서버가 안 주면 내가 채운다
+    nickname: data?.nickname ?? me.value?.nickname,
+    userId: data?.userId ?? me.value?.userId,
+    content: data?.content ?? newComment.value,
+    createdAt: data?.createdAt ?? new Date().toISOString()
+  })
+    
     comments.value.unshift(created)
     newComment.value = ''
     commentCount.value += 1

@@ -51,7 +51,7 @@ const router = useRouter()
 const boardId = computed(() => route.params.boardId)
 
 const categories = ['잡담','나눔','정보','취미']
-const uiToApiLower = { 잡담:'chat', 나눔:'share', 정보:'info', 취미:'hobby' }
+const uiToApiLower = { 잡담:'CHAT', 나눔:'SHARE', 정보:'INFO', 취미:'HOBBY' }
 const apiToUi = { CHAT:'잡담', SHARE:'나눔', INFO:'정보', HOBBY:'취미' }
 
 const loading = ref(true)
@@ -92,7 +92,7 @@ const canDecideOwnership = computed(() => {
 
 const fetchMe = async () => {
   try {
-    const { data } = await api.get('/api/v1/users/me', { headers: headersWithToken() })
+    const { data } = await api.get('/api/v1/main/me', { headers: headersWithToken() })
     me.value = data
   } catch {}
 }
@@ -140,6 +140,9 @@ onMounted(async () => {
 })
 
 const submitEdit = async () => {
+  console.log('[edit] baseURL:', api.defaults.baseURL)
+  console.log('[edit] has token?', !!getAccessToken?.())
+  console.log('[edit] form.category ->', form.value.category)
   if (submitting.value) return
 
   if (!form.value.title?.trim() || !form.value.content?.trim()) {
@@ -152,16 +155,22 @@ const submitEdit = async () => {
     const body = {
       title: form.value.title.trim(),
       content: form.value.content.trim(),
-      boardCategory: uiToApiLower[form.value.category] || 'chat' // 필요시 .toUpperCase()
+      // boardCategory: uiToApiLower[form.value.category] || 'CHAT' // 필요시 .toUpperCase()
       // 이미지 변경 없음: 이미지 필드 전송하지 않음
+      boardCategory: { '잡담':'CHAT','나눔':'SHARE','정보':'INFO','취미':'HOBBY' }[form.value.category] || 'CHAT'
     }
 
     await api.put(`/api/v1/boards/${boardId.value}`, body, {
       headers: {
         'Content-Type': 'application/json',
         ...headersWithToken()
-      }
+      },
+      withCredentials: true
     })
+
+    // 디버깅용 (원인 찾고나면 지워도 됨)
+    const t = getAccessToken?.()
+    if (!t) console.warn('액세스 토큰 없음: 로그인 만료로 401 가능')
 
     alert('수정이 완료되었습니다.')
     router.push({ name:'communityDetail', params:{ boardId: boardId.value }, query: route.query })

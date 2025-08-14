@@ -40,23 +40,35 @@
           <tr>
             <th scope="col">이름</th>
             <th scope="col">주소</th>
-            <th scope="col">지도</th>
-            <th scope="col">확인</th>
+            <th scope="col">선택</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="center in searchResults" :key="center.id || center.name">
             <td class="cell-name">{{ center.name }}</td>
-            <td class="cell-addr">{{ center.address }}</td>
-            <td>
-              <button type="button" class="map-btn" @click="openKakaoMap(center.address)" aria-label="카카오맵으로 위치 열기">
-                지도
-              </button>
+            <td class="cell-addr">
+              <a
+                v-if="center.address"
+                :href="kakaoMapUrl(center.address)"
+                target="_blank"
+                rel="noopener"
+                class="addr-link"
+                :aria-label="center.address + ' 카카오맵으로 열기'"
+              >
+                {{ center.address }}
+              </a>
+              <span v-else>-</span>
             </td>
-            <td>
-              <button type="button" class="confirm-btn" @click="openConfirm(center)" aria-label="이 경로당 선택">
-                확인
-              </button>
+            <td class="cell-check">
+              <label class="row-check">
+                <span class="sr-only">이 경로당 선택</span>
+                <input
+                  type="checkbox"
+                  :checked="selectedId === center.id"
+                  @change="onRowCheck(center, $event)"
+                  aria-label="이 경로당 선택"
+                />
+              </label>
             </td>
           </tr>
         </tbody>
@@ -121,15 +133,17 @@ const showModal = ref(false)
 const modalCenter = ref({ id: null, name: '', address: '' })
 const showOnboarding = ref(false)
 const isConfirmed = ref(false)
+const selectedId = ref(null)
 
 const isSearchDisabled = computed(() => !keyword.value.trim() || isLoading.value)
 
-// 응답 정규화
 const normalizeCenter = c => ({
   id: c.id ?? c.seniorCenterId ?? c.senior_center_id ?? null,
   name: c.name ?? c.seniorCenterName ?? c.centerName ?? '',
   address: c.address ?? c.addr ?? ''
 })
+
+const kakaoMapUrl = addr => 'https://map.kakao.com/?q=' + encodeURIComponent(addr)
 
 async function fetchCenters() {
   isLoading.value = true
@@ -157,9 +171,13 @@ function onSearch() {
   fetchCenters()
 }
 
-function openKakaoMap(address) {
-  const url = 'https://map.kakao.com/?q=' + encodeURIComponent(address)
-  window.open(url, '_blank', 'width=900,height=700')
+function onRowCheck(center, evt) {
+  if (evt.target.checked) {
+    selectedId.value = center.id
+    openConfirm(center)
+  } else {
+    selectedId.value = null
+  }
 }
 
 function openConfirm(center) {
@@ -170,6 +188,8 @@ function openConfirm(center) {
 
 function closeModal() {
   showModal.value = false
+  // 취소 시 체크 해제
+  selectedId.value = null
 }
 
 async function confirmCenter() {
@@ -183,6 +203,7 @@ async function confirmCenter() {
     console.error('경로당 선택 실패:', err)
     alert('경로당 선택에 실패했습니다.')
     showModal.value = false
+    selectedId.value = null
   }
 }
 
@@ -204,20 +225,18 @@ function handleOnboardingConfirm(payload) {
 .find-senior-center {
   min-height: 100vh;
   background: #ffffff;
-  color: #111; /* 진한 본문색: 대비 향상 */
-  line-height: 1.55; /* 가독성 향상 */
+  color: #111;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 키보드 포커스 명확화 */
 :focus-visible {
   outline: 3px solid #12795a;
   outline-offset: 3px;
   border-radius: 6px;
 }
 
-/* 스크린리더 전용 텍스트 */
 .sr-only {
   position: absolute !important;
   width: 1px; height: 1px;
@@ -231,14 +250,14 @@ function handleOnboardingConfirm(payload) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 32px 16px 80px;
+  padding: 32px 16px 96px;
 }
 
 .headline {
-  font-size: 48px;   /* 더 큰 제목 */
+  font-size: 48px;
   font-weight: 800;
   letter-spacing: -0.5px;
-  margin: 8px 0 28px;
+  margin: 12px 0 24px;
 }
 
 /* ========= 검색 영역 ========= */
@@ -247,10 +266,10 @@ function handleOnboardingConfirm(payload) {
   align-items: center;
   gap: 14px;
   background: #fff;
-  border: 3px solid #1e1e1e;        /* 고대비 테두리 */
+  border: 2px solid #1e1e1e;
   border-radius: 12px;
-  padding: 18px 20px;
-  min-width: 720px;                  /* 넓은 검색창 */
+  padding: 14px 16px;
+  max-width: 720px;
   box-sizing: border-box;
 }
 
@@ -263,7 +282,7 @@ function handleOnboardingConfirm(payload) {
 }
 
 .search-input {
-  font-size: 22px;                  /* 큰 글자 */
+  font-size: 22px;
   padding: 14px 16px;
   border: none;
   outline: none;
@@ -274,7 +293,7 @@ function handleOnboardingConfirm(payload) {
 .search-btn {
   font-size: 20px;
   font-weight: 800;
-  min-height: 52px;                 /* 최소 터치 영역 44px 이상 */
+  min-height: 52px;
   min-width: 120px;
   padding: 10px 18px;
   background: #12795a;
@@ -286,10 +305,7 @@ function handleOnboardingConfirm(payload) {
 }
 .search-btn:hover { background: #0f6148 }
 .search-btn:active { transform: translateY(1px) }
-.search-btn:disabled {
-  opacity: .6;
-  cursor: not-allowed;
-}
+.search-btn:disabled { opacity: .6; cursor: not-allowed }
 
 /* ========= 결과 테이블 ========= */
 .result-table {
@@ -299,11 +315,11 @@ function handleOnboardingConfirm(payload) {
   border-collapse: separate;
   border-spacing: 0;
   background: #fff;
-  border: 2px solid #d7d7d7;
-  border-radius: 12px;
+  border: 1.5px solid #e3e5e8;
+  border-radius: 14px;
   overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0,0,0,.06);
-  font-size: 20px;                  /* 큰 본문 */
+  box-shadow: 0 6px 18px rgba(0,0,0,.06);
+  font-size: 18px;
 }
 
 .result-table th,
@@ -314,56 +330,59 @@ function handleOnboardingConfirm(payload) {
 }
 
 .result-table thead th {
-  background: #f2f3f5;
-  font-size: 22px;
+  background: #f4f6f8;
+  font-size: 20px;
   font-weight: 800;
 }
 
 .result-table tbody tr:nth-child(even) {
-  background: #fafafa;              /* 지브라 줄무늬로 가독성 향상 */
+  background: #fafafa;
 }
 
 .result-table tr:last-child td {
   border-bottom: none;
 }
 
-.cell-name, .cell-addr {
-  text-align: left;
+.cell-name, .cell-addr { text-align: left }
+
+.addr-link {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.addr-link:focus-visible {
+  outline: 3px solid #12795a;
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
-/* 버튼 공통 */
-.map-btn, .confirm-btn, .cancel-btn {
+.cell-check { text-align: center }
+
+.row-check input {
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+}
+
+/* 버튼 공통 (남겨두되 현재 테이블에선 미사용) */
+.confirm-btn, .cancel-btn {
   font-size: 18px;
   font-weight: 700;
-  min-height: 44px;                 /* 터치 영역 확보 */
+  min-height: 44px;
   padding: 8px 18px;
   border: none;
   border-radius: 10px;
   cursor: pointer;
-  background: #eef8f4;
-  color: #12795a;
   transition: background .15s ease, transform .05s ease;
 }
-.map-btn:hover { background: #dff2ea }
-.confirm-btn {
-  background: #12795a;
-  color: #fff;
-}
+.confirm-btn { background: #12795a; color: #fff }
 .confirm-btn:hover { background: #0f6148 }
-.cancel-btn {
-  background: #a6a6a6;
-  color: #fff;
-}
+.cancel-btn { background: #a6a6a6; color: #fff }
 .cancel-btn:hover { background: #8d8d8d }
-.confirm-btn.lg, .cancel-btn.lg {
-  min-width: 140px;
-  min-height: 52px;
-  font-size: 20px;
-}
+.confirm-btn.lg, .cancel-btn.lg { min-width: 140px; min-height: 52px; font-size: 20px }
 
 .no-result {
   margin-top: 24px;
-  color: #333;                      /* 대비 향상 */
+  color: #333;
   font-size: 20px;
 }
 
@@ -372,7 +391,7 @@ function handleOnboardingConfirm(payload) {
   position: fixed;
   z-index: 2000;
   inset: 0;
-  background: rgba(0,0,0,.38);      /* 더 어두운 배경으로 집중 */
+  background: rgba(0,0,0,.38);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -395,10 +414,7 @@ function handleOnboardingConfirm(payload) {
   margin-bottom: 10px;
 }
 
-.modal-text {
-  font-size: 20px;
-  margin: 0 0 16px;
-}
+.modal-text { font-size: 20px; margin: 0 0 16px }
 
 .modal-actions {
   display: flex;
@@ -411,12 +427,9 @@ function handleOnboardingConfirm(payload) {
   align-items: center;
   gap: 10px;
 }
-.agree input {
-  width: 22px;
-  height: 22px;
-}
+.agree input { width: 22px; height: 22px }
 
-/* ========= 반응형 보완 ========= */
+/* ========= 반응형 ========= */
 @media (max-width: 820px) {
   .headline { font-size: 38px }
   .search-box { min-width: 100%; padding: 16px }

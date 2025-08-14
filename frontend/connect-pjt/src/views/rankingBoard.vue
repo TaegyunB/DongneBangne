@@ -216,7 +216,7 @@
 
             <div class="detail-meta">
               <div class="meta-row">📍 {{ selectedChallenge.place }}</div>
-              <div class="meta-row">💎 {{ selectedChallenge.point }}점</div>
+              <div class="meta-row">⭐ {{ selectedChallenge.point }}점</div>
               <div class="meta-row" v-if="selectedChallenge.year && selectedChallenge.month">
                 🗓 {{ selectedChallenge.year }}년 {{ selectedChallenge.month }}월
               </div>
@@ -294,7 +294,7 @@ const myCenterRank = computed(() => {
 
 const fetchMyCenterIdFromServer = async () => {
   try {
-    const { data } = await api.get('/api/v1/me', { withCredentials: true });
+    const { data } = await api.get('/api/v1/main/me', { withCredentials: true });
     const id =
       data?.seniorCenterId ??
       data?.senior_center_id ??
@@ -309,7 +309,7 @@ const fetchMyCenterIdFromServer = async () => {
       return true;
     }
   } catch (e) {
-    console.warn('/api/v1/me 호출 실패:', e);
+    console.warn('/api/v1/main/me 호출 실패:', e);
   }
   return false;
 };
@@ -355,7 +355,7 @@ const fetchRankings = async () => {
       while (rawStatuses.length < 4) rawStatuses.push('unknown')
 
       return {
-        id,                               // ← 숫자 확정
+        // id,                               // ← 숫자 확정
         centerName: name,
         trotPoint:   toNum(item.trotPoint      ?? item.trot_point,      0),
         missionPoint:toNum(item.challengePoint ?? item.challenge_point,  0),
@@ -364,13 +364,13 @@ const fetchRankings = async () => {
         challenges,
         challengeStatusesPadded: rawStatuses,
         // (옵션) 관리자 프로필 이미지를 로고로 쓰고 싶다면 같이 받아두기
-        centerLogo:
-          item.adminProfileImage ??
-          item.admin_profile_image ??
-          item.admin?.profileImage ??
-          item.admin?.profile_image ??
-          item.profileImage ??
-          item.profile_image ?? null,
+        //centerLogo:
+        //  item.adminProfileImage ??
+        //  item.admin_profile_image ??
+        //  item.admin?.profileImage ??
+        //  item.admin?.profile_image ??
+        //  item.profileImage ??
+        //  item.profile_image ?? null,
       }
     }).filter(r => r.id != null)
 
