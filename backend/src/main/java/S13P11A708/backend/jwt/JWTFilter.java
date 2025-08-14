@@ -1,6 +1,8 @@
 package S13P11A708.backend.jwt;
 
+import S13P11A708.backend.domain.User;
 import S13P11A708.backend.domain.enums.UserRole;
+import S13P11A708.backend.repository.UserRepository;
 import S13P11A708.backend.security.CustomOAuth2User;
 import S13P11A708.backend.security.UserDto;
 import jakarta.servlet.FilterChain;
@@ -115,6 +117,7 @@ public class JWTFilter extends OncePerRequestFilter {
         UserDto userDTO = new UserDto();
         userDTO.setUserId(userId);
         userDTO.setUserRole(UserRole.valueOf(enumRole));
+
 
         //UserDetails에 회원 정보 객체 담기
         CustomOAuth2User customOAuth2User = new CustomOAuth2User(userDTO);
