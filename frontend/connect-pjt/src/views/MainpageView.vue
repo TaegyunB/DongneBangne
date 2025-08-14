@@ -15,7 +15,7 @@
       <div class="main-card two" @click="goTo('/games')">
         <div class="card-title_2">트로트 게임</div>
         <div class="card-desc">다른 경로당과<br />게임을 즐겨보세요!</div>
-        <img src="@/assets/mainpage_2/game.png" alt="게임 아이콘" class="card-icon_2" />
+        <img src="@/assets/mainpage_2/game2.png" alt="게임 아이콘" class="card-icon_3" />
       </div>
       <div class="main-card five" @click="goTo('/news')">
         <div class="card-title_2">AI 신문</div>
@@ -213,6 +213,15 @@ defineExpose({
   bottom: 10px;
   width: 110px;
   height: 120px;
+  object-fit: contain;
+}
+
+.card-icon_3 {
+  position: absolute;
+  right: 24px;
+  bottom: 10px;
+  width: 130px;
+  height: 130px;
   object-fit: contain;
 }
 
