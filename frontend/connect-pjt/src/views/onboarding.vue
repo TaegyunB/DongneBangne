@@ -21,8 +21,19 @@
           <!-- LEFT: TEXT ONLY -->
           <div class="panel panel-text">
             <div class="panel-inner text-inner">
-              <h1 class="title" v-html="s.title" />
-              <p class="subtitle" v-html="s.subtitle" />
+              <!-- 브랜드(선택) -->
+              <div v-if="s.brand" class="brand">
+                <span class="brand-name">“동네방네”</span>
+              </div>
+
+              <!-- 헤드라인 -->
+              <h1 class="headline"
+                  :class="{ shout: s.shout }">
+                <span v-html="s.headline" />
+              </h1>
+
+              <!-- 본문 -->
+              <p class="lead" v-html="s.body" />
             </div>
           </div>
 
@@ -111,27 +122,68 @@ onMounted(async () => {
   resolveABBucket()
 })
 
-/* 모든 슬라이드를 50/50 고정. hero(1,7)는 타이포만 살짝 키움 */
+/* 모든 슬라이드를 50/50 고정.
+   brand: 좌측 상단 "동네방네" 노출 여부
+   shout: 느낌표/강조 헤드라인(ExtraBold + 더 큼)
+*/
 const sections = [
+  // 1. 인트로
   {
     kind: 'hero',
+    brand: true,
     image: onboarding1,
     alt: '인트로',
-    title: '“<span class="bold">동네방네,</span><br /><span class="highlight">경로당을 연결하다</span>”',
-    subtitle: '“전국 경로당이 하나로 연결되어<br />함께 웃고 소통하는 세상을 만듭니다.”',
+    headline: '경로당을 연결하다',
+    body: '전국 경로당이 하나로 연결되어 함께 웃고 소통하는 세상을 만듭니다.'
   },
-  { image: onboarding2, alt: '같이 더 즐거워요', title: '“같이 하면 더 즐거워요!”', subtitle: '소소한 일상도 함께 하면 웃음이 배가 됩니다.', },
-  { image: onboarding3, alt: '도전', title: '“매일 새로운 도전이 기다려요”', subtitle: '게임과 미션으로 경로당 생활을 더 활기차게!', },
-  { image: onboarding4, alt: 'AI 신문', title: '“AI 신문으로 소식을 전해요”', subtitle: '우리 동네 이야기부터 전국 소식까지 한눈에!', },
-  { image: onboarding5, alt: '실시간 소통', title: '“실시간 소통으로 연결돼요”', subtitle: '화상으로 함께 노래하고 이야기 나눠요.', },
-  { image: onboarding6, alt: '랭킹', title: '“랭킹으로 재미를 더해요”', subtitle: '경로당 활동 순위를 확인하고 성취감을 느껴보세요.', },
+  // 2. 도전
+  {
+    image: onboarding2,
+    alt: '도전',
+    shout: true,
+    headline: '매달 새로운 도전을!',
+    body: '매달 주어지는 2개의 미션과 경로당에서 설정하는 2개의 미션으로 더욱 활기찬 한 달을 보내요!'
+  },
+  // 3. 트로트 게임
+  {
+    image: onboarding3,
+    alt: '트로트 게임',
+    shout: true,
+    headline: '먼저 트로트 제목 맞추기!',
+    body: '다른 경로당과 실시간 화상 통화로 소통하면서 게임을 해보아요.'
+  },
+  // 4. AI 신문
+  {
+    image: onboarding4,
+    alt: 'AI 신문',
+    shout: true,
+    headline: '한 달의 마무리를 AI신문과 함께!',
+    body: '매달 수행한 도전들을 바탕으로 한 달 동안 경로당에서의 활동을 정리해서 보아요.'
+  },
+  // 5. 랭킹
+  {
+    image: onboarding5,
+    alt: '랭킹',
+    shout: true,
+    headline: '다른 경로당의 순위와 활동을!',
+    body: '경로당 활동 순위를 확인하고 다른 경로당의 활동을 구경하며 동네방네를 즐겨보아요.'
+  },
+  // 6. 게시판
+  {
+    image: onboarding6,
+    alt: '게시판',
+    shout: true,
+    headline: '타 경로당 사람들과 소통을!',
+    body: '일상을 공유하며 동네방네 사람들과 다양한 이야기를 나누어보아요.'
+  },
+  // 7. 마무리
   {
     kind: 'hero',
+    brand: true,
     image: onboarding7,
     alt: '마무리',
-    title: '“<span class="bold">동네방네,</span> <span class="highlight">새로운 하루</span>가 시작돼요”',
-    subtitle: '“혼자가 아닌 함께라서 더 즐거운 일상.”',
-    reverse: false
+    headline: '새로운 하루의 시작이 됩니다.',
+    body: '혼자가 아닌 함께라서 더 즐거운 일상을 통해서 더 나은 내일을 꿈꿔보아요.'
   }
 ]
 
@@ -141,35 +193,42 @@ const handleKakaoLogin = () => {
 </script>
 
 <style scoped>
+/* ===== 폰트 등록 ===== */
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-Regular.ttf') format('truetype');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-Bold.ttf') format('truetype');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-ExtraBold.ttf') format('truetype');
+  font-weight: 800; font-style: normal; font-display: swap;
+}
 *{margin:0;padding:0;box-sizing:border-box}
-.onboarding-root{ --accent:#f5b301 }
+.onboarding-root{ --accent:#f5b301; font-family:'KoddiUDOnGothic','Apple SD Gothic Neo','Noto Sans KR',system-ui,sans-serif }
 
 /* 전체 배경(밝은 베이지) */
 .onboarding-swiper{
   width:100vw; height:100vh;
   background: linear-gradient(180deg,#FAF4E7 0%,#EFE4D3 100%);
-  position: relative;
-  z-index: 1; /* 고정 UI보다 낮게 */
+  position: relative; z-index: 1;
 }
 
 /* ===== 50/50 정확히 반반 ===== */
 .split-panels{
-  display:grid;
-  grid-template-columns: 50% 50%;
-  width:100%; height:100%;
-  position: relative;
+  display:grid; grid-template-columns: 50% 50%;
+  width:100%; height:100%; position: relative;
 }
-
-/* 좌우 뒤집기 옵션 */
-.split-panels.reverse{ grid-auto-flow:column; direction:rtl }
-.split-panels.reverse .panel{ direction:ltr }
 
 /* 중앙 가이드 라인(아주 옅게) */
 .split-panels::before{
-  content:"";
-  position:absolute; left:50%; top:0; bottom:0; width:1px;
-  transform:translateX(-0.5px);
-  background: rgba(0,0,0,.06);
+  content:""; position:absolute; left:50%; top:0; bottom:0; width:1px;
+  transform:translateX(-0.5px); background: rgba(0,0,0,.06);
 }
 
 /* 각 패널 공통 */
@@ -177,65 +236,79 @@ const handleKakaoLogin = () => {
   position:relative; overflow:hidden;
   display:flex; align-items:center; justify-content:center;
   padding: clamp(24px, 4vw, 64px);
-  width:100%; height:100%;
-  z-index: 1; /* 고정 UI보다 낮음 */
+  width:100%; height:100%; z-index: 1;
 }
-.panel-text{ background:#ffffff80 } /* 살짝 투명하게 */
+.panel-text{ background:#ffffff80 }
 .panel-visual{
-  /* clay 톤 그라디언트 */
   background: linear-gradient(180deg,#E7D5B9 0%, #D8C3A3 100%);
+  overflow: visible;
 }
 
 /* 비는 영역을 자연스럽게 메우는 보조 효과 */
 .panel-visual::before{
-  content:"";
-  position:absolute; inset:-15% -10% -10% -15%;
+  content:""; position:absolute; inset:-15% -10% -10% -15%;
   background:
     radial-gradient(60% 60% at 80% 20%, rgba(255,255,255,.35) 0%, rgba(255,255,255,0) 60%),
     radial-gradient(50% 50% at 10% 85%, rgba(255,255,255,.22) 0%, rgba(255,255,255,0) 60%);
-  pointer-events:none;
-  z-index:0;
+  pointer-events:none; z-index:0;
 }
 .panel-visual::after{
-  content:"";
-  position:absolute; inset:0;
+  content:""; position:absolute; inset:0;
   background: linear-gradient(90deg, rgba(0,0,0,.03), transparent 25% 75%, rgba(0,0,0,.03));
-  pointer-events:none;
-  z-index:0;
+  pointer-events:none; z-index:0;
 }
 
-/* 텍스트 영역 */
+/* ===== 텍스트 영역(계층) ===== */
 .text-inner{
-  width: min(640px, 80%);
+  width:min(58ch, 82%);  /* 줄길이 가드레일: 잘림/삐죽 방지 */
   margin-inline:auto;
-  display:flex; flex-direction:column; justify-content:center;
+  display:flex; flex-direction:column; gap: clamp(10px,1.6vw,16px);
+  justify-content:center;
+  word-break: keep-all;     /* 한국어 단어 중간 끊김 방지 */
+  text-wrap: balance;       /* 지원 브라우저에서 줄 균형 */
 }
-.title{
-  font-weight:800; letter-spacing:-.02em; line-height:1.2;
-  font-size: clamp(32px, 5vw, 64px);
-  color:#2d2d2d;
+
+/* 브랜드(가장 큼) */
+.brand .brand-name{
+  display:inline-block;
+  font-weight:800;          /* ExtraBold */
+  font-size: clamp(40px, 7.2vw, 80px);
+  letter-spacing:-0.02em;
+  line-height:1.08;
+  color:#111;
 }
-.subtitle{
-  margin-top:14px; color:#444; line-height:1.7;
-  font-size: clamp(18px, 2.1vw, 22px);
+
+/* 헤드라인 */
+.headline{
+  font-weight:700;          /* 기본 Bold */
+  font-size: clamp(28px, 4.6vw, 50px);
+  line-height:1.18;
+  letter-spacing:-0.01em;
+  color:#222;
 }
-.hero .title{ font-size: clamp(36px, 6vw, 72px) }
-.hero .subtitle{ font-size: clamp(18px, 2.3vw, 24px) }
+.headline.shout{
+  font-weight:800;          /* 강조는 ExtraBold */
+  font-size: clamp(32px, 5.2vw, 64px);
+}
+
+/* 본문 */
+.lead{
+  margin-top:2px;
+  color:#444;
+  line-height:1.7;
+  font-weight:400;
+  font-size: clamp(16px, 1.9vw, 20px);
+}
+
+/* 강조 색상 */
 .highlight{ color: var(--accent); font-weight:700 }
-.bold{ font-weight:800 }
 
 /* 이미지 영역 */
-.visual-inner{
-  width:100%; height:100%;
-  display:flex; align-items:center; justify-content:center;
-  z-index:1;
-}
+.visual-inner{ width:100%; height:100%; display:flex; align-items:center; justify-content:center; z-index:1 }
 .illust{
-  max-width: 95%;
-  max-height: 90vh;             /* 패널 최대한 채우기 */
-  height:auto; object-fit:contain;
+  max-width: none; width: 110%;
+  max-height: 94vh; height:auto; object-fit:contain;
   filter: drop-shadow(0 10px 20px rgba(0,0,0,.12));
-  image-rendering:auto;
 }
 
 /* 모바일: 위/아래 스택(텍스트 → 이미지) */
@@ -243,14 +316,16 @@ const handleKakaoLogin = () => {
   .split-panels{ grid-template-columns:1fr; grid-template-rows: 1fr 1fr }
   .split-panels::before{ display:none }
   .panel{ padding: 20px }
-  .text-inner{ width:min(560px,92%); text-align:center }
+  .text-inner{ width:min(60ch,92%); text-align:center }
+  .brand .brand-name{ font-size: clamp(34px, 9vw, 64px) }
+  .headline{ font-size: clamp(24px, 6vw, 40px) }
+  .headline.shout{ font-size: clamp(26px, 6.8vw, 44px) }
 }
 
 /* 고정 CTA (항상 맨 위) */
 .login-cta{
   position:fixed; left:50%; bottom:max(20px, env(safe-area-inset-bottom));
-  transform:translateX(-50%); text-align:center;
-  z-index: 50; /* 스와이퍼/이미지보다 높게 */
+  transform:translateX(-50%); text-align:center; z-index: 50;
 }
 .kakao-login-img{ width:240px; cursor:pointer; transition:opacity .2s; margin-bottom:12px }
 .kakao-login-img:hover{ opacity:.85 }
@@ -261,4 +336,77 @@ const handleKakaoLogin = () => {
 :deep(.swiper-pagination-bullet){ width:12px; height:12px; opacity:.5; background:#bbb }
 :deep(.swiper-pagination-bullet-active){ opacity:1; background:var(--accent) }
 :deep(.swiper-pagination){ top:20px; bottom:auto; left:50%; transform:translateX(-50%); z-index:40 }
+
+/* 변수: 톤만 바꾸고 싶을 때 여기 숫자만 조절하세요 */
+.onboarding-root{
+  --accent:#f5b301;
+  /* 화면 전체 배경 */
+  --bg-top:#F7F1E6;         /* 조금 더 크리미한 상단 */
+  --bg-bottom:#EBE2D2;      /* 부드럽게 내려오는 하단 */
+  --bg-spot:rgba(255,255,255,.55); /* 은은한 하이라이트 */
+
+  /* 오른쪽 비주얼 패널 배경 */
+  --panel-vis-top:#E7D6BE;  /* 기존보다 노랑끼 살짝 낮춤 */
+  --panel-vis-btm:#D8C7AE;
+
+  /* 왼쪽 텍스트 패널 배경(유리 느낌 살짝) */
+  --panel-text-bg:rgba(255,255,255,.78);
+}
+
+/* ===== 화면 전체 배경 ===== */
+.onboarding-swiper{
+  width:100vw; height:100vh;
+  /* 라디얼 하이라이트 + 그라데이션을 레이어로 쌓음 */
+  background:
+    radial-gradient(1200px 720px at 14% 10%, var(--bg-spot) 0%, transparent 62%),
+    radial-gradient(980px 620px at 88% 86%, var(--bg-spot) 0%, transparent 68%),
+    linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+  position: relative; z-index: 1;
+}
+
+/* ===== 반반 레이아웃 공통 ===== */
+.split-panels{
+  display:grid; grid-template-columns: 50% 50%;
+  width:100%; height:100%; position: relative;
+}
+/* 중앙 가이드 라인 살짝 더 옅게 */
+.split-panels::before{
+  content:""; position:absolute; left:50%; top:0; bottom:0; width:1px;
+  transform:translateX(-0.5px); background: rgba(0,0,0,.04);
+}
+
+/* 패널 공통 */
+.panel{
+  position:relative; overflow:hidden;
+  display:flex; align-items:center; justify-content:center;
+  padding: clamp(24px, 4vw, 64px);
+  width:100%; height:100%; z-index: 1;
+}
+/* 왼쪽 텍스트 패널: 살짝 투명 + 아주 미세한 블러로 자연스럽게 */
+.panel-text{
+  background: var(--panel-text-bg);
+  backdrop-filter: saturate(110%) blur(1.2px);
+}
+
+/* 오른쪽 비주얼 패널: 클레이 톤을 부드럽게 */
+.panel-visual{
+  background:
+    radial-gradient(58% 60% at 80% 18%, rgba(255,245,220,.28) 0%, rgba(255,245,220,0) 62%),
+    linear-gradient(180deg, var(--panel-vis-top) 0%, var(--panel-vis-btm) 100%);
+  overflow: visible;
+}
+/* 기존 보조 하이라이트/비네트 톤을 더 자연스럽게 */
+.panel-visual::before{
+  content:""; position:absolute; inset:-12% -8% -8% -12%;
+  background:
+    radial-gradient(60% 60% at 78% 22%, rgba(255,255,255,.28) 0%, rgba(255,255,255,0) 60%),
+    radial-gradient(50% 50% at 12% 86%, rgba(255,255,255,.18) 0%, rgba(255,255,255,0) 60%);
+  pointer-events:none; z-index:0;
+}
+.panel-visual::after{
+  content:""; position:absolute; inset:0;
+  /* 아주 옅은 비네트로 가장자리 결 정리 */
+  background: radial-gradient(120% 100% at 50% 50%, transparent 70%, rgba(0,0,0,.03) 100%);
+  pointer-events:none; z-index:0;
+}
 </style>

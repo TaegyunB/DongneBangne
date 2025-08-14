@@ -41,8 +41,6 @@
 
           <td class="text-center">
             <div class="center-name">
-              <img :src="getCenterLogoSrc(myCenter)" class="logo"
-                  crossorigin="anonymous" @error="onLogoError" />
               <span class="ellipsis">{{ myCenter.centerName }}</span>
               <span class="chip-mycenter">내 경로당</span>
             </div>
@@ -94,8 +92,6 @@
 
           <td class="text-center">
             <div class="center-name">
-              <img :src="getCenterLogoSrc(center)" class="logo"
-                  crossorigin="anonymous" @error="onLogoError" />
               <span class="ellipsis">{{ center.centerName }}</span>
             </div>
           </td>
@@ -220,7 +216,7 @@
 
             <div class="detail-meta">
               <div class="meta-row">📍 {{ selectedChallenge.place }}</div>
-              <div class="meta-row">💎 {{ selectedChallenge.point }}점</div>
+              <div class="meta-row">⭐ {{ selectedChallenge.point }}점</div>
               <div class="meta-row" v-if="selectedChallenge.year && selectedChallenge.month">
                 🗓 {{ selectedChallenge.year }}년 {{ selectedChallenge.month }}월
               </div>
@@ -252,23 +248,23 @@ const toAbsUrl = (u) => {
   return apiBase + '/' + u
 }
 
-const getCenterLogoSrc = (center) => {
-  const u =
-    center?.centerLogo ||                 // fetchRankings에서 정규화한 값
-    center?.adminProfileImage ||
-    center?.admin_profile_image ||
-    center?.admin?.profileImage ||
-    center?.admin?.profile_image ||
-    center?.profileImage ||
-    center?.profile_image || null
+// const getCenterLogoSrc = (center) => {
+//   const u =
+//     center?.centerLogo ||                 // fetchRankings에서 정규화한 값
+//     center?.adminProfileImage ||
+//     center?.admin_profile_image ||
+//     center?.admin?.profileImage ||
+//     center?.admin?.profile_image ||
+//     center?.profileImage ||
+//     center?.profile_image || null
 
-  return toAbsUrl(u) || defaultLogo
-}
+//   return toAbsUrl(u) || defaultLogo
+// }
 
-const onLogoError = (e) => {
-  e.target.onerror = null
-  e.target.src = defaultLogo
-}
+// const onLogoError = (e) => {
+//   e.target.onerror = null
+//   e.target.src = defaultLogo
+// }
 
 const centers = ref([])
 const currentPage = ref(1)
@@ -298,7 +294,7 @@ const myCenterRank = computed(() => {
 
 const fetchMyCenterIdFromServer = async () => {
   try {
-    const { data } = await api.get('/api/v1/me', { withCredentials: true });
+    const { data } = await api.get('/api/v1/main/me', { withCredentials: true });
     const id =
       data?.seniorCenterId ??
       data?.senior_center_id ??
@@ -313,7 +309,7 @@ const fetchMyCenterIdFromServer = async () => {
       return true;
     }
   } catch (e) {
-    console.warn('/api/v1/me 호출 실패:', e);
+    console.warn('/api/v1/main/me 호출 실패:', e);
   }
   return false;
 };
@@ -359,7 +355,7 @@ const fetchRankings = async () => {
       while (rawStatuses.length < 4) rawStatuses.push('unknown')
 
       return {
-        id,                               // ← 숫자 확정
+        // id,                               // ← 숫자 확정
         centerName: name,
         trotPoint:   toNum(item.trotPoint      ?? item.trot_point,      0),
         missionPoint:toNum(item.challengePoint ?? item.challenge_point,  0),
@@ -368,13 +364,13 @@ const fetchRankings = async () => {
         challenges,
         challengeStatusesPadded: rawStatuses,
         // (옵션) 관리자 프로필 이미지를 로고로 쓰고 싶다면 같이 받아두기
-        centerLogo:
-          item.adminProfileImage ??
-          item.admin_profile_image ??
-          item.admin?.profileImage ??
-          item.admin?.profile_image ??
-          item.profileImage ??
-          item.profile_image ?? null,
+        //centerLogo:
+        //  item.adminProfileImage ??
+        //  item.admin_profile_image ??
+        //  item.admin?.profileImage ??
+        //  item.admin?.profile_image ??
+        //  item.profileImage ??
+        //  item.profile_image ?? null,
       }
     }).filter(r => r.id != null)
 
