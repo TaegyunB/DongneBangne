@@ -6,7 +6,7 @@
       <button @click="generateAndUploadPDF" :disabled="generating" class="generate-pdf-btn">
         {{ generating ? 'PDF 생성 중...' : 'PDF 생성하기' }}
       </button>
-      
+      <!-- . -->
       <!-- 진행 상태 표시 -->
       <div v-if="generating" class="progress-info">
         <p>{{ progressMessage }}</p>
@@ -15,17 +15,16 @@
         </div>
       </div>
     </div>
-
+<!--  -->
     <!-- PDF 템플릿 (숨김) -->
     <div ref="pdfTemplate" class="pdf-template" style="position: absolute; left: -9999px; top: -9999px;">
       <div class="newspaper-container">
         <!-- 헤더 -->
         <div class="newspaper-header">
           <h1 class="newspaper-title">{{ newsData.newsTitle }}</h1>
-          <div class="newspaper-date">{{ formatDate(newsData.year, newsData.month) }}</div>
-          <div class="center-name">{{ newsData.centerName }}</div>
+          <div class="newspaper-date">{{ newsData.centerName }} - {{ formatDate(newsData.year, newsData.month) }}</div>
         </div>
-
+<!-- .. -->
         <!-- 도전과제별 기사 (상하 2행 레이아웃) -->
         <div class="articles-container">
           <!-- 상단 행 (첫 번째, 두 번째 미션) -->
@@ -38,8 +37,7 @@
               <div class="article-header">
                 <h2 class="article-title">{{ challenge.challengeTitle }}</h2>
                 <div class="article-meta">
-                  <span class="article-date">{{ formatChallengeDate(challenge.completedAt) }}</span>
-                  <span class="article-location">{{ challenge.challengePlace }}</span>
+                  <span class="article-location-date">{{ challenge.challengePlace }} - {{ formatChallengeDate(challenge.completedAt) }}</span>
                 </div>
               </div>
 
@@ -69,8 +67,7 @@
               <div class="article-header">
                 <h2 class="article-title">{{ challenge.challengeTitle }}</h2>
                 <div class="article-meta">
-                  <span class="article-date">{{ formatChallengeDate(challenge.completedAt) }}</span>
-                  <span class="article-location">{{ challenge.challengePlace }}</span>
+                  <span class="article-location-date">{{ challenge.challengePlace }} - {{ formatChallengeDate(challenge.completedAt) }}</span>
                 </div>
               </div>
 
@@ -470,12 +467,6 @@ const generateAndUploadPDF = async () => {
   margin-bottom: 2px;
 }
 
-.center-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: #2d3748;
-}
-
 .articles-container {
   flex: 1;
   margin-bottom: 10px;
@@ -518,6 +509,11 @@ const generateAndUploadPDF = async () => {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  font-size: 16px;
+  color: #666;
+}
+
+.article-location-date {
   font-size: 16px;
   color: #666;
 }
