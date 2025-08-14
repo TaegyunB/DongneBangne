@@ -33,6 +33,21 @@
       </button>
     </div>
     
+    <!-- 20자 초과 경고 모달 -->
+    <div v-if="showTitleLengthModal" class="modal-overlay">
+      <div class="modal-content warning-modal">
+        <h2 class="modal-title warning-title">입력 제한</h2>
+        <p class="modal-subtext warning-text">
+          도전 제목은 <br>
+          <strong>20자 이내</strong>로 입력해주세요.
+        </p>
+        <p class="current-length">현재: {{ title.length }}자</p>
+        <button class="modal-button warning-button" @click="closeTitleLengthModal">
+          확인
+        </button>
+      </div>
+    </div>
+    
     <!-- 생성 완료 모달 -->
     <div v-if="showModal" class="modal-overlay">
       <div class="modal-content">
@@ -53,6 +68,7 @@ const title = ref('')
 const place = ref('')
 const description = ref('')
 const showModal = ref(false)
+const showTitleLengthModal = ref(false)
 const loading = ref(false)
 const router = useRouter()
 
@@ -63,6 +79,12 @@ const isValid = computed(() => {
 const handleSubmit = async () => {
   if (!isValid.value) {
     alert('모든 항목을 입력해주세요.')
+    return
+  }
+
+  // 제목 20자 초과 검증
+  if (title.value.trim().length > 20) {
+    showTitleLengthModal.value = true
     return
   }
 
@@ -100,6 +122,11 @@ const handleSubmit = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const closeTitleLengthModal = () => {
+  showTitleLengthModal.value = false
+  // 입력된 내용은 그대로 유지 (title.value를 초기화하지 않음)
 }
 
 const goToList = () => {
@@ -250,5 +277,33 @@ const goToList = () => {
 
 .modal-button:hover {
   background-color: #6c9dff;
+}
+
+/* 경고 모달 스타일 */
+.warning-modal {
+  border: 2px solid #ff6b6b;
+}
+
+.warning-title {
+  color: #ff6b6b;
+}
+
+.warning-text {
+  color: #333;
+}
+
+.current-length {
+  font-size: 18px;
+  color: #ff6b6b;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.warning-button {
+  background-color: #ff6b6b;
+}
+
+.warning-button:hover {
+  background-color: #ff5252;
 }
 </style>
