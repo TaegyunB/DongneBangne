@@ -1,13 +1,4 @@
-<!-- AI 신문 생성 가이드 팝업 (항상 표시) -->
-        <div 
-          class="ai-news-guide-popup"
-        >
-          <div class="popup-content">
-            <span v-if="!isAINewsButtonEnabled">도전인증을을 해주세요</span>
-            <span v-else>완료된 도전과제로 신문을 생성합니다</span>
-            <div class="popup-arrow"></div>
-          </div>
-        </div><template>
+<template>
   <div>
     <h1 class="header">{{ currentMonthTitle }}월 도전과제를 수행해보세요</h1>
      
@@ -141,15 +132,6 @@
         
         <!-- 모달 내 버튼들 -->
         <div class="modal-action-buttons">
-          <!-- 도전 인증 버튼 (ADMIN이고 완료되지 않은 도전) -->
-          <button 
-            v-if="userRole === 'ADMIN' && !selectedChallenge.isEmpty && !isCompleted(selectedChallenge)" 
-            class="modal-button modal-complete-btn" 
-            @click="moveToFinish"
-          >
-            도전 인증하기
-          </button>
-          
           <!-- 완료 메시지 (완료된 도전) -->
           <div 
             v-if="!selectedChallenge.isEmpty && isCompleted(selectedChallenge)"
@@ -704,7 +686,6 @@ const showFinalDeleteConfirm = () => {
 const closeFinalDeleteModal = () => {
   modals.value.delete.showFinal = false
 }
-
 const confirmDelete = async () => {
   const selectedIndex = modals.value.delete.selectedIndex
   if (selectedIndex !== null) {
