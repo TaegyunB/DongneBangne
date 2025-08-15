@@ -56,6 +56,15 @@
         <button class="modal-button" @click="goToList">도전 목록으로</button>
       </div>
     </div>
+
+    <!-- 알림 모달 -->
+    <div v-if="showAlertModal" class="modal-overlay" @click.self="closeAlertModal">
+      <div class="modal-content">
+        <h2 class="modal-title">{{ alertTitle }}</h2>
+        <p class="modal-subtext">{{ alertMessage }}</p>
+        <button class="modal-button" @click="closeAlertModal">확인</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -78,7 +87,7 @@ const isValid = computed(() => {
 
 const handleSubmit = async () => {
   if (!isValid.value) {
-    alert('모든 항목을 입력해주세요.')
+    showAlert('모든 항목을 입력해주세요.')
     return
   }
 
@@ -115,13 +124,30 @@ const handleSubmit = async () => {
     console.error('도전과제 생성 실패:', error)
 
     if (error.response?.status === 401 || error.response?.status === 403) {
-      alert('로그인이 필요합니다. 다시 로그인해주세요.')
+      showAlert('로그인이 필요합니다. 다시 로그인해주세요.')
     } else {
-      alert('도전 생성 중 오류가 발생했습니다.')
+      showAlert('도전 생성 중 오류가 발생했습니다.')
     }
   } finally {
     loading.value = false
   }
+}
+
+// 알림 모달 관련
+const showAlertModal = ref(false)
+const alertTitle = ref('')
+const alertMessage = ref('')
+
+const showAlert = (title, message) => {
+  alertTitle.value = title
+  alertMessage.value = message
+  showAlertModal.value = true
+}
+
+const closeAlertModal = () => {
+  showAlertModal.value = false
+  alertTitle.value = ''
+  alertMessage.value = ''
 }
 
 const closeTitleLengthModal = () => {
