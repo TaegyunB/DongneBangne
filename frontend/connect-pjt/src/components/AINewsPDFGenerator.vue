@@ -24,7 +24,19 @@
           <h1 class="newspaper-title">{{ newsData.newsTitle }}</h1>
           <div class="newspaper-date">{{ newsData.centerName }} - {{ formatDate(newsData.year, newsData.month) }}</div>
         </div>
-<!-- .. -->
+
+    <!-- 알림 모달 -->
+    <div v-if="showAlertModal" class="modal-overlay" @click.self="closeAlertModal">
+      <div class="modal-content">
+        <button class="modal-close-btn" @click="closeAlertModal">×</button>
+        <h2>{{ alertTitle }}</h2>
+        <p class="modal-description">{{ alertMessage }}</p>
+        <div class="modal-action-buttons">
+          <button class="modal-button" @click="closeAlertModal">확인</button>
+        </div>
+      </div>
+    </div>
+
         <!-- 도전과제별 기사 (상하 2행 레이아웃) -->
         <div class="articles-container">
           <!-- 상단 행 (첫 번째, 두 번째 미션) -->
@@ -250,7 +262,7 @@ const convertAllImagesToBase64 = async () => {
 // PDF 생성 및 업로드
 const generateAndUploadPDF = async () => {
   if (completedChallenges.value.length === 0) {
-    alert('완료된 도전과제가 없어 PDF를 생성할 수 없습니다.')
+    showAlert('알림', '완료된 도전과제가 없어 PDF를 생성할 수 없습니다.')
     return
   }
 
@@ -369,7 +381,7 @@ const generateAndUploadPDF = async () => {
     pdfGenerated.value = true
     emit('pdf-generated', response.data)
 
-    alert('AI 신문 PDF가 성공적으로 생성되었습니다!')
+    showAlert('성공', 'AI 신문 PDF가 성공적으로 생성되었습니다!')
 
   } catch (error) {
     console.error('PDF 생성 실패:', error)
@@ -382,12 +394,30 @@ const generateAndUploadPDF = async () => {
       errorMessage = 'PDF 변환 중 오류가 발생했습니다. 이미지 로딩을 확인해주세요.'
     }
     
-    alert(errorMessage)
+    showAlert('오류', errorMessage)
   } finally {
     generating.value = false
     progressMessage.value = ''
     imageProgress.value = { loaded: 0, total: 0 }
   }
+}
+
+// 알림 모달 관련
+const showAlertModal = ref(false)
+const alertTitle = ref('')
+const alertMessage = ref('')
+
+// 알림 모달 함수
+const showAlert = (title, message) => {
+  alertTitle.value = title
+  alertMessage.value = message
+  showAlertModal.value = true
+}
+
+const closeAlertModal = () => {
+  showAlertModal.value = false
+  alertTitle.value = ''
+  alertMessage.value = ''
 }
 </script>
 
@@ -569,5 +599,95 @@ const generateAndUploadPDF = async () => {
 .footer-date {
   font-size: 8px;
   color: #999;
+}
+
+/* 모달 스타일  */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: white;
+  border-radius: 20px;
+  padding: 32px;
+  width: 90%;
+  max-width: 480px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  text-align: center;
+  z-index: 1001;
+  position: relative;
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s ease;
+}
+
+.modal-close-btn:hover {
+  background-color: #f3f4f6;
+}
+
+.modal-content h2 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: #333;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.modal-description {
+  font-size: 16px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+  color: #666;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.modal-action-buttons {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+
+.modal-button {
+  background-color: #4A90E2;
+  color: white;
+  padding: 14px 28px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.modal-button:hover {
+  background-color: #2b6ce5;
+  transform: translateY(-1px);
 }
 </style>
