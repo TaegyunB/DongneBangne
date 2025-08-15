@@ -1587,24 +1587,8 @@ watch(percent, updateMessage)
             margin-top: 8px;
         }
 
-        .modal-content {
-            border: 2px solid var(--text-black);
-        }
-        
-        .ai-news-section .btn-ai-news {
-            border: 2px solid var(--text-black);
-        }
-        
-        .challenge-placeholder {
-            border: 2px solid var(--text-black);
-        }
-
-        .ai-news-guide-popup .popup-content {
-            border: 2px solid var(--text-black);
-        }
-    }
-
-      .modal-buttons {
+        /* 모달 버튼들 - 모바일에서 세로로 배치하고 전체 너비 */
+        .modal-buttons {
             flex-direction: column;
             gap: 12px;
         }
@@ -1622,10 +1606,15 @@ watch(percent, updateMessage)
             width: 100%;
         }
 
+        .delete-confirm-btn, .delete-success-btn {
+            width: 100%;
+        }
+
         .large-verify-btn {
             padding: 30px 40px;
             font-size: 20px;
         }
+    }
 
     /* 접근성 개선 */
     @media (prefers-reduced-motion: reduce) {
