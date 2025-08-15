@@ -23,7 +23,7 @@ iframe {
   border: none;
   width: 100%;
   height: 100%;
-  max-width: 2560px;
-  max-height: 1440px;
+  max-width: 1920px;
+  max-height: 1080px;
 }
 </style>

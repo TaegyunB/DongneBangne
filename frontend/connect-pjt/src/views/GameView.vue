@@ -50,53 +50,58 @@ export default {
         // event.data가 문자열인 경우 JSON 파싱
         const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
         
-        if(data.type === 'unity-ready'){
-          this.isUnityReady = true;
-        }
-        else if(data.type === 'create-room'){
-          // data.data도 JSON 문자열이므로 파싱
-          const roomData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data
-          this.handleCreateRoom(roomData);
-        }
-        else if(data.type === 'join-room'){
-          const roomData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data
-          this.handleJoinRoom(roomData);
-        }
-        else if(data.type === 'ready'){
-          const readyData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data
-          this.handleReady(readyData);
-        }
-        else if(data.type === 'start-game'){
-          // WebSocket으로 연결
-          console.log('Unity → Vue 게임 시작 요청:');
-          const gameData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data
-          
-          // roomId 설정
-          if (gameData.roomId) {
-            this.roomId = gameData.roomId
-            console.log('🎮 게임방 ID 설정:', this.roomId)
+        // 메시지 핸들러 매핑
+        const messageHandlers = {
+          'unity-ready': () => {
+            this.isUnityReady = true;
+          },
+          'create-room': () => {
+            const roomData = this.parseUnityData(data.data);
+            this.handleCreateRoom(roomData);
+          },
+          'join-room': () => {
+            const roomData = this.parseUnityData(data.data);
+            this.handleJoinRoom(roomData);
+          },
+          'ready': () => {
+            const readyData = this.parseUnityData(data.data);
+            this.handleReady(readyData);
+          },
+          'start-game': () => {
+            console.log('Unity → Vue 게임 시작 요청:');
+            const gameData = this.parseUnityData(data.data);
+            
+            // roomId 설정
+            if (gameData.roomId) {
+              this.roomId = gameData.roomId;
+              console.log('🎮 게임방 ID 설정:', this.roomId);
+            }
+            
+            this.connectStompWebSocket();
+          },
+          'answer-submit': () => {
+            const answerData = this.parseUnityData(data.data);
+            this.sendAnswerToServer(answerData);
+          },
+          'hint-request': () => {
+            const hintData = this.parseUnityData(data.data);
+            this.sendHintRequestToServer(hintData);
+          },
+          'unity-error': () => {
+            console.error('Unity 오류 발생:', data.error);
+            alert(`Unity 로딩 오류: ${data.error}\n\n브라우저를 새로고침하거나 다른 브라우저를 사용해주세요.`);
           }
-          
-          this.connectStompWebSocket();
+        };
+        
+        // 메시지 타입에 따른 핸들러 실행
+        if (messageHandlers[data.type]) {
+          messageHandlers[data.type]();
+        } else {
+          console.warn('알 수 없는 Unity 메시지 타입:', data.type);
         }
-        else if(data.type === 'answer-submit'){
-          // 정답 제출
-          const answerData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data
-          this.sendAnswerToServer(answerData);
-        }
-        else if(data.type === 'hint-request'){
-          // 힌트 요청
-          const hintData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data
-          this.sendHintRequestToServer(hintData);
-        }
-        else if(data.type === 'unity-error'){
-          // Unity 오류 처리
-          console.error('Unity 오류 발생:', data.error);
-          // 사용자에게 오류 알림
-          alert(`Unity 로딩 오류: ${data.error}\n\n브라우저를 새로고침하거나 다른 브라우저를 사용해주세요.`);
-        }
+        
       } catch (error) {
-        console.error('메시지 파싱 오류:', error)
+        console.error('메시지 파싱 오류:', error);
       }
     })
 
@@ -132,24 +137,24 @@ export default {
     // }
 
     // STOMP 연결
-    this.connectStompWebSocket();
+    //this.connectStompWebSocket();
 
     // STOMP WebSocket 연결 시작
     // this.connectStompWebSocket() // Unity에서 start-game 메시지로 연결
 
-    // try {
-    //   await this.initLocalMedia() // 카메라, 마이크 준비
-    //   await this.connectSignalingServer() // 시그널링 서버 연결
-    //   if (this.isInitiator) {
-    //     await this.startAsCaller()
-    //   } else {
-    //     // 수신자: offer를 기다림
-    //     console.log('[RTC] Waiting for offer…')
-    //   }
-    // } catch (err) {
-    //   // 초기화 실패 시 오류 처리
-    //   console.error('[Init] error:', err)
-    // }
+    try {
+      await this.initLocalMedia() // 카메라, 마이크 준비
+      await this.connectSignalingServer() // 시그널링 서버 연결
+      if (this.isInitiator) {
+        await this.startAsCaller()
+      } else {
+        // 수신자: offer를 기다림
+        console.log('[RTC] Waiting for offer…')
+      }
+    } catch (err) {
+      // 초기화 실패 시 오류 처리
+      console.error('[Init] error:', err)
+    }
   },
 
   // 컴포넌트 소멸 시 리소스 해제
@@ -172,6 +177,11 @@ export default {
   },
 
   methods: {
+    // Unity 데이터 파싱 헬퍼 메서드
+    parseUnityData(data) {
+      return typeof data === 'string' ? JSON.parse(data) : data;
+    },
+    
     async initLocalMedia() {
       try {
         // 카메라, 마이크 접근 권한 요청
