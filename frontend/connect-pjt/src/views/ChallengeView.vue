@@ -74,10 +74,6 @@
           <div class="text-content">
             <div class="title-with-buttons">
               <h2>{{ getDisplayTitle(challenge, index) }}</h2>
-              <!-- 3,4번째 칸에서 미션이 없을 때만 생성 버튼 표시 -->
-              <div v-if="shouldShowCreateButton(challenge, index)" class="action-buttons">
-                <button class="create-btn" @click.stop="moveToCreate()">생성</button>
-              </div>
             </div>
           </div>
           <!-- 상태별 버튼 -->
@@ -89,13 +85,14 @@
           >
             {{ getButtonText(challenge) }}
           </div>
-          <!-- 생성 전 버튼 (MEMBER, 빈 도전) -->
+          <!-- 빈 도전일 때 버튼 -->
           <div 
-            v-else-if="userRole !== 'ADMIN' && challenge.isEmpty"
-            class="challenge-complete-btn btn-not-created"
-            @click="showNotCreatedModal()"
+            v-else-if="challenge.isEmpty"
+            class="challenge-complete-btn"
+            :class="userRole === 'ADMIN' ? 'btn-create' : 'btn-not-created'"
+            @click="userRole === 'ADMIN' ? moveToCreate() : showNotCreatedModal()"
           >
-            도전 생성 전
+            {{ userRole === 'ADMIN' ? '도전 생성' : '도전 생성 전' }}
           </div>
         </div>
       </div>
@@ -151,16 +148,6 @@
             </button>
             <button 
               v-if="shouldShowDeleteButton(selectedChallenge)" 
-              class="modal-delete-btn" 
-              @click="showDeleteConfirm(getSelectedChallengeIndex())"
-            >
-              삭제
-            </button>
-          </div>
-          
-          <!-- 삭제 버튼 (ADMIN이고 완료된 도전) -->
-          <div v-if="userRole === 'ADMIN' && !selectedChallenge.isEmpty && isCompleted(selectedChallenge) && selectedChallenge.challengeType === 'CUSTOM'" class="modal-edit-delete-buttons">
-            <button 
               class="modal-delete-btn" 
               @click="showDeleteConfirm(getSelectedChallengeIndex())"
             >
@@ -304,11 +291,6 @@ const getDisplayTitle = (challenge, index) => {
   } else { // 1, 2번째 칸 (서비스 제공 도전)
     return '준비 중입니다.'
   }
-}
-
-// 생성 버튼 표시 조건 (3,4번째 칸에서 미션이 없을 때만)
-const shouldShowCreateButton = (challenge, index) => {
-  return userRole.value === 'ADMIN' && index >= 2 && challenge.isEmpty
 }
 
 // 수정 버튼 표시 조건 (완료 전에만)
@@ -1205,6 +1187,17 @@ watch(percent, updateMessage)
         transform: translateX(-50%) translateY(-2px);
     }
 
+    /* 도전 생성 버튼 (ADMIN, 빈 도전) */
+    .btn-create {
+        background-color: #28a745;
+        color: white;
+    }
+
+    .btn-create:hover {
+        background-color: #218838;
+        transform: translateX(-50%) translateY(-2px);
+    }
+
     /* 완료 버튼 */
     .btn-completed {
         background-color: rgb(30, 58, 138); /* 진한 파란색 */
@@ -1594,7 +1587,24 @@ watch(percent, updateMessage)
             margin-top: 8px;
         }
 
-        .modal-buttons {
+        .modal-content {
+            border: 2px solid var(--text-black);
+        }
+        
+        .ai-news-section .btn-ai-news {
+            border: 2px solid var(--text-black);
+        }
+        
+        .challenge-placeholder {
+            border: 2px solid var(--text-black);
+        }
+
+        .ai-news-guide-popup .popup-content {
+            border: 2px solid var(--text-black);
+        }
+    }
+
+      .modal-buttons {
             flex-direction: column;
             gap: 12px;
         }
@@ -1616,7 +1626,6 @@ watch(percent, updateMessage)
             padding: 30px 40px;
             font-size: 20px;
         }
-    }
 
     /* 접근성 개선 */
     @media (prefers-reduced-motion: reduce) {
@@ -1632,15 +1641,15 @@ watch(percent, updateMessage)
         .single-challenge {
             border: 2px solid var(--text-black);
         }
-        
+
         .modal-content {
             border: 2px solid var(--text-black);
         }
-        
+
         .ai-news-section .btn-ai-news {
             border: 2px solid var(--text-black);
         }
-        
+
         .challenge-placeholder {
             border: 2px solid var(--text-black);
         }
