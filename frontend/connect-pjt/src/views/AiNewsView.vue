@@ -206,7 +206,7 @@ const fetchNews = async () => {
     if (error.response) {
       const status = error.response.status
       if (status === 403) {
-        errorMessage = '신문을 볼 권한이 없습니다.'
+        errorMessage = '권한이 없습니다.'
       } else if (status === 404) {
         errorMessage = '신문 데이터를 찾을 수 없습니다.'
       }
