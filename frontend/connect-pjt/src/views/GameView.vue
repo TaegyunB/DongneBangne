@@ -3,8 +3,8 @@
     <iframe
       ref="unityFrame"
       src="/unity/index.html"
-      width="2560"
-      height="1440"
+      width="2560px"
+      height="1440px"
       frameborder="0"
       allowfullscreen
     ></iframe>
@@ -40,99 +40,115 @@ export default {
     }
   },
   async mounted() {
-
     // Unity가 보낸 메시지 수신
     window.addEventListener('message', (event) => {
       console.log('✅ Unity → Vue Type:', event.type)
       console.log('✅ Unity → Vue Data:', event.data)
-      
+
       try {
         // event.data가 문자열인 경우 JSON 파싱
         const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
-        
-        if(data.type === 'unity-ready'){
-          this.isUnityReady = true;
+
+        // 메시지 핸들러 매핑
+        const messageHandlers = {
+          'unity-ready': () => {
+            this.isUnityReady = true
+          },
+          'room-list': () => {
+            this.getRoomList()
+          },
+          'create-room': () => {
+            const roomData = this.parseUnityData(data.data)
+            this.handleCreateRoom(roomData)
+          },
+          'join-room': () => {
+            const roomData = this.parseUnityData(data.data)
+            this.handleJoinRoom(roomData)
+          },
+          'leave-room': () => {
+            const roomId = this.parseUnityData(data.data)
+            this.handleLeaveRoom(roomId)
+          },
+          'user-ready': () => {
+            const readyData = this.parseUnityData(data.data)
+            this.handleReady(readyData)
+          },
+          'webrtc-connect': async () => {
+            console.log('Unity → Vue WebRTC 연결 요청:')
+            const roomId = this.parseUnityData(data.data)
+
+            // roomId를 기반으로 WebRTC 연결 시작
+            await this.startWebRTC(roomId)
+          },
+          'room-users': () => {
+            console.log('Unity → Vue 방 유저 정보 전송:')
+            const roomId = this.parseUnityData(data.data)
+
+            console.log('roomId: ', roomId)
+
+            this.getUsersInfo(roomId)
+          },
+          'start-game': () => {
+            console.log('Unity → Vue 게임 시작 요청:')
+
+            // WebSocket 연결
+            this.connectStompWebSocket()
+          },
+          'answer-submit': () => {
+            const answerData = this.parseUnityData(data.data)
+            this.sendAnswerToServer(answerData)
+          },
+          'hint-request': () => {
+            const hintData = this.parseUnityData(data.data)
+            this.sendHintRequestToServer(hintData)
+          },
+          'unity-error': () => {
+            console.error('Unity 오류 발생:', data.error)
+            alert(
+              `Unity 로딩 오류: ${data.error}\n\n브라우저를 새로고침하거나 다른 브라우저를 사용해주세요.`,
+            )
+          },
         }
-        else if(data.type === 'create-room'){
-          // data.data도 JSON 문자열이므로 파싱
-          const roomData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data
-          this.handleCreateRoom(roomData);
-        }
-        else if(data.type === 'join-room'){
-          const roomData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data
-          this.handleJoinRoom(roomData);
-        }
-        else if(data.type === 'ready'){
-          const readyData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data
-          this.handleReady(readyData);
-        }
-        else if(data.type === 'start-game'){
-          // WebSocket으로 연결
-          console.log('Unity → Vue 게임 시작 요청:');
-          const gameData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data
-          
-          // roomId 설정
-          if (gameData.roomId) {
-            this.roomId = gameData.roomId
-            console.log('🎮 게임방 ID 설정:', this.roomId)
-          }
-          
-          this.connectStompWebSocket();
-        }
-        else if(data.type === 'answer-submit'){
-          // 정답 제출
-          const answerData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data
-          this.sendAnswerToServer(answerData);
-        }
-        else if(data.type === 'hint-request'){
-          // 힌트 요청
-          const hintData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data
-          this.sendHintRequestToServer(hintData);
-        }
-        else if(data.type === 'unity-error'){
-          // Unity 오류 처리
-          console.error('Unity 오류 발생:', data.error);
-          // 사용자에게 오류 알림
-          alert(`Unity 로딩 오류: ${data.error}\n\n브라우저를 새로고침하거나 다른 브라우저를 사용해주세요.`);
+
+        // 메시지 타입에 따른 핸들러 실행
+        if (messageHandlers[data.type]) {
+          messageHandlers[data.type]()
+        } else {
+          console.warn('알 수 없는 Unity 메시지 타입:', data.type)
         }
       } catch (error) {
         console.error('메시지 파싱 오류:', error)
       }
     })
 
-
-    
-
     // 유저 정보 받아오기
-    // try {
-    //   // Unity가 준비되었는지 확인
-    //   if(this.isUnityReady){
+    try {
+      // Unity가 준비되었는지 확인
+      if (this.isUnityReady) {
+        // 유저 정보 받아오기
+        await this.getUserInfo()
 
-    //     // 유저 정보 받아오기
-    //     await this.getUserInfo();
-
-    //     // 방 정보 받아오기
-    //     await this.getRoomList();
-    //   }
-    //   else{
-    //     const onUnityReady = (event) => {
-    //         try {
-    //           const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
-    //           if (data && data.type === 'unity-ready') {
-    //             this.isUnityReady = true
-    //             this.getUserInfo();
-    //             this.getRoomList();
-    //           }
-    //         } catch (_) {}
-    //       }
-    //       window.addEventListener('message', onUnityReady, { once: true })
-    //   }
-    // }catch(error){
-    //   console.error('유저 정보 조회 실패:', error);
-    // }
+        // 방 정보 받아오기
+        await this.getRoomList()
+      } else {
+        const onUnityReady = (event) => {
+          try {
+            const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
+            if (data && data.type === 'unity-ready') {
+              this.isUnityReady = true
+              this.getUserInfo()
+              this.getRoomList()
+            }
+          } catch (_) {}
+        }
+        window.addEventListener('message', onUnityReady, { once: true })
+      }
+    } catch (error) {
+      console.error('유저 정보 조회 실패:', error)
+    }
 
     // STOMP 연결
-    this.connectStompWebSocket();
+    //this.connectStompWebSocket();
 
     // STOMP WebSocket 연결 시작
     // this.connectStompWebSocket() // Unity에서 start-game 메시지로 연결
@@ -165,13 +181,83 @@ export default {
     }
     // STOMP 연결 해제
     this.disconnectStompWebSocket()
-    
+
     this.ws = null
     this.pc = null
     this.pendingCandidates = []
   },
 
   methods: {
+    // Unity 데이터 파싱 헬퍼 메서드
+    parseUnityData(data) {
+      return typeof data === 'string' ? JSON.parse(data) : data
+    },
+    async startWebRTC(roomId) {
+      try {
+        await this.initLocalMedia() // 카메라, 마이크 준비
+        await this.connectSignalingServer(roomId) // 시그널링 서버 연결
+        if (this.isInitiator) {
+          await this.startAsCaller()
+        } else {
+          // 수신자: offer를 기다림
+          console.log('[RTC] Waiting for offer…')
+        }
+      } catch (err) {
+        // 초기화 실패 시 오류 처리
+        console.error('[Init] error:', err)
+      }
+    },
+    async endWebRTC() {
+      try {
+        // WebRTC 연결 종료
+        if (this.pc) {
+          this.pc.close()
+          this.pc = null
+        }
+
+        // WebSocket 연결 종료
+        if (this.ws) {
+          this.ws.close()
+          this.ws = null
+        }
+
+        // 로컬 스트림 정리
+        if (this.localStream) {
+          this.localStream.getTracks().forEach((track) => track.stop())
+          this.localStream = null
+        }
+
+        // 원격 스트림 정리
+        if (this.remoteStream) {
+          this.remoteStream.getTracks().forEach((track) => track.stop())
+          this.remoteStream = null
+        }
+
+        // 비디오 요소 정리
+        if (this.$refs.localVideo) {
+          this.$refs.localVideo.srcObject = null
+        }
+        if (this.$refs.remoteVideo) {
+          this.$refs.remoteVideo.srcObject = null
+        }
+
+        // Unity에 영상 전송하는 setInterval 정리
+        if (this.frameIntervalId) {
+          clearInterval(this.frameIntervalId)
+          this.frameIntervalId = null
+        }
+
+        // 상태 초기화
+        this.pendingCandidates = []
+        this.isInitiator = true
+        this.isWaiting = true
+        this.peerClosed = false
+
+        console.log('WebRTC 연결이 성공적으로 종료되었습니다.')
+      } catch (error) {
+        console.error('WebRTC 종료 중 오류 발생:', error)
+      }
+    },
     async initLocalMedia() {
       try {
         // 카메라, 마이크 접근 권한 요청
@@ -266,37 +352,37 @@ export default {
     },
 
     async startAsCaller() {
-      this.createPeerIfNeeded();
+      this.createPeerIfNeeded()
 
-      const offer = await this.pc.createOffer();
-      await this.pc.setLocalDescription(offer);
+      const offer = await this.pc.createOffer()
+      await this.pc.setLocalDescription(offer)
 
       this.safeSend({
         type: 'offer',
         offer: offer,
         from: this.localId,
         to: this.remoteId,
-      });
+      })
       console.log('offer전송완료')
     },
-    connectSignalingServer() {
+    connectSignalingServer(roomId) {
       // 시그널링 서버 연결
       return new Promise((resolve, reject) => {
-        this.ws = new WebSocket(`wss://i13a708.p.ssafy.io/signal`) // 변수명 수정
+        this.ws = new WebSocket(`wss://i13a708.p.ssafy.io/signal/${roomId}`) // 변수명 수정
         this.ws.onopen = () => {
           console.log('시그널링 서버 연결 성공')
           resolve()
-        };
+        }
         this.ws.onerror = (error) => {
-          console.error('시그널링 서버 오류:', error);
-          reject(error);
-        };
+          console.error('시그널링 서버 오류:', error)
+          reject(error)
+        }
         this.ws.onclose = (event) => {
-          console.warn('시그널링 서버 연결 종료', event.code, event.reason);
+          console.warn('시그널링 서버 연결 종료', event.code, event.reason)
           //reject(new Error('시그널링 서버 연결 종료'));
-        };
-        this.ws.onmessage = this.onSignalingMessage;
-      });
+        }
+        this.ws.onmessage = this.onSignalingMessage
+      })
     },
     safeSend(obj) {
       // 메시지 전송 함수
@@ -310,95 +396,100 @@ export default {
       }
     },
     async onSignalingMessage(event) {
-      const data = JSON.parse(event.data);
-      switch(data.type){
+      const data = JSON.parse(event.data)
+      switch (data.type) {
         case 'offer':
-          this.handleOffer(data);
-          break;
+          this.handleOffer(data)
+          break
         case 'answer':
-          this.handleAnswer(data);
-          break;
+          this.handleAnswer(data)
+          break
         case 'candidate':
-          this.handleRemoteCandidate(data);
-          break;
+          this.handleRemoteCandidate(data)
+          break
         case 'leave':
-          this.handleLeave();
-          break;
+          this.handleLeave()
+          break
         default:
-          console.warn('Unknown message type:', data.type);
-          break;
+          console.warn('Unknown message type:', data.type)
+          break
       }
     },
-    async handleOffer(data) { // 매개변수 수정
-      this.isInitiator = false;
-      this.createPeerIfNeeded();
+    async handleOffer(data) {
+      // 매개변수 수정
+      this.isInitiator = false
+      this.createPeerIfNeeded()
 
-      await this.pc.setRemoteDescription(new RTCSessionDescription(data.offer)); // data.offer로 수정
-      await this.flushPendingCandidates();
+      await this.pc.setRemoteDescription(new RTCSessionDescription(data.offer)) // data.offer로 수정
+      await this.flushPendingCandidates()
 
-      const answer = await this.pc.createAnswer();
-      await this.pc.setLocalDescription(answer);
+      const answer = await this.pc.createAnswer()
+      await this.pc.setLocalDescription(answer)
 
       this.safeSend({
         type: 'answer',
         answer: answer,
         from: this.localId,
         to: data.from,
-      });
+      })
       console.log('answer전송완료')
     },
-    async handleAnswer(data) { // 매개변수 수정
+    async handleAnswer(data) {
+      // 매개변수 수정
       // 피어 생성
-      if (!this.pc) this.createPeerIfNeeded();
+      if (!this.pc) this.createPeerIfNeeded()
 
       // 상대방의 세션 설명 설정
-      await this.pc.setRemoteDescription(new RTCSessionDescription(data.answer)); // data.answer로 수정
+      await this.pc.setRemoteDescription(new RTCSessionDescription(data.answer)) // data.answer로 수정
 
       // 미처리 후보들 적용
-      await this.flushPendingCandidates();
+      await this.flushPendingCandidates()
 
       console.log('answer수신완료')
     },
-    async handleRemoteCandidate(data) { // 매개변수 수정
-      if (!data.candidate || !data.candidate.candidate) return; // data.candidate로 수정
+    async handleRemoteCandidate(data) {
+      // 매개변수 수정
+      if (!data.candidate || !data.candidate.candidate) return // data.candidate로 수정
 
       // Remote SDP 없으면 큐에 저장
-      if(!this.pc || !this.pc.remoteDescription) {
-        this.pendingCandidates.push(data.candidate); // data.candidate로 수정
-        return;
+      if (!this.pc || !this.pc.remoteDescription) {
+        this.pendingCandidates.push(data.candidate) // data.candidate로 수정
+        return
       }
 
       try {
-        await this.pc.addIceCandidate(new RTCIceCandidate(data.candidate)); // data.candidate로 수정
-      }catch(error){
-        console.error('ICE candidate 추가 실패:', error);
+        await this.pc.addIceCandidate(new RTCIceCandidate(data.candidate)) // data.candidate로 수정
+      } catch (error) {
+        console.error('ICE candidate 추가 실패:', error)
 
         // 추가 실패시 큐에 다시 추가
         this.pendingCandidates.push(data.candidate) // data.candidate로 수정
       }
-      
+
       console.log('candidate 수신완료')
     },
     async flushPendingCandidates() {
-      if (!this.pc || !this.pc.remoteDescription) return;
-      if (!this.pendingCandidates.length) return;
+      if (!this.pc || !this.pc.remoteDescription) return
+      if (!this.pendingCandidates.length) return
 
-      const waiting = [...this.pendingCandidates];
-      this.pendingCandidates = [];
+      const waiting = [...this.pendingCandidates]
+      this.pendingCandidates = []
       for (const c of waiting) {
         try {
-          await this.pc.addIceCandidate(new RTCIceCandidate(c));
+          await this.pc.addIceCandidate(new RTCIceCandidate(c))
         } catch (e) {
-          console.error('[RTC] addIceCandidate failed (flush):', e, c);
+          console.error('[RTC] addIceCandidate failed (flush):', e, c)
         }
       }
-      console.log(`[RTC] Flushed ${waiting.length} pending candidates.`);
+      console.log(`[RTC] Flushed ${waiting.length} pending candidates.`)
     },
-    handleLeave(){
-      try { this.pc && this.pc.close(); } catch {}
-      this.pc = null;
-      this.pendingCandidates = [];
-      console.log('[RTC] Peer closed.');
+    handleLeave() {
+      try {
+        this.pc && this.pc.close()
+      } catch {}
+      this.pc = null
+      this.pendingCandidates = []
+      console.log('[RTC] Peer closed.')
     },
     // 유저 정보 조회 함수
     async getUserInfo() {
@@ -413,13 +504,13 @@ export default {
       }
     },
     // 방 정보 조회 함수
-    async getRoomList(){
-      try{
+    async getRoomList() {
+      try {
         const response = await api.get('/api/v1/game-rooms')
         const roomList = response.data
         this.sendRoomListToUnity(roomList)
-      } catch(error){
-        console.error('방 정보 조회 실패', error);
+      } catch (error) {
+        console.error('방 정보 조회 실패', error)
       }
     },
     // Unity 전송 함수
@@ -453,7 +544,7 @@ export default {
             nickname: userInfo.nickname,
             profileimage: userInfo.profileImage,
             personalpoint: userInfo.personalPoint,
-          })
+          }),
         }),
         '*',
       )
@@ -465,31 +556,32 @@ export default {
 
       // Unity JsonUtility 호환을 위해 래퍼 객체로 감싸기
       const wrapper = { rooms: roomList }
-      
+
       unityFrame.contentWindow.postMessage(
         JSON.stringify({
           type: 'room-list',
-          data: JSON.stringify(wrapper)
+          data: JSON.stringify(wrapper),
         }),
         '*',
       )
 
       console.log('Vue → Unity 방 목록 전송: ', roomList)
     },
-    
+
     // Unity에서 방 생성 요청 처리
     async handleCreateRoom(roomData) {
       try {
         console.log('Unity → Vue 방 생성 요청:', roomData)
-        
+
         // API로 방 생성 요청
-        const response = await api.post('/api/v1/game-rooms', roomData, { headers: { 'Content-Type': 'application/json' } })
-        
-        console.log('방 생성 성공:', response.data)
-        
+        const response = await api.post('/api/v1/game-rooms', roomData, {
+          headers: { 'Content-Type': 'application/json' },
+        })
+
+        //console.log('방 생성 성공:', response.data)
+
         // 생성된 방 정보를 Unity로 전송
         this.sendRoomCreatedToUnity(response.data)
-        
       } catch (error) {
         console.error('방 생성 실패:', error)
         // 에러 정보를 Unity로 전송
@@ -503,12 +595,27 @@ export default {
         const roomId = roomData.roomId
 
         // API로 방 참여
-        const response = await api.post(`/api/v1/game-rooms/${roomId}/join`, roomData, { headers: { 'Content-Type': 'application/json' } })
+        const response = await api.post(`/api/v1/game-rooms/${roomId}/join`, roomData, {
+          headers: { 'Content-Type': 'application/json' },
+        })
         console.log('방 입장 성공:', response.data)
 
         this.sendJoinRoomToUnity(response.data)
       } catch (error) {
         console.error('방 입장 실패:', error)
+      }
+    },
+    async handleLeaveRoom(roomId) {
+      try {
+        const response = await api.delete(`/api/v1/game-rooms/${roomId}/leave`)
+        console.log('방 퇴장 성공:', response.data)
+
+        // WebRTC 연결 종료
+        await this.endWebRTC();
+
+        this.sendLeaveRoomToUnity(roomId)
+      } catch (error) {
+        console.error('방 퇴장 실패:', error)
       }
     },
     async handleReady(readyData) {
@@ -519,71 +626,109 @@ export default {
 
         // API로 게임 준비
         const response = await api.put(`/api/v1/game-rooms/${roomId}/ready`, readyData)
-        console.log('게임 준비 성공:', response.data)
+        //console.log('게임 준비 성공:', response.data)
 
         this.sendReadyAnswerToUnity(response.data)
       } catch (error) {
         console.error('게임 준비 실패:', error)
       }
     },
-    
+    async getUsersInfo(roomId) {
+      console.log(`/api/v1/game-rooms/${roomId}/waiting-users`)
+
+      try {
+        roomId = parseInt(roomId)
+        const response = await api.get(`/api/v1/game-rooms/${roomId}/waiting-users`)
+        console.log('방 유저 정보 조회 성공:', response.data)
+        this.sendUsersInfoToUnity(response.data)
+      } catch (error) {
+        console.error('방 유저 정보 조회 실패:', error)
+      }
+    },
+
     // 방 생성 성공 정보를 Unity로 전송
     sendRoomCreatedToUnity(roomInfo) {
       const unityFrame = this.$refs.unityFrame
-      
+
       unityFrame.contentWindow.postMessage(
         JSON.stringify({
           type: 'room-created',
-          data: JSON.stringify(roomInfo)
+          data: JSON.stringify(roomInfo),
         }),
-        '*'
+        '*',
       )
-      
+
       console.log('Vue → Unity 방 생성 성공 전송:', roomInfo)
     },
     // 방 입장 성공 정보를 Unity로 전송
     sendJoinRoomToUnity(roomInfo) {
       const unityFrame = this.$refs.unityFrame
-      
+
       unityFrame.contentWindow.postMessage(
         JSON.stringify({
           type: 'join-room',
-          data: JSON.stringify(roomInfo)
+          data: JSON.stringify(roomInfo),
         }),
-        '*'
+        '*',
       )
     },
+
+    // 방 퇴장 성공 정보를 Unity로 전송
+    sendLeaveRoomToUnity(roomId) {
+      const unityFrame = this.$refs.unityFrame
+
+      unityFrame.contentWindow.postMessage(
+        JSON.stringify({
+          type: 'leave-room',
+          data: `${roomId}`,
+        }),
+        '*',
+      )
+    },
+
     // 게임 준비 성공 정보를 Unity로 전송
     sendReadyAnswerToUnity(readyInfo) {
       const unityFrame = this.$refs.unityFrame
-      
+
       unityFrame.contentWindow.postMessage(
-        JSON.stringify({ 
+        JSON.stringify({
           type: 'ready-answer',
-          data: JSON.stringify(readyInfo)
+          data: JSON.stringify(readyInfo),
         }),
-        '*'
+        '*',
       )
     },
+
+    sendUsersInfoToUnity(roomUsers) {
+      const unityFrame = this.$refs.unityFrame
+
+      const wrapper = { roomUsers: roomUsers }
     
+      unityFrame.contentWindow.postMessage(
+        JSON.stringify({
+          type: 'users-info',
+          data: JSON.stringify(wrapper),
+        }),
+        '*',
+      )
+    },
     // 에러 정보를 Unity로 전송
     sendErrorToUnity(errorMessage) {
       const unityFrame = this.$refs.unityFrame
-      
+
       unityFrame.contentWindow.postMessage(
         JSON.stringify({
           type: 'error',
-          data: errorMessage
+          data: errorMessage,
         }),
-        '*'
+        '*',
       )
-      
+
       console.log('Vue → Unity 에러 전송:', errorMessage)
     },
 
     // STOMP WebSocket 연결
     connectStompWebSocket() {
-
       try {
         // STOMP 클라이언트 생성
         this.stompClient = new Client({
@@ -599,10 +744,10 @@ export default {
         // 연결 성공 시 콜백
         this.stompClient.onConnect = (frame) => {
           console.log('✅ STOMP WebSocket 연결 성공:', frame)
-          
+
           // 구독할 토픽들
           this.subscribeToTopics()
-          
+
           // 연결 성공 로그만 출력
           console.log('🎮 STOMP 연결 완료 - 게임 준비됨')
         }
@@ -619,7 +764,6 @@ export default {
 
         // WebSocket 연결 활성화
         this.stompClient.activate()
-        
       } catch (error) {
         console.error('STOMP 클라이언트 생성 오류:', error)
       }
@@ -655,10 +799,10 @@ export default {
     // 게임 메시지 처리
     handleGameMessage(message) {
       console.log('🎮 게임 메시지 처리:', message)
-      
+
       try {
         const { type, data } = message
-        
+
         switch (type) {
           case 'GAME_START':
             this.handleGameStart(data)
@@ -747,9 +891,9 @@ export default {
         unityFrame.contentWindow.postMessage(
           JSON.stringify({
             type: type,
-            data: JSON.stringify(data)
+            data: JSON.stringify(data),
           }),
-          '*'
+          '*',
         )
         console.log('🎮 Vue → Unity 전송:', type, data)
       }
@@ -764,10 +908,10 @@ export default {
             roomId: this.roomId,
             userId: this.localId,
             answer: answerData.answer,
-            timestamp: new Date().toISOString()
-          }
+            timestamp: new Date().toISOString(),
+          },
         }
-        
+
         this.sendStompMessage('/games/answer', message)
         console.log('📤 정답 제출 전송:', message)
       } catch (error) {
@@ -784,10 +928,10 @@ export default {
             roomId: this.roomId,
             userId: this.localId,
             hintType: hintData.hintType,
-            timestamp: new Date().toISOString()
-          }
+            timestamp: new Date().toISOString(),
+          },
         }
-        
+
         this.sendStompMessage('/games/hint', message)
         console.log('💡 힌트 요청 전송:', message)
       } catch (error) {
@@ -805,21 +949,19 @@ export default {
       try {
         // /pub 접두사 추가
         const pubDestination = destination.startsWith('/pub') ? destination : `/pub${destination}`
-        
+
         this.stompClient.publish({
           destination: pubDestination,
           body: JSON.stringify(message),
           headers: {
-            'content-type': 'application/json'
-          }
+            'content-type': 'application/json',
+          },
         })
         console.log('📤 STOMP 메시지 전송:', pubDestination, message)
       } catch (error) {
         console.error('STOMP 메시지 전송 오류:', error)
       }
     },
-
-
 
     // STOMP 연결 해제
     disconnectStompWebSocket() {
@@ -836,18 +978,29 @@ export default {
 
 <style scoped>
 .unity-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100vh;
   width: 100vw;
+  background-color: #000;
+  overflow: hidden;
 }
 iframe {
   border: none;
-  width: 100%;
+  /* 화면 가득히 배치하는 옵션 */
+  width: 100vw;
+  height: 100vh;
+  
+  /* 정중앙에 배치하는 옵션 (주석 처리) */
+  /* width: 100%;
   height: 100%;
   max-width: 2560px;
   max-height: 1440px;
+  object-fit: contain; */
 }
 .localCamera {
   position: absolute;
