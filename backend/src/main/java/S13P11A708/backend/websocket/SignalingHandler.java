@@ -1,5 +1,6 @@
 package S13P11A708.backend.websocket;
 
+import S13P11A708.backend.security.CustomOAuth2User;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class SignalingHandler extends TextWebSocketHandler {
 
+    //private final Map<String, WebSocketSession> userSessions = new ConcurrentHashMap<>();
     private static final Logger log = LoggerFactory.getLogger(SignalingHandler.class);
     private final Set<WebSocketSession> clients = Collections.synchronizedSet(new HashSet<>());
 
