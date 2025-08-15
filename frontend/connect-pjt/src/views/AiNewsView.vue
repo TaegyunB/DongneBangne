@@ -91,6 +91,18 @@
       </div>
     </div>
 
+    <!-- 알림 모달 -->
+    <div v-if="showAlertModal" class="modal-overlay" @click.self="closeAlertModal">
+      <div class="modal-content">
+        <button class="modal-close-btn" @click="closeAlertModal">×</button>
+        <h2>{{ alertTitle }}</h2>
+        <p class="modal-description">{{ alertMessage }}</p>
+        <div class="modal-action-buttons">
+          <button class="modal-button" @click="closeAlertModal">확인</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 데이터가 없는 경우 -->
     <div v-if="!loading && displayNewsList.length === 0" class="no-data">
       <p>아직 생성된 신문이 없습니다.</p>
@@ -151,6 +163,24 @@ const itemsPerPage = 10
 const showPdfModal = ref(false)
 const selectedNews = ref(null)
 
+// 알림 모달 관련
+const showAlertModal = ref(false)
+const alertTitle = ref('')
+const alertMessage = ref('')
+
+// 알림 모달 함수
+const showAlert = (title, message) => {
+  alertTitle.value = title
+  alertMessage.value = message
+  showAlertModal.value = true
+}
+
+const closeAlertModal = () => {
+  showAlertModal.value = false
+  alertTitle.value = ''
+  alertMessage.value = ''
+}
+
 // 신문 목록 조회
 const fetchNews = async () => {
   loading.value = true
@@ -176,7 +206,7 @@ const fetchNews = async () => {
     if (error.response) {
       const status = error.response.status
       if (status === 403) {
-        errorMessage = '신문을 볼 권한이 없습니다.'
+        errorMessage = '권한이 없습니다.'
       } else if (status === 404) {
         errorMessage = '신문 데이터를 찾을 수 없습니다.'
       }
@@ -265,7 +295,7 @@ const showPdfGenerator = async (news) => {
     showPdfModal.value = true
   } catch (error) {
     console.error('신문 상세 정보 로드 실패:', error)
-    alert('신문 정보를 불러오는데 실패했습니다.')
+    showAlert('오류', '신문 정보를 불러오는데 실패했습니다.')
   }
 }
 
@@ -302,7 +332,7 @@ const viewNewsPdf = async (newsId) => {
       errorMessage = 'PDF를 볼 권한이 없습니다.'
     }
     
-    alert(errorMessage)
+    showAlert('오류', errorMessage)
   }
 }
 
@@ -581,6 +611,7 @@ onMounted(async () => {
   min-height: 400px;
 }
 
+/* 모달 스타일 - 2번째 코드와 동일하게 */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -626,6 +657,48 @@ onMounted(async () => {
 
 .modal-close-btn:hover {
   background-color: #f3f4f6;
+}
+
+.modal-content h2 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: #333;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.modal-description {
+  font-size: 16px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+  color: #666;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.modal-action-buttons {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+
+.modal-button {
+  background-color: #4A90E2;
+  color: white;
+  padding: 14px 28px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.modal-button:hover {
+  background-color: #2b6ce5;
+  transform: translateY(-1px);
 }
 
 @media (max-width: 768px) {

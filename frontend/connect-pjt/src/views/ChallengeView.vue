@@ -74,10 +74,6 @@
           <div class="text-content">
             <div class="title-with-buttons">
               <h2>{{ getDisplayTitle(challenge, index) }}</h2>
-              <!-- 3,4번째 칸에서 미션이 없을 때만 생성 버튼 표시 -->
-              <div v-if="shouldShowCreateButton(challenge, index)" class="action-buttons">
-                <button class="create-btn" @click.stop="moveToCreate()">생성</button>
-              </div>
             </div>
           </div>
           <!-- 상태별 버튼 -->
@@ -89,13 +85,14 @@
           >
             {{ getButtonText(challenge) }}
           </div>
-          <!-- 생성 전 버튼 (MEMBER, 빈 도전) -->
+          <!-- 빈 도전일 때 버튼 -->
           <div 
-            v-else-if="userRole !== 'ADMIN' && challenge.isEmpty"
-            class="challenge-complete-btn btn-not-created"
-            @click="showNotCreatedModal()"
+            v-else-if="challenge.isEmpty"
+            class="challenge-complete-btn"
+            :class="userRole === 'ADMIN' ? 'btn-create' : 'btn-not-created'"
+            @click="userRole === 'ADMIN' ? moveToCreate() : showNotCreatedModal()"
           >
-            도전 생성 전
+            {{ userRole === 'ADMIN' ? '도전 생성' : '도전 생성 전' }}
           </div>
         </div>
       </div>
@@ -151,16 +148,6 @@
             </button>
             <button 
               v-if="shouldShowDeleteButton(selectedChallenge)" 
-              class="modal-delete-btn" 
-              @click="showDeleteConfirm(getSelectedChallengeIndex())"
-            >
-              삭제
-            </button>
-          </div>
-          
-          <!-- 삭제 버튼 (ADMIN이고 완료된 도전) -->
-          <div v-if="userRole === 'ADMIN' && !selectedChallenge.isEmpty && isCompleted(selectedChallenge) && selectedChallenge.challengeType === 'CUSTOM'" class="modal-edit-delete-buttons">
-            <button 
               class="modal-delete-btn" 
               @click="showDeleteConfirm(getSelectedChallengeIndex())"
             >
@@ -244,6 +231,18 @@
       </div>
     </div>
   </div>
+  
+  <!-- 알림 모달 -->
+  <div v-if="showAlertModal" class="modal-overlay" @click.self="closeAlertModal">
+    <div class="modal-content">
+      <button class="modal-close-btn" @click="closeAlertModal">×</button>
+      <h2>{{ alertTitle }}</h2>
+      <p class="modal-description">{{ alertMessage }}</p>
+      <div class="modal-action-buttons">
+        <button class="modal-button" @click="closeAlertModal">확인</button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -276,8 +275,22 @@ const modals = ref({
   detail: { show: false, selectedChallenge: { challengeTitle: '', description: '', challengePlace: '' }, selectedChallengeId: null },
   edit: { show: false, form: { title: '', description: '', place: '' }, editingIndex: null, showSuccess: false },
   delete: { show: false, showFinal: false, selectedChallenge: null, selectedIndex: null },
-  notCreatedAlert: { show: false } // 새로운 모달 추가
+  notCreatedAlert: { show: false }, // 새로운 모달 추가
+  alert: { show: false, title: '', message: '' }
 })
+
+// 알림 모달 computed와 함수들 추가
+const showAlertModal = computed(() => modals.value.alert.show)
+const alertTitle = computed(() => modals.value.alert.title)
+const alertMessage = computed(() => modals.value.alert.message)
+
+const showAlert = (title, message) => {
+  modals.value.alert = { show: true, title, message }
+}
+
+const closeAlertModal = () => {
+  modals.value.alert = { show: false, title: '', message: '' }
+}
 
 // 모달 상태 단축 접근
 const showModal = computed(() => modals.value.detail.show)
@@ -304,11 +317,6 @@ const getDisplayTitle = (challenge, index) => {
   } else { // 1, 2번째 칸 (서비스 제공 도전)
     return '준비 중입니다.'
   }
-}
-
-// 생성 버튼 표시 조건 (3,4번째 칸에서 미션이 없을 때만)
-const shouldShowCreateButton = (challenge, index) => {
-  return userRole.value === 'ADMIN' && index >= 2 && challenge.isEmpty
 }
 
 // 수정 버튼 표시 조건 (완료 전에만)
@@ -618,7 +626,7 @@ const closeEditSuccessModal = () => {
 const saveEditChallenge = async () => {
   const { form, editingIndex } = modals.value.edit
   if (!form.title.trim() || !form.description.trim()) {
-    alert('제목과 설명을 모두 입력해주세요.')
+    showAlert('제목과 설명을 모두 입력해주세요.')
     return
   }
 
@@ -626,7 +634,7 @@ const saveEditChallenge = async () => {
     const challenge = challenges.value[editingIndex]
     
     if (challenge.challengeType === 'SERVICE') {
-      alert('서비스 제공 도전과제는 수정할 수 없습니다.')
+      showAlert('서비스 제공 도전과제는 수정할 수 없습니다.')
       return
     } 
     else if (challenge.challengeType === 'CUSTOM' && challenge.id) {
@@ -655,9 +663,9 @@ const saveEditChallenge = async () => {
     console.error('도전과제 수정 실패:', error)
     
     if (error.response?.status === 401 || error.response?.status === 403) {
-      alert('로그인이 필요합니다. 다시 로그인해주세요.')
+      showAlert('로그인이 필요합니다. 다시 로그인해주세요.')
     } else {
-      alert('도전과제 수정에 실패했습니다.')
+      showAlert('도전과제 수정에 실패했습니다.')
     }
     return
   }
@@ -693,7 +701,7 @@ const confirmDelete = async () => {
     
     try {
       if (challenge.challengeType === 'SERVICE') {
-        alert('서비스 제공 도전과제는 삭제할 수 없습니다.')
+        showAlert('서비스 제공 도전과제는 삭제할 수 없습니다.')
         return
       } 
       else if (challenge.challengeType === 'CUSTOM' && challenge.id) {
@@ -709,9 +717,9 @@ const confirmDelete = async () => {
       console.error('도전과제 삭제 실패:', error)
       
       if (error.response?.status === 401 || error.response?.status === 403) {
-        alert('로그인이 필요합니다. 다시 로그인해주세요.')
+        showAlert('로그인이 필요합니다. 다시 로그인해주세요.')
       } else {
-        alert('도전과제 삭제에 실패했습니다.')
+        showAlert('도전과제 삭제에 실패했습니다.')
       }
       return
     }
@@ -741,7 +749,7 @@ const moveToFinish = () => {
 const goToAINews = async () => {
   // 완료된 도전이 없으면 실행하지 않음
   if (!isAINewsButtonEnabled.value) {
-    alert('미션을 하나라도 인증해야 AI 신문을 생성할 수 있습니다.')
+    showAlert('미션을 하나라도 인증해야 AI 신문을 생성할 수 있습니다.')
     return
   }
   
@@ -765,7 +773,7 @@ const goToAINews = async () => {
       router.push('/news')
     }
     
-    alert('AI 신문이 성공적으로 생성되었습니다!')
+    showAlert('AI 신문이 성공적으로 생성되었습니다!')
     
   } catch (error) {
     console.error('AI 신문 생성 실패:', error)
@@ -789,7 +797,7 @@ const goToAINews = async () => {
       errorMessage = 'AI 신문 생성에 실패했습니다: 서버와 연결할 수 없습니다.'
     }
     
-    alert(errorMessage)
+    showAlert(errorMessage)
     
     // 에러가 발생해도 신문 목록 페이지로 이동 (선택사항)
     router.push('/news')
@@ -1205,6 +1213,17 @@ watch(percent, updateMessage)
         transform: translateX(-50%) translateY(-2px);
     }
 
+    /* 도전 생성 버튼 (ADMIN, 빈 도전) */
+    .btn-create {
+        background-color: #28a745;
+        color: white;
+    }
+
+    .btn-create:hover {
+        background-color: #218838;
+        transform: translateX(-50%) translateY(-2px);
+    }
+
     /* 완료 버튼 */
     .btn-completed {
         background-color: rgb(30, 58, 138); /* 진한 파란색 */
@@ -1594,6 +1613,7 @@ watch(percent, updateMessage)
             margin-top: 8px;
         }
 
+        /* 모달 버튼들 - 모바일에서 세로로 배치하고 전체 너비 */
         .modal-buttons {
             flex-direction: column;
             gap: 12px;
@@ -1609,6 +1629,10 @@ watch(percent, updateMessage)
         }
 
         .modal-edit-btn, .modal-delete-btn, .modal-edit-btn-small {
+            width: 100%;
+        }
+
+        .delete-confirm-btn, .delete-success-btn {
             width: 100%;
         }
 
@@ -1632,15 +1656,15 @@ watch(percent, updateMessage)
         .single-challenge {
             border: 2px solid var(--text-black);
         }
-        
+
         .modal-content {
             border: 2px solid var(--text-black);
         }
-        
+
         .ai-news-section .btn-ai-news {
             border: 2px solid var(--text-black);
         }
-        
+
         .challenge-placeholder {
             border: 2px solid var(--text-black);
         }
