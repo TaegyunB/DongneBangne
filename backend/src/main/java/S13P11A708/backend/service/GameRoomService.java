@@ -39,8 +39,6 @@ public class GameRoomService {
         GameRoom room = GameRoom.builder()
                 .roomTitle(request.getRoomTitle())
                 .gameRound(request.getGameRound())
-                .musicEra(request.getMusicEra())
-                .category(request.getCategory())
                 .gameStatus(GameStatus.WAITING)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -65,8 +63,6 @@ public class GameRoomService {
                             .id(room.getId())
                             .roomTitle(room.getRoomTitle())
                             .gameRound(room.getGameRound())
-                            .musicEra(room.getMusicEra())
-                            .category(room.getCategory())
                             .gameStatus(room.getGameStatus().name())
                             .participantCount(participantCount)
                             .build();
