@@ -1,688 +1,667 @@
 <template>
-  <div class="game-lobby">
-    <!-- 나눔스퀘어라운드 폰트 -->
-    <link href="https://hangeul.pstatic.net/hangeul_static/css/nanum-square-round.css" rel="stylesheet">
-    <!-- 왼쪽 섹션: 방 목록 -->
-    <div class="left-section">
-      <div class="header">
-        <div class="title-section">
-          <div class="title">
-            <h1>게임 참가하기</h1>
-            <p>다른 사람의 방에 참가해보아요</p>
-          </div>
-          <div class="action-buttons">
-            <button class="btn btn-danger" @click="exitGame">
-              게임 종료
-            </button>
-            <button class="btn btn-primary" @click="createRoom">
-              방 만들기
-            </button>
-          </div>
-        </div>
+  <div class="websocket-test-container">
+    <h1>WebSocket STOMP 메시지 테스트</h1>
+    
+    <!-- 연결 상태 -->
+    <div class="connection-status">
+      <h3>연결 상태</h3>
+      <div class="status-indicator" :class="{ connected: isConnected }">
+        {{ isConnected ? '연결됨' : '연결 안됨' }}
       </div>
-
-      <div class="room-list">
-        <div 
-          v-for="room in roomList" 
-          :key="room.gameRoomId"
-          class="room-card"
-          :class="{ selected: selectedRoom?.gameRoomId === room.gameRoomId }"
-          @click="selectRoom(room)"
-        >
-          <div class="room-title">{{ room.roomTitle }}</div>
-          <div class="room-participants">
-            <span class="icon">👤</span>
-            {{ room.participantCount }}/2
-          </div>
-        </div>
-      </div>
-
-      <div class="status-text">Logging...</div>
+      <button @click="connectWebSocket" :disabled="isConnected">연결</button>
+      <button @click="disconnectWebSocket" :disabled="!isConnected">연결 해제</button>
     </div>
 
-    <!-- 오른쪽 섹션: 선택된 방 정보 -->
-    <div class="right-section" v-if="selectedRoom">
-      <div class="user-info">
-        <div class="avatar">👨‍🦳</div>
-        <div class="user-details">
-          <div class="username">{{ userInfo.nickname || '유저 이름' }}</div>
-          <div class="points">포인트: {{ userInfo.personalPoint || 0 }}p</div>
-        </div>
-      </div>
-
-      <div class="room-details-card">
-        <div class="room-header">
-          <div class="header-content">
-            <span class="music-icon">🎵</span>
-            <div class="round-info">
-              <div class="round-label">최대 라운드</div>
-              <div class="round-number">{{ selectedRoom.gameRound }} 라운드</div>
-            </div>
-          </div>
-        </div>
-        <div class="room-title">{{ selectedRoom.roomTitle }}</div>
-      </div>
-
-      <button class="btn btn-success join-btn" @click="joinRoom">
-        참가하기
-      </button>
-    </div>
-
-    <!-- 방이 선택되지 않았을 때 -->
-    <div class="right-section empty" v-else>
-      <div class="empty-state">
-        <div class="empty-icon">🎮</div>
-        <h3>방을 선택해주세요</h3>
-        <p>왼쪽에서 참가하고 싶은 방을 클릭하세요</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- 방 만들기 팝업 -->
-  <div class="modal-overlay" v-if="showCreateRoomModal" @click="closeCreateRoomModal">
-    <div class="modal-content" @click.stop>
-      <button class="close-btn" @click="closeCreateRoomModal">×</button>
-      
-      <h2 class="modal-title">방 만들기</h2>
-      
+    <!-- 설정 -->
+    <div class="settings">
+      <h3>설정</h3>
       <div class="input-group">
+        <label>WebSocket URL:</label>
+        <input v-model="wsUrl" placeholder="ws://localhost:8080/ws-game" />
+      </div>
+      <div class="input-group">
+        <label>Room ID:</label>
+        <input v-model="roomId" placeholder="1" />
+      </div>
+      <div class="input-group">
+        <label>User ID:</label>
+        <input v-model="userId" placeholder="user123" />
+      </div>
+    </div>
+
+    <!-- 메시지 전송 -->
+    <div class="message-sender">
+      <h3>메시지 전송</h3>
+      
+      <div class="message-section">
+        <h4>클라이언트 → 서버 메시지 전송</h4>
+        <div class="input-group">
+          <label>메시지 타입:</label>
+          <input v-model="messageType" placeholder="예: GAME_START, ANSWER_SUBMIT, HINT_REQUEST" />
+        </div>
+        <div class="input-group">
+          <label>메시지 Body (JSON):</label>
+          <textarea v-model="messageBody" placeholder='{"roomId": "room123", "userId": "user123", "content": "메시지 내용"}'></textarea>
+        </div>
+        <div class="input-group">
+          <label>전송 경로:</label>
+          <input v-model="sendDestination" placeholder="/pub/games 또는 /pub/games/answer 등" />
+        </div>
+        <button @click="sendMessage" class="send-button">메시지 전송</button>
+      </div>
+    </div>
+
+    <!-- YouTube 동영상 -->
+    <div class="youtube-section">
+      <h3>YouTube 동영상</h3>
+      <div class="youtube-controls">
         <input 
-          v-model="newRoom.roomTitle" 
-          type="text" 
-          placeholder="방 이름을 입력해주세요"
-          maxlength="10"
-          class="form-input"
-        >
-        <div class="char-count">{{ newRoom.roomTitle.length }}/10</div>
+          v-model="videoId" 
+          placeholder="YouTube 비디오 ID를 입력하세요"
+          @keyup.enter="changeVideo"
+          class="video-input"
+        />
+        <button @click="changeVideo" class="change-btn">비디오 변경</button>
       </div>
       
-      <div class="input-group">
-        <select v-model="newRoom.gameRound" class="form-select">
-          <option value="" disabled>라운드를 선택하세요</option>
-          <option value="3">3 라운드</option>
-          <option value="5">5 라운드</option>
-          <option value="7">7 라운드</option>
-        </select>
-      </div>
+      <div id="player"></div>
       
-      <button class="btn btn-primary create-room-btn" @click="submitCreateRoom">
-        방 만들기
-      </button>
+      <div class="playback-controls">
+        <button @click="playVideo" class="play-btn">재생</button>
+        <button @click="pauseVideo" class="pause-btn">일시정지</button>
+      </div>
+    </div>
+
+    <!-- 메시지 로그 -->
+    <div class="message-log">
+      <h3>메시지 로그</h3>
+      <div class="log-controls">
+        <button @click="clearLog">로그 지우기</button>
+        <button @click="exportLog">로그 내보내기</button>
+      </div>
+      <div class="log-container">
+        <div v-for="(log, index) in messageLog" :key="index" class="log-entry" :class="log.type">
+          <div class="log-timestamp">{{ log.timestamp }}</div>
+          <div class="log-direction">{{ log.direction }}</div>
+          <div class="log-type">{{ log.messageType }}</div>
+          <div class="log-content">{{ log.content }}</div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
+import SockJS from 'sockjs-client'
+import { Stomp } from '@stomp/stompjs'
+
 export default {
   name: 'WebRTCTestView',
   data() {
     return {
-      // 사용자 정보
-      userInfo: {
-        nickname: '유저 이름',
-        personalPoint: 0
-      },
+      wsUrl: 'wss://i13a708.p.ssafy.io/ws-game',
+      roomId: '1',
+      userId: 'user123',
+      messageType: '',
+      messageBody: '',
+      sendDestination: '/pub/games',
+      videoId: 'pkc1XoilQIc',
       
-      // 방 목록 (더미 데이터)
-      roomList: [
-        {
-          gameRoomId: 1,
-          roomTitle: '너만오면 고',
-          gameRound: 20,
-          gameStatus: 'WAITING',
-          participantCount: 1
-        },
-        {
-          gameRoomId: 2,
-          roomTitle: '트로트 마스터전',
-          gameRound: 15,
-          gameStatus: 'WAITING',
-          participantCount: 1
-        },
-        {
-          gameRoomId: 3,
-          roomTitle: '추억의 노래방',
-          gameRound: 10,
-          gameStatus: 'WAITING',
-          participantCount: 2
-        },
-        {
-          gameRoomId: 4,
-          roomTitle: '신나는 뮤직게임',
-          gameRound: 25,
-          gameStatus: 'WAITING',
-          participantCount: 1
-        },
-        {
-          gameRoomId: 5,
-          roomTitle: '클래식 명곡',
-          gameRound: 12,
-          gameStatus: 'WAITING',
-          participantCount: 1
-        }
-      ],
+      // WebSocket 관련
+      stompClient: null,
+      isConnected: false,
       
-      // 선택된 방
-      selectedRoom: null,
+      // YouTube 관련
+      youtubeIframe: null,
+      player: null,
+      isPlayerReady: false,
       
-      // 방 만들기 모달
-      showCreateRoomModal: false,
-      newRoom: {
-        roomTitle: '',
-        gameRound: ''
-      }
+      // 메시지 로그
+      messageLog: []
     }
   },
-  
-  mounted() {
-    this.loadUserInfo()
-    this.loadRoomList()
-  },
-  
   methods: {
-    // 사용자 정보 로드
-    async loadUserInfo() {
+    // WebSocket 연결
+    connectWebSocket() {
       try {
-        // API 호출 (실제 구현 시)
-        // const response = await api.get('/api/v1/main/me')
-        // this.userInfo = response.data
+        // SockJS를 사용하여 WebSocket 연결
+        const socket = new SockJS(this.wsUrl)
+        this.stompClient = Stomp.over(socket)
         
-        // 더미 데이터 사용
-        this.userInfo = {
-          nickname: '게임러버',
-          personalPoint: 1250
+        // 쿠키를 헤더에 포함
+        const headers = {
+          'Cookie': document.cookie
+        }
+        
+        this.stompClient.connect(headers, 
+          (frame) => {
+            console.log('Connected to WebSocket:', frame)
+            this.isConnected = true
+            this.addLog('연결', '연결됨', 'CONNECTION', 'WebSocket 연결 성공')
+            
+            // 구독 설정
+            this.setupSubscriptions()
+          },
+          (error) => {
+            console.error('WebSocket 연결 실패:', error)
+            this.isConnected = false
+            this.addLog('연결', '연결 실패', 'ERROR', error.toString())
+          }
+        )
+      } catch (error) {
+        console.error('WebSocket 연결 중 오류:', error)
+        this.addLog('연결', '연결 오류', 'ERROR', error.toString())
+      }
+    },
+    
+    // WebSocket 연결 해제
+    disconnectWebSocket() {
+      if (this.stompClient) {
+        this.stompClient.disconnect(() => {
+          console.log('WebSocket 연결 해제됨')
+          this.isConnected = false
+          this.addLog('연결', '연결 해제', 'DISCONNECT', 'WebSocket 연결 해제됨')
+        })
+      }
+    },
+    
+    // 구독 설정
+    setupSubscriptions() {
+      if (!this.stompClient || !this.isConnected) return
+      
+      // 게임 메시지 구독 (/sub/games/{roomId})
+      this.stompClient.subscribe(`/sub/games/${this.roomId}`, (message) => {
+        try {
+          const messageData = JSON.parse(message.body)
+          this.addLog('수신', messageData.type || 'UNKNOWN', 'RECEIVED', messageData)
+        } catch (error) {
+          this.addLog('수신', 'PARSE_ERROR', 'ERROR', `JSON 파싱 실패: ${message.body}`)
+        }
+      })
+      
+      // 힌트 메시지 구독 (/user/queue/hint)
+      this.stompClient.subscribe(`/user/queue/hint`, (message) => {
+        try {
+          const messageData = JSON.parse(message.body)
+          this.addLog('수신', messageData.type || 'HINT', 'RECEIVED', messageData)
+        } catch (error) {
+          this.addLog('수신', 'PARSE_ERROR', 'ERROR', `JSON 파싱 실패: ${message.body}`)
+        }
+      })
+      
+      // 모든 /sub 메시지 구독 (디버깅용)
+      this.stompClient.subscribe('/sub/#', (message) => {
+        try {
+          const messageData = JSON.parse(message.body)
+          this.addLog('수신', messageData.type || 'SUB_ALL', 'RECEIVED', messageData)
+        } catch (error) {
+          this.addLog('수신', 'PARSE_ERROR', 'ERROR', `JSON 파싱 실패: ${message.body}`)
+        }
+      })
+    },
+    
+    // 메시지 전송
+    sendMessage() {
+      if (!this.stompClient || !this.isConnected) {
+        alert('WebSocket이 연결되지 않았습니다.')
+        return
+      }
+      
+      if (!this.messageType.trim()) {
+        alert('메시지 타입을 입력해주세요.')
+        return
+      }
+      
+      let message
+      try {
+        // JSON 파싱 시도
+        if (this.messageBody.trim()) {
+          message = JSON.parse(this.messageBody)
+        } else {
+          message = {}
         }
       } catch (error) {
-        console.error('사용자 정보 로드 실패:', error)
-      }
-    },
-    
-    // 방 목록 로드
-    async loadRoomList() {
-      try {
-        // API 호출 (실제 구현 시)
-        // const response = await api.get('/api/v1/game-rooms')
-        // this.roomList = response.data
-        
-        console.log('방 목록 로드 완료')
-      } catch (error) {
-        console.error('방 목록 로드 실패:', error)
-      }
-    },
-    
-    // 방 선택
-    selectRoom(room) {
-      this.selectedRoom = room
-      console.log('방 선택:', room)
-    },
-    
-    // 방 참가
-    joinRoom() {
-      if (!this.selectedRoom) {
-        alert('참가할 방을 선택해주세요.')
+        alert('메시지 Body가 올바른 JSON 형식이 아닙니다.')
         return
       }
       
-      console.log('방 참가:', this.selectedRoom)
+      // 기본 필드 추가
+      message.type = this.messageType
+      message.roomId = this.roomId
+      message.userId = this.userId
+      message.timestamp = new Date().toISOString()
       
-      // 방 참가 API 호출 (실제 구현 시)
-      // this.joinRoomAPI(this.selectedRoom.gameRoomId)
+      // 쿠키를 헤더에 포함하여 전송
+      const headers = {
+        'Cookie': document.cookie
+      }
       
-      // 방 내부로 이동 (실제 구현 시)
-      // this.$router.push(`/game/${this.selectedRoom.gameRoomId}`)
+      this.stompClient.send(this.sendDestination, headers, JSON.stringify(message))
+      this.addLog('전송', this.messageType, 'SENT', message)
       
-      alert(`${this.selectedRoom.roomTitle} 방에 참가합니다!`)
+      // 입력 필드 초기화
+      this.messageType = ''
+      this.messageBody = ''
     },
     
-    // 방 만들기 모달 열기
-    createRoom() {
-      this.showCreateRoomModal = true
-      this.newRoom = {
-        roomTitle: '',
-        gameRound: ''
+    // YouTube 동영상 변경
+    changeVideo() {
+      if (this.videoId && this.player && this.isPlayerReady) {
+        this.player.loadVideoById(this.videoId);
+      } else {
+        const iframe = this.youtubeIframe;
+        if (iframe) {
+          iframe.src = `https://youtube.com/embed/${this.videoId}?si=8IsRoXmN3OS1AwUH&enablejsapi=1`;
+        }
+      }
+    },
+
+    // YouTube 동영상 재생
+    playVideo() {
+      if (this.player && this.isPlayerReady) {
+        this.player.playVideo();
+      } else {
+        const iframe = this.youtubeIframe;
+        if (iframe) {
+          try {
+            iframe.contentWindow?.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+          } catch (error) {
+            console.log('재생 명령 전송 중 오류:', error);
+          }
+        }
+      }
+    },
+
+    // YouTube 동영상 일시정지
+    pauseVideo() {
+      if (this.player && this.isPlayerReady) {
+        this.player.pauseVideo();
+      } else {
+        const iframe = this.youtubeIframe;
+        if (iframe) {
+          try {
+            iframe.contentWindow?.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+          } catch (error) {
+            console.log('일시정지 명령 전송 중 오류:', error);
+          }
+        }
       }
     },
     
-    // 방 만들기 모달 닫기
-    closeCreateRoomModal() {
-      this.showCreateRoomModal = false
+    // 로그 추가
+    addLog(direction, messageType, type, content) {
+      this.messageLog.unshift({
+        timestamp: new Date().toLocaleTimeString(),
+        direction,
+        messageType,
+        type,
+        content: typeof content === 'object' ? JSON.stringify(content, null, 2) : content
+      })
+      
+      // 로그가 너무 많아지면 오래된 것부터 제거
+      if (this.messageLog.length > 100) {
+        this.messageLog = this.messageLog.slice(0, 100)
+      }
     },
     
-    // 방 생성 제출
-    submitCreateRoom() {
-      if (!this.newRoom.roomTitle.trim()) {
-        alert('방 이름을 입력해주세요.')
-        return
-      }
-      
-      if (!this.newRoom.gameRound) {
-        alert('라운드를 선택해주세요.')
-        return
-      }
-      
-      console.log('방 생성:', this.newRoom)
-      
-      // 방 생성 API 호출 (실제 구현 시)
-      // const response = await api.post('/api/v1/game-rooms', this.newRoom)
-      
-      // 성공 메시지
-      alert(`${this.newRoom.roomTitle} 방이 생성되었습니다!`)
-      
-      // 모달 닫기
-      this.closeCreateRoomModal()
-      
-      // 방 내부로 이동 (실제 구현 시)
-      // this.$router.push(`/game/${response.data.gameRoomId}`)
+    // 로그 지우기
+    clearLog() {
+      this.messageLog = []
     },
     
-    // 게임 종료
-    exitGame() {
-      console.log('게임 종료')
-      // 메인 페이지로 이동
-      this.$router.push('/')
+    // 로그 내보내기
+    exportLog() {
+      const logText = this.messageLog.map(log => 
+        `[${log.timestamp}] ${log.direction} - ${log.messageType}: ${log.content}`
+      ).join('\n')
+      
+      const blob = new Blob([logText], { type: 'text/plain' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `websocket-log-${new Date().toISOString().slice(0, 19)}.txt`
+      a.click()
+      URL.revokeObjectURL(url)
     }
+  },
+  
+  // 컴포넌트 마운트 시 YouTube API 로드
+  mounted() {
+    // YouTube iframe API 로드
+    const tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    const firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+
+    // YouTube API 준비되면 player 초기화
+    window.onYouTubeIframeAPIReady = () => {
+      this.player = new window.YT.Player('player', {
+        height: '500',
+        width: '500',
+        videoId: this.videoId,
+        playerVars: {
+          'enablejsapi': 1,
+          'autoplay': 0,
+          'controls': 1,
+        },
+        events: {
+          'onReady': (event) => {
+            this.isPlayerReady = true;
+            console.log('YouTube Player 준비 완료');
+          },
+          'onStateChange': (event) => {
+            console.log('Player 상태 변경:', event.data);
+          }
+        }
+      });
+    };
+  },
+  
+  // 컴포넌트 언마운트 시 연결 해제
+  beforeUnmount() {
+    this.disconnectWebSocket()
   }
 }
 </script>
 
 <style scoped>
-.game-lobby {
-  display: flex;
-  height: 100vh;
-  width: 100vw;
-  background: white;
-  font-family: 'NanumSquareRound', sans-serif;
-  overflow: hidden;
+.websocket-test-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: 'Arial', sans-serif;
 }
 
-/* 왼쪽 섹션 */
-.left-section {
-  flex: 1;
-  padding: 30px;
-  display: flex;
-  flex-direction: column;
+h1 {
+  text-align: center;
   color: #333;
-  overflow: hidden;
-}
-
-.header {
   margin-bottom: 30px;
 }
 
-.title-section {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+h3 {
+  color: #555;
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
 }
 
-.title h1 {
-  font-size: 2.5rem;
-  font-weight: bold;
-  margin: 0 0 10px 0;
-  text-align: left;
+h4 {
+  color: #666;
+  margin-bottom: 15px;
 }
 
-.title p {
-  font-size: 1.1rem;
-  opacity: 0.8;
-  margin: 0;
-  text-align: left;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 15px;
-}
-
-.btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  border: none;
+.connection-status {
+  background: #f8f9fa;
+  padding: 20px;
   border-radius: 8px;
-  font-size: 14px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.3s ease;
+  margin-bottom: 20px;
 }
 
-.btn-danger {
+.status-indicator {
+  display: inline-block;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: bold;
+  margin-right: 15px;
   background: #dc3545;
   color: white;
 }
 
-.btn-danger:hover {
-  background: #c82333;
+.status-indicator.connected {
+  background: #28a745;
 }
 
-.btn-primary {
+button {
   background: #007bff;
   color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  margin: 5px;
+  font-size: 14px;
 }
 
-.btn-primary:hover {
+button:hover {
   background: #0056b3;
 }
 
-.btn-success {
-  background: #007bff;
-  color: white;
+button:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
 }
 
-.btn-success:hover {
-  background: #0056b3;
-}
-
-.icon {
-  font-size: 16px;
-}
-
-/* 방 목록 */
-.room-list {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  padding-right: 10px;
+.settings {
   background: #f8f9fa;
+  padding: 20px;
   border-radius: 8px;
-  padding: 20px;
-  margin: 0 10px;
-}
-
-.room-card {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  color: #333;
-  border: 1px solid #e9ecef;
-}
-
-.room-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-}
-
-.room-card.selected {
-  border: 3px solid #007bff;
-  background: white;
-}
-
-.room-title {
-  font-size: 1.2rem;
-  font-weight: bold;
-  margin-bottom: 10px;
-  color: #2c3e50;
-}
-
-.room-participants {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.9rem;
-  color: #6c757d;
-}
-
-.status-text {
-  margin-top: 20px;
-  font-size: 0.9rem;
-  opacity: 0.6;
-}
-
-/* 오른쪽 섹션 */
-.right-section {
-  flex: 1;
-  padding: 30px;
-  background: #f8f9fa;
-  display: flex;
-  flex-direction: column;
-  gap: 30px;
-  overflow: hidden;
-}
-
-.right-section.empty {
-  justify-content: center;
-  align-items: center;
-}
-
-.empty-state {
-  text-align: center;
-  color: #333;
-}
-
-.empty-icon {
-  font-size: 4rem;
   margin-bottom: 20px;
-}
-
-.empty-state h3 {
-  font-size: 1.5rem;
-  margin-bottom: 10px;
-}
-
-.empty-state p {
-  opacity: 0.8;
-}
-
-/* 사용자 정보 */
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  color: #333;
-}
-
-.avatar {
-  font-size: 3rem;
-  background: #007bff;
-  border-radius: 50%;
-  width: 60px;
-  height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-}
-
-.user-details {
-  flex: 1;
-}
-
-.username {
-  font-size: 1.2rem;
-  font-weight: bold;
-  margin-bottom: 5px;
-}
-
-.points {
-  font-size: 0.9rem;
-  opacity: 0.8;
-}
-
-/* 방 상세 정보 */
-.room-details-card {
-  background: white;
-  border-radius: 12px;
-  padding: 0;
-  color: #333;
-  border: 2px solid #e9ecef;
-  overflow: hidden;
-}
-
-.room-header {
-  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-  padding: 20px;
-  margin-bottom: 0;
-}
-
-.header-content {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
-.music-icon {
-  font-size: 2rem;
-}
-
-.round-info {
-  flex: 1;
-}
-
-.round-label {
-  font-size: 0.9rem;
-  color: #6c757d;
-  margin-bottom: 5px;
-}
-
-.round-number {
-  font-size: 1.3rem;
-  font-weight: bold;
-  color: #007bff;
-}
-
-.room-details-card .room-title {
-  font-size: 1.4rem;
-  font-weight: bold;
-  color: #007bff;
-  text-align: center;
-  margin: 0;
-  padding: 25px;
-}
-
-/* 참가하기 버튼 */
-.join-btn {
-  width: 100%;
-  padding: 50px 15px;
-  font-size: 1.1rem;
-  border-radius: 0;
-  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
-  color: white;
-  text-align: center;
-  border: none;
-}
-
-/* 반응형 디자인 */
-@media (max-width: 768px) {
-  .game-lobby {
-    flex-direction: column;
-  }
-  
-  .right-section {
-    flex: none;
-    height: auto;
-  }
-  
-  .header {
-    flex-direction: column;
-    gap: 20px;
-  }
-  
-  .action-buttons {
-    justify-content: center;
-  }
-}
-
-/* 모달 스타일 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 12px;
-  padding: 30px;
-  width: 400px;
-  max-width: 90vw;
-  position: relative;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-}
-
-.close-btn {
-  position: absolute;
-  top: 15px;
-  right: 20px;
-  background: #f8f9fa;
-  border: none;
-  border-radius: 50%;
-  width: 30px;
-  height: 30px;
-  font-size: 20px;
-  color: #6c757d;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s ease;
-}
-
-.close-btn:hover {
-  background: #e9ecef;
-  color: #495057;
-}
-
-.modal-title {
-  text-align: center;
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 30px;
-  margin-top: 10px;
 }
 
 .input-group {
-  margin-bottom: 20px;
-  position: relative;
+  margin-bottom: 15px;
 }
 
-.form-input, .form-select {
+.input-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #555;
+}
+
+.input-group input,
+.input-group textarea,
+.input-group select {
   width: 100%;
-  padding: 12px 15px;
-  border: 1px solid #ced4da;
-  border-radius: 8px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
   font-size: 14px;
-  font-family: 'NanumSquareRound', sans-serif;
-  background: white;
 }
 
-.form-input:focus, .form-select:focus {
-  outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+.input-group textarea {
+  height: 120px;
+  resize: vertical;
+  font-family: 'Courier New', monospace;
 }
 
-.char-count {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 12px;
-  color: #6c757d;
-  background: white;
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.create-room-btn {
-  width: 100%;
-  padding: 15px;
-  font-size: 1.1rem;
+.youtube-section {
+  background: #f8f9fa;
+  padding: 20px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  margin-bottom: 20px;
+}
+
+.youtube-controls {
+  margin-bottom: 20px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.video-input {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  width: 250px;
+}
+
+.change-btn {
+  padding: 8px 16px;
+  background-color: #007bff;
+  color: white;
   border: none;
-  margin-top: 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.change-btn:hover {
+  background-color: #0056b3;
+}
+
+#player {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.playback-controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.play-btn, .pause-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.play-btn {
+  background-color: #28a745;
+  color: white;
+}
+
+.play-btn:hover {
+  background-color: #218838;
+}
+
+.pause-btn {
+  background-color: #dc3545;
+  color: white;
+}
+
+.pause-btn:hover {
+  background-color: #c82333;
+}
+
+.message-sender {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.message-section {
+  margin-bottom: 25px;
+  padding: 15px;
+  background: white;
+  border-radius: 5px;
+  border-left: 4px solid #007bff;
+}
+
+.send-button {
+  background: #28a745;
+  font-weight: bold;
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+.send-button:hover {
+  background: #218838;
+}
+
+.message-log {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.log-controls {
+  margin-bottom: 15px;
+}
+
+.log-controls button {
+  background: #6c757d;
+  margin-right: 10px;
+}
+
+.log-controls button:hover {
+  background: #545b62;
+}
+
+.log-container {
+  max-height: 400px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 10px;
+}
+
+.log-entry {
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+  border-left: 4px solid #ddd;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+}
+
+.log-entry.SENT {
+  border-left-color: #28a745;
+  background: #f8fff9;
+}
+
+.log-entry.RECEIVED {
+  border-left-color: #007bff;
+  background: #f8f9ff;
+}
+
+.log-entry.ERROR {
+  border-left-color: #dc3545;
+  background: #fff8f8;
+}
+
+.log-entry.CONNECTION {
+  border-left-color: #ffc107;
+  background: #fffdf8;
+}
+
+.log-entry.DISCONNECT {
+  border-left-color: #6c757d;
+  background: #f8f9fa;
+}
+
+.log-timestamp {
+  color: #666;
+  font-weight: bold;
+}
+
+.log-direction {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: bold;
+  margin: 0 10px;
+  background: #007bff;
+  color: white;
+}
+
+.log-type {
+  font-weight: bold;
+  color: #333;
+  margin: 5px 0;
+}
+
+.log-content {
+  color: #555;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+@media (max-width: 768px) {
+  .websocket-test-container {
+    padding: 10px;
+  }
+  
+  .send-button {
+    width: 100%;
+  }
 }
 </style>

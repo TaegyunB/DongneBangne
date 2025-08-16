@@ -119,8 +119,8 @@ const router = createRouter({
       component: AiNewsView,
     },
     {
-      path: '/unity',
-      name: 'unity',
+      path: '/youtube',
+      name: 'youtube',
       component: UnityTestView,
     }
   ]
