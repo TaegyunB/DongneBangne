@@ -15,10 +15,7 @@
     <!-- 설정 -->
     <div class="settings">
       <h3>설정</h3>
-      <div class="input-group">
-        <label>WebSocket URL:</label>
-        <input v-model="wsUrl" placeholder="ws://localhost:8080/ws-game" />
-      </div>
+
       <div class="input-group">
         <label>Room ID:</label>
         <input v-model="roomId" placeholder="1" />
@@ -92,14 +89,13 @@
 </template>
 
 <script>
-import SockJS from 'sockjs-client'
 import { Stomp } from '@stomp/stompjs'
 
 export default {
   name: 'WebRTCTestView',
   data() {
     return {
-      wsUrl: 'wss://i13a708.p.ssafy.io/ws-game',
+
       roomId: '1',
       userId: 'user123',
       messageType: '',
@@ -124,8 +120,8 @@ export default {
     // WebSocket 연결
     connectWebSocket() {
       try {
-        // SockJS를 사용하여 WebSocket 연결
-        const socket = new SockJS(this.wsUrl)
+        // WebSocket 직접 연결 (URL 고정)
+        const socket = new WebSocket('wss://i13a708.p.ssafy.io/ws-game')
         this.stompClient = Stomp.over(socket)
         
         // 쿠키를 헤더에 포함
