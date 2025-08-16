@@ -794,7 +794,9 @@ export default {
         return
       }
 
-      console.log(`roomId: ${this.roomId}, userId: ${this.userId}`)
+      console.log(`1 - roomId: ${this.roomId}, userId: ${this.userId}`)
+      console.log(`2 - roomId: ${roomId}, userId: ${userId}`)
+      
       try {
         // 1. 기본 구독 경로 (/sub)
         this.stompClient.subscribe('/sub', (message) => {
