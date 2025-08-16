@@ -34,7 +34,6 @@
 <script>
 import api from '@/api/axios'
 import { Client } from '@stomp/stompjs'
-import SockJS from 'sockjs-client';
 export default {
   data() {
     return {
@@ -749,7 +748,7 @@ export default {
         // STOMP 클라이언트 생성
         console.log('1. STOMP 클라이언트 생성')
         this.stompClient = new Client({
-          webSocketFactory: () => new SockJS(`wss://i13a708.p.ssafy.io/ws-game`),
+          webSocketFactory: () => new WebSocket(`ws://localhost:8080/ws-game`),
           reconnectDelay: 5000, // 재연결 지연 시간 (5초)
           heartbeatIncoming: 4000, // 수신 하트비트
           heartbeatOutgoing: 4000, // 송신 하트비트
