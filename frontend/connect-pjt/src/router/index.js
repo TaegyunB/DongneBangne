@@ -6,6 +6,7 @@ import ChallengeCreateView from '@/views/ChallengeCreateView.vue'
 import ChallengeFinishView from '@/views/ChallengeFinishView.vue'
 import SeniorCenter from '@/views/seniorCenter.vue'
 import SeniorCenterProfile from '@/views/seniorCenterProfile.vue'
+import Profile from '@/views/profile.vue'
 import MainPage from '@/views/MainpageView.vue'
 import CommunityBoards from '@/views/communityBoards.vue'
 import CommunityDetail from '@/views/communityDetail.vue'
@@ -15,6 +16,7 @@ import RankingBoard from '@/views/rankingBoard.vue'
 import GameView from '@/views/GameView.vue'
 import WebRTCTestView from '@/views/WebRTCTestView.vue'
 import AiNewsView from '@/views/AiNewsView.vue'
+import UnityTestView from '@/views/UnityTestView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -28,25 +30,31 @@ const router = createRouter({
       path: '/',
       name: 'start',
       component: Start,
-      meta: { hideToolbar: true },
+      meta: { hideToolbar: true, hideMagnifier: true },
     },
     {
       path: '/login',
       name: 'onboarding',
       component: Onboarding,
-      meta: { hideToolbar: true },
+      meta: { hideToolbar: true, hideMagnifier: true },
     },
     {
       path: '/senior-center',
       name: 'seniorCenter',
       component: SeniorCenter,
-      meta: { hideToolbar: true },
+      meta: { hideToolbar: true, hideMagnifier: true },
     },
     {
       path: '/senior-center/profile',
       name: 'seniorCenterProfile',
       component: SeniorCenterProfile,
-      meta: { hideToolbar: true },
+      meta: { hideToolbar: true, hideMagnifier: true },
+    },
+    {
+      path: '/profile',
+      name: 'profile',
+      component: Profile,
+      meta: { hideToolbar: false }
     },
     { 
       path: '/mainpage',
@@ -97,17 +105,23 @@ const router = createRouter({
       path: '/games',
       name: 'games',
       component: GameView,
-      meta: { hideToolbar: true },
+      meta: { hideToolbar: true, hideMagnifier: true },
     },
     {
       path: '/webrtc',
       name: 'webrtc',
       component: WebRTCTestView,
+      meta: { hideMagnifier: true },
     },
     {
       path: '/news',
       name: 'news',
       component: AiNewsView,
+    },
+    {
+      path: '/youtube',
+      name: 'youtube',
+      component: UnityTestView,
     }
   ]
 })

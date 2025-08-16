@@ -9,7 +9,8 @@
     <div class="news-table">
       <div class="table-header">
         <div class="col-month">발간 월</div>
-        <div class="col-date">발간일자</div>
+        <div class="col-challenges">수행한 도전</div>
+        <div class="col-date header-date">발간일자</div>
         <div class="col-action">PDF</div>
       </div>
       
@@ -23,8 +24,18 @@
             <div class="month-label">
               {{ news.month }}월
             </div>
-            <div class="news-description">
-              {{ getNewsDescription(news) }}
+          </div>
+          
+          <div class="col-challenges">
+            <div class="challenges-list" v-if="getChallengeNames(news).length > 0">
+              <ul>
+                <li v-for="challengeName in getChallengeNames(news)" :key="challengeName">
+                  {{ challengeName }}
+                </li>
+              </ul>
+            </div>
+            <div v-else class="no-challenges">
+              완료된 도전과제가 없습니다
             </div>
           </div>
           
@@ -77,6 +88,18 @@
           :newsData="selectedNews"
           @pdf-generated="handlePdfGenerated"
         />
+      </div>
+    </div>
+
+    <!-- 알림 모달 -->
+    <div v-if="showAlertModal" class="modal-overlay" @click.self="closeAlertModal">
+      <div class="modal-content">
+        <button class="modal-close-btn" @click="closeAlertModal">×</button>
+        <h2>{{ alertTitle }}</h2>
+        <p class="modal-description">{{ alertMessage }}</p>
+        <div class="modal-action-buttons">
+          <button class="modal-button" @click="closeAlertModal">확인</button>
+        </div>
       </div>
     </div>
 
@@ -140,6 +163,24 @@ const itemsPerPage = 10
 const showPdfModal = ref(false)
 const selectedNews = ref(null)
 
+// 알림 모달 관련
+const showAlertModal = ref(false)
+const alertTitle = ref('')
+const alertMessage = ref('')
+
+// 알림 모달 함수
+const showAlert = (title, message) => {
+  alertTitle.value = title
+  alertMessage.value = message
+  showAlertModal.value = true
+}
+
+const closeAlertModal = () => {
+  showAlertModal.value = false
+  alertTitle.value = ''
+  alertMessage.value = ''
+}
+
 // 신문 목록 조회
 const fetchNews = async () => {
   loading.value = true
@@ -165,7 +206,7 @@ const fetchNews = async () => {
     if (error.response) {
       const status = error.response.status
       if (status === 403) {
-        errorMessage = '신문을 볼 권한이 없습니다.'
+        errorMessage = '권한이 없습니다.'
       } else if (status === 404) {
         errorMessage = '신문 데이터를 찾을 수 없습니다.'
       }
@@ -207,21 +248,15 @@ const visiblePages = computed(() => {
   return pages
 })
 
-// 신문 설명 생성
-const getNewsDescription = (news) => {
+// 도전과제 이름 목록 가져오기 (bullet point 용)
+const getChallengeNames = (news) => {
   if (news.challenges && news.challenges.length > 0) {
-    const challengeNames = news.challenges
-      .filter(c => c.challengeName || c.challengeTitle)
+    return news.challenges
+      .filter(c => (c.challengeName || c.challengeTitle) && c.isSuccess)
       .map(c => c.challengeName || c.challengeTitle)
-      .slice(0, 3) // 최대 3개까지만 표시
-      .join(', ')
-    
-    if (challengeNames) {
-      return `${challengeNames} 활동을 하며 추억을 나누...`
-    }
+      .slice(0, 6) // 최대 6개까지만 표시
   }
-  
-  return '이번 달의 도전과제 활동 내용입니다.'
+  return []
 }
 
 // 발간일자 포맷팅 (현재 날짜 기준)
@@ -260,7 +295,7 @@ const showPdfGenerator = async (news) => {
     showPdfModal.value = true
   } catch (error) {
     console.error('신문 상세 정보 로드 실패:', error)
-    alert('신문 정보를 불러오는데 실패했습니다.')
+    showAlert('오류', '신문 정보를 불러오는데 실패했습니다.')
   }
 }
 
@@ -297,7 +332,7 @@ const viewNewsPdf = async (newsId) => {
       errorMessage = 'PDF를 볼 권한이 없습니다.'
     }
     
-    alert(errorMessage)
+    showAlert('오류', errorMessage)
   }
 }
 
@@ -325,7 +360,7 @@ onMounted(async () => {
 
 <style scoped>
 .container {
-  max-width: 900px;
+  max-width: 1300px; /* 기존 1200px에서 1300px로 증가 */
   margin: 40px auto;
   padding: 0 20px;
   font-family: 'Noto Sans KR', sans-serif;
@@ -337,14 +372,14 @@ onMounted(async () => {
 }
 
 .header h1 {
-  font-size: 28px;
+  font-size: 32px;
   font-weight: bold;
   margin-bottom: 12px;
   color: #333;
 }
 
 .header h3 {
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 400;
   color: #666;
   line-height: 1.5;
@@ -356,14 +391,16 @@ onMounted(async () => {
   overflow: hidden;
   margin-bottom: 30px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  background-color: white;
+  width: 100%; /* 테이블 전체 너비 사용 */
 }
 
 .table-header {
   display: grid;
-  grid-template-columns: 3fr 1.5fr 1fr;
-  background-color: #f9fafb;
+  grid-template-columns: 200px 1fr 200px 200px; /* 고정 너비로 세로줄 일정하게 */
+  background-color: white;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 20px; /* 헤더 폰트 크기 20px */
   color: #374151;
 }
 
@@ -382,7 +419,7 @@ onMounted(async () => {
 
 .table-row {
   display: grid;
-  grid-template-columns: 3fr 1.5fr 1fr;
+  grid-template-columns: 200px 1fr 200px 200px; /* 헤더와 동일한 고정 너비 */
   border-bottom: 1px solid #f3f4f6;
   transition: background-color 0.15s;
   min-height: 80px;
@@ -402,6 +439,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   border-right: 1px solid #f3f4f6;
+  font-size: 18px; /* 기본 폰트 크기 18px */
 }
 
 .table-row > div:last-child {
@@ -410,28 +448,57 @@ onMounted(async () => {
 
 .col-month {
   flex-direction: column !important;
-  align-items: flex-start !important;
+  align-items: center !important;
   gap: 8px;
   justify-content: center !important;
 }
 
 .month-label {
-  font-weight: 600;
+  font-weight: bold; /* 월 표시 볼드 */
   color: #1f2937;
-  font-size: 16px;
+  font-size: 19px;
 }
 
-.news-description {
-  font-size: 13px;
-  color: #6b7280;
-  line-height: 1.4;
-  max-width: 100%;
+.col-challenges {
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  text-align: left !important;
+}
+
+.challenges-list {
+  width: 100%;
+}
+
+.challenges-list ul {
+  margin: 0;
+  padding-left: 16px;
+  list-style-type: disc;
+}
+
+.challenges-list li {
+  font-size: 18px;
+  color: #4b5563;
+  line-height: 1.5;
+  margin-bottom: 4px;
+  font-weight: normal; /* 리스트 항목은 볼드 아님 */
+}
+
+.challenges-list li:last-child {
+  margin-bottom: 0;
+}
+
+.no-challenges {
+  font-size: 18px;
+  color: #9ca3af;
+  font-style: italic;
+  font-weight: normal;
 }
 
 .col-date {
-  font-size: 14px;
+  font-size: 18px;
   color: #4b5563;
-  font-weight: 500;
+  font-weight: bold; /* 날짜는 볼드 아님 */
 }
 
 .col-action {
@@ -442,8 +509,8 @@ onMounted(async () => {
   border: none;
   border-radius: 8px;
   padding: 10px 20px;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 16px;
+  font-weight: bold; /* 버튼 텍스트만 볼드 */
   cursor: pointer;
   transition: all 0.2s;
   min-width: 80px;
@@ -451,33 +518,34 @@ onMounted(async () => {
 }
 
 .view-btn {
-  background-color: #8b5cf6;
+  background-color: #4A90E2;
   color: white;
 }
 
 .view-btn:hover {
-  background-color: #7c3aed;
+  background-color: #1e7ae3;
   transform: translateY(-1px);
 }
 
 .generate-pdf-btn {
-  background-color: #10b981;
+  background-color: #fed800;
   color: white;
 }
 
 .generate-pdf-btn:hover:not(:disabled) {
-  background-color: #059669;
+  background-color: #feb200;
   transform: translateY(-1px);
 }
 
 .no-content-label {
-  font-size: 12px;
+  font-size: 14px;
   color: #9ca3af;
   background-color: #f3f4f6;
   padding: 8px 12px;
   border-radius: 6px;
   border: 1px solid #e5e7eb;
   cursor: help;
+  font-weight: normal;
 }
 
 .no-data {
@@ -543,6 +611,7 @@ onMounted(async () => {
   min-height: 400px;
 }
 
+/* 모달 스타일 - 2번째 코드와 동일하게 */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -590,18 +659,69 @@ onMounted(async () => {
   background-color: #f3f4f6;
 }
 
+.modal-content h2 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: #333;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.modal-description {
+  font-size: 16px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+  color: #666;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.modal-action-buttons {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+
+.modal-button {
+  background-color: #4A90E2;
+  color: white;
+  padding: 14px 28px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.modal-button:hover {
+  background-color: #2b6ce5;
+  transform: translateY(-1px);
+}
+
 @media (max-width: 768px) {
   .container {
     padding: 0 16px;
+    max-width: 100%;
   }
   
   .table-header,
   .table-row {
-    grid-template-columns: 2fr 1fr 1fr;
+    grid-template-columns: 80px 1fr 100px 100px; /* 모바일에서도 고정 너비 */
   }
   
-  .news-description {
-    display: none;
+  .table-header {
+    font-size: 16px; /* 모바일에서 헤더 폰트 크기 조정 */
+  }
+  
+  .table-row > div {
+    font-size: 14px; /* 모바일에서 내용 폰트 크기 조정 */
+  }
+  
+  .challenges-list li {
+    font-size: 14px;
   }
   
   .action-btn {

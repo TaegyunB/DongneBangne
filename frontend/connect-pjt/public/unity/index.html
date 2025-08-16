@@ -37,13 +37,54 @@
 
           if(typeof unityInstance !== 'undefined'){
             const data = JSON.parse(event.data);
-            if(data.type === "video-frame"){
-              if(data.sender === "local"){
-                unityInstance.SendMessage("VueReceiver", "ReceiveLocalVideoFrame", data.data);
+
+            //console.log("Vue → Unity 메시지 수신: ", data);
+            
+            const messageHandlers = {
+              "video-frame": () => {
+                if(data.sender === "local"){
+                  unityInstance.SendMessage("VueReceiver", "ReceiveLocalVideoFrame", data.data);
+                }
+                else if(data.sender === "remote"){
+                  unityInstance.SendMessage("VueReceiver", "ReceiveRemoteVideoFrame", data.data);
+                }
+              },
+              "local-user-info": () => {
+                unityInstance.SendMessage("VueReceiver", "ReceiveLocalUserInfo", data.data);
+                console.log("Vue → Unity 유저 정보 전송: ", data.data);
+              },
+              "room-list": () => {
+                unityInstance.SendMessage("VueReceiver", "ReceiveRoomList", data.data);
+                console.log("Vue → Unity 방 정보 전송: ", data.data);
+              },
+              "room-created": () => {
+                unityInstance.SendMessage("VueReceiver", "ReceiveCreatedRoomInfo", data.data);
+                console.log("Vue → Unity 방 생성성 전송: ", data.data);
+              },
+              "join-room": () => {
+                unityInstance.SendMessage("VueReceiver", "ReceiveJoinRoom", data.data);
+                console.log("Vue → Unity 방 입장 전송: ", data.data);
+              },
+              "leave-room": () => {
+                unityInstance.SendMessage("VueReceiver", "ReceiveLeaveRoom", data.data);
+                console.log("Vue → Unity 방 퇴장 전송: ", data.data);
+              },
+              "ready-answer": () => {
+                unityInstance.SendMessage("VueReceiver", "ReceiveReadyAnswer", data.data);
+                console.log("Vue → Unity 게임 준비: ", data.data);
+              },
+              "users-info": () => {
+                unityInstance.SendMessage("VueReceiver", "ReceiveRoomUsersInfo", data.data);
+                console.log("Vue → Unity 유저 정보 전송: ", data.data);
+              },
+              "error": () => {
+                unityInstance.SendMessage("VueReceiver", "ReceiveError", data.data);
+                console.log("Vue → Unity 에러 전송: ", data.data);
               }
-              else if(data.sender === "remote"){
-                unityInstance.SendMessage("VueReceiver", "ReceiveRemoteVideoFrame", data.data);
-              }
+            };
+            
+            if (messageHandlers[data.type]) {
+              messageHandlers[data.type]();
             }
           }
         }
@@ -60,6 +101,7 @@
 
       // Unity가 Vue로 메시지 보낼 때 호출할 함수
       window.SendToVue = function (msg) {
+        console.log("Unity → Vue 메시지 전송: ", msg);
         parent.postMessage(msg, '*')
       }
 
