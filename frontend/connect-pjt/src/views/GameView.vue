@@ -42,8 +42,8 @@ export default {
   async mounted() {
     // Unity가 보낸 메시지 수신
     window.addEventListener('message', (event) => {
-      console.log('✅ Unity → Vue Type:', event.type)
-      console.log('✅ Unity → Vue Data:', event.data)
+      // console.log('✅ Unity → Vue Type:', event.type)
+      // console.log('✅ Unity → Vue Data:', event.data)
 
       try {
         // event.data가 문자열인 경우 JSON 파싱

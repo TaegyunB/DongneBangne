@@ -14,7 +14,8 @@ public class SignalingWebSocketConfig implements WebSocketConfigurer {
     // signal로 요청이 들어오면 signalingHandler가 동작한다.
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry){
-        registry.addHandler(signalingSocketHandler(), "/signal")
+        // /signal/{roomId} 로 접속
+        registry.addHandler(signalingSocketHandler(), "/signal/**")
                 .setAllowedOrigins("*");
     }
 
