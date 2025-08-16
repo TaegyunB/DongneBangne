@@ -34,6 +34,7 @@
 <script>
 import api from '@/api/axios'
 import { Client } from '@stomp/stompjs'
+import SockJS from 'sockjs-client';
 export default {
   data() {
     return {
