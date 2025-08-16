@@ -731,11 +731,9 @@ export default {
     connectStompWebSocket() {
       try {
         // STOMP 클라이언트 생성
+        console.log('1. STOMP 클라이언트 생성')
         this.stompClient = new Client({
-          brokerURL: `wss://i13a708.p.ssafy.io/ws-game`, // WebSocket 엔드포인트
-          debug: function (str) {
-            console.log('STOMP Debug:', str)
-          },
+          webSocketFactory: () => new SockJS(`wss://i13a708.p.ssafy.io/ws-game`),
           reconnectDelay: 5000, // 재연결 지연 시간 (5초)
           heartbeatIncoming: 4000, // 수신 하트비트
           heartbeatOutgoing: 4000, // 송신 하트비트
@@ -782,11 +780,17 @@ export default {
           console.log('✅ 기본 메시지 수신:', message.body)
         })
 
-        // 2. 특정 게임방 구독 (/sub/games/{roomId})
         if (this.roomId && this.roomId !== 'default') {
+          // 2. 특정 게임방 구독 (/sub/games/{roomId})
           this.stompClient.subscribe(`/sub/games/${this.roomId}`, (message) => {
             console.log('🎮 게임방 메시지 수신:', message.body)
             this.handleGameMessage(JSON.parse(message.body))
+          })
+
+          // 3. 힌트 메시지 구독 (/user/queue/hint)
+          this.stompClient.subscribe(`user/queue/hint`, (message) => {
+            console.log('💡 힌트 메시지 수신:', message.body)
+            this.handleHintMessage(JSON.parse(message.body))
           })
         }
 
@@ -804,28 +808,42 @@ export default {
         const { type, data } = message
 
         switch (type) {
-          case 'GAME_START':
+          case 'GAME_START':            // 게임 시작
             this.handleGameStart(data)
             break
-          case 'ROUND_QUESTION':
+          case 'ROUND_QUESTION':        // 문제 전송
             this.handleRoundQuestion(data)
             break
-          case 'ROUND_END':
+          case 'ROUND_END':             // 라운드 종료 - 사용하지 않는 것으로 추정
             this.handleRoundEnd(data)
             break
-          case 'GAME_END':
+          case 'GAME_END':              // 게임 종료
             this.handleGameEnd(data)
             break
-          case 'ANSWER_RESULT':
+          case 'ANSWER_RESULT':         // 정답 결과
             this.handleAnswerResult(data)
             break
-          case 'ANSWER_REJECTED':
+          case 'ANSWER_REJECTED':       // 정답 거부
             this.handleAnswerRejected(data)
             break
-          case 'HINT_RESPONSE':
+          default:
+            console.warn('알 수 없는 게임 메시지 타입:', type)
+        }
+      } catch (error) {
+        console.error('게임 메시지 처리 오류:', error)
+      }
+    },
+
+    handleHintMessage(message) {
+      console.log('💡 힌트 메시지 처리:', message)
+      try {
+        const { type, data } = message
+
+        switch (type) {
+          case 'HINT_RESPONSE':         // 힌트 제공공
             this.handleHintResponse(data)
             break
-          case 'HINT_REJECTED':
+          case 'HINT_REJECTED':         // 힌트 제공 불가
             this.handleHintRejected(data)
             break
           default:
