@@ -9,6 +9,20 @@
       allowfullscreen
     ></iframe>
   </div>
+  
+  <!-- YouTube 동영상 (매우 작게) -->
+  <div class="youtube-container">
+    <iframe
+      ref="youtubeFrame"
+      :src="youtubeSrc"
+      width="200"
+      height="150"
+      frameborder="0"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen
+    ></iframe>
+  </div>
+  
   <div class="localCamera">
     <video ref="localVideo" id="localVideo" autoplay playsinline></video>
     <video ref="remoteVideo" id="remoteVideo" autoplay playsinline></video>
@@ -37,6 +51,7 @@ export default {
       remoteId: 'ID', // 상대방 아이디
       isUnityReady: false, // Unity 준비 여부
       stompClient: null, // STOMP 클라이언트
+      videoId: 'pkc1XoilQIc', // YouTube 비디오 ID
     }
   },
   async mounted() {
@@ -814,7 +829,7 @@ export default {
           case 'ROUND_QUESTION':        // 문제 전송
             this.handleRoundQuestion(data)
             break
-          case 'ROUND_END':             // 라운드 종료 - 사용하지 않는 것으로 추정
+          case 'ROUND_END':             // 라운드 종료
             this.handleRoundEnd(data)
             break
           case 'GAME_END':              // 게임 종료
@@ -863,6 +878,13 @@ export default {
     // 라운드 문제 처리
     handleRoundQuestion(data) {
       console.log('❓ 라운드 문제:', data)
+      
+      // 영상 재생
+      const videoId = data.videoId
+      this.changeYouTubeVideo(videoId)
+      this.playYouTubeVideo()
+
+      // 라운드 시작을 알림
       this.sendToUnity('round-question', data)
     },
 
@@ -989,7 +1011,51 @@ export default {
         console.log('🔌 STOMP WebSocket 연결 해제 완료')
       }
     },
+    
+    // YouTube 비디오 ID 변경
+    changeYouTubeVideo(newVideoId) {
+      const iframe = this.youtubeIframe;
+        if (iframe) {
+          iframe.src = `https://youtube.com/embed/${newVideoId}?si=8IsRoXmN3OS1AwUH&enablejsapi=1`;
+        }
+
+      console.log('YouTube 비디오 ID 변경:', newVideoId)
+    },
+    
+    // YouTube 동영상 재생
+    playYouTubeVideo() {
+      const iframe = this.$refs.youtubeFrame
+      if (iframe) {
+        try {
+          iframe.contentWindow?.postMessage('{"event":"command","func":"playVideo","args":""}', 'https://www.youtube.com')
+          console.log('YouTube 동영상 재생')
+        } catch (error) {
+          console.error('YouTube 재생 명령 전송 중 오류:', error)
+        }
+      }
+    },
+    
+    // YouTube 동영상 정지
+    pauseYouTubeVideo() {
+      const iframe = this.$refs.youtubeFrame
+      if (iframe) {
+        try {
+          iframe.contentWindow?.postMessage('{"event":"command","func":"pauseVideo","args":""}', 'https://www.youtube.com')
+          console.log('YouTube 동영상 정지')
+        } catch (error) {
+          console.error('YouTube 정지 명령 전송 중 오류:', error)
+        }
+      }
+    },
   },
+  
+  computed: {
+    // YouTube iframe src 계산
+    youtubeSrc() {
+      return `https://youtube.com/embed/${this.videoId}?si=8IsRoXmN3OS1AwUH&enablejsapi=1`
+    }
+  },
+  
   name: 'UnityView',
 }
 </script>
@@ -1039,5 +1105,15 @@ iframe {
   border-radius: 6px;
   overflow: hidden;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.youtube-container {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 </style>

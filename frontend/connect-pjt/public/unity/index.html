@@ -41,6 +41,7 @@
             //console.log("Vue → Unity 메시지 수신: ", data);
             
             const messageHandlers = {
+              // webRTC
               "video-frame": () => {
                 if(data.sender === "local"){
                   unityInstance.SendMessage("VueReceiver", "ReceiveLocalVideoFrame", data.data);
@@ -49,6 +50,7 @@
                   unityInstance.SendMessage("VueReceiver", "ReceiveRemoteVideoFrame", data.data);
                 }
               },
+              // 게임 대기방
               "local-user-info": () => {
                 unityInstance.SendMessage("VueReceiver", "ReceiveLocalUserInfo", data.data);
                 console.log("Vue → Unity 유저 정보 전송: ", data.data);
@@ -76,6 +78,40 @@
               "users-info": () => {
                 unityInstance.SendMessage("VueReceiver", "ReceiveRoomUsersInfo", data.data);
                 console.log("Vue → Unity 유저 정보 전송: ", data.data);
+              },
+              // 게임
+              "game-start": () =>{
+                unityInstance.SendMessage("VueReceiver", "ReceiveGameStart", data.data);
+                console.log("Vue → Unity 게임 시작: ", data.data);
+              },
+              "round-question": () =>{
+                unityInstance.SendMessage("VueReceiver", "ReceiveRoundQuestion", data.data);
+                console.log("Vue → Unity 라운드 문제: ", data.data);
+              },
+              "round-end": () =>{
+                unityInstance.SendMessage("VueReceiver", "ReceiveRoundEnd", data.data);
+                console.log("Vue → Unity 라운드 종료: ", data.data);
+              },
+              "game-end": () =>{
+                unityInstance.SendMessage("VueReceiver", "ReceiveGameEnd", data.data);
+                console.log("Vue → Unity 게임 종료: ", data.data);
+              },
+              "answer-result": () =>{
+                unityInstance.SendMessage("VueReceiver", "ReceiveAnswerResult", data.data);
+                console.log("Vue → Unity 정답 결과: ", data.data);
+              },
+              "answer-rejected": () =>{
+                unityInstance.SendMessage("VueReceiver", "ReceiveAnswerRejected", data.data);
+                console.log("Vue → Unity 정답 거부: ", data.data);
+              },
+              // 게임 힌트
+              "hint-response": () =>{
+                unityInstance.SendMessage("VueReceiver", "ReceiveHintResponse", data.data);
+                console.log("Vue → Unity 힌트 응답: ", data.data);
+              },
+              "hint-rejected": () =>{
+                unityInstance.SendMessage("VueReceiver", "ReceiveHintRejected", data.data);
+                console.log("Vue → Unity 힌트 거부: ", data.data);
               },
               "error": () => {
                 unityInstance.SendMessage("VueReceiver", "ReceiveError", data.data);
