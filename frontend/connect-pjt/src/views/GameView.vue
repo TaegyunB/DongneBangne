@@ -613,6 +613,7 @@ export default {
         console.log('Unity → Vue 방 입장 요청:', roomData)
 
         const roomId = roomData.roomId
+        const userId = roomData.userId
 
         // API로 방 참여
         const response = await api.post(`/api/v1/game-rooms/${roomId}/join`, roomData, {
@@ -621,6 +622,9 @@ export default {
         console.log('방 입장 성공:', response.data)
 
         this.sendJoinRoomToUnity(response.data)
+
+        // 테스트: 방 입장과 동시에 WebSocket 연결
+        this.connectStompWebSocket(roomId, userId)
       } catch (error) {
         console.error('방 입장 실패:', error)
       }
@@ -754,6 +758,9 @@ export default {
         console.log('1. STOMP 클라이언트 생성')
         this.stompClient = new Client({
           webSocketFactory: () => new WebSocket(`wss://i13a708.p.ssafy.io/ws-game`),
+          connectHeaders: {
+            'Cookie': document.cookie
+          },
           reconnectDelay: 5000, // 재연결 지연 시간 (5초)
           heartbeatIncoming: 4000, // 수신 하트비트
           heartbeatOutgoing: 4000, // 송신 하트비트
@@ -794,7 +801,7 @@ export default {
         return
       }
 
-      console.log(`1 - roomId: ${this.roomId}, userId: ${this.userId}`)
+      console.log(`1 - roomId: ${this.roomId}, userId: ${this.localId}`)
       console.log(`2 - roomId: ${roomId}, userId: ${userId}`)
       
       try {
@@ -803,19 +810,16 @@ export default {
           console.log('✅ 기본 메시지 수신:', message.body)
         })
 
-        if (roomId && roomId !== 'default') {
-          // 2. 특정 게임방 구독 (/sub/games/{roomId})
-          this.stompClient.subscribe(`/sub/games/${roomId}`, (message) => {
-            console.log('🎮 게임방 메시지 수신:', message.body)
-            this.handleGameMessage(JSON.parse(message.body))
-          })
+        this.stompClient.subscribe(`/sub/games/${roomId}`, (message) => {
+          console.log('🎮 게임방 메시지 수신:', message.body)
+          this.handleGameMessage(JSON.parse(message.body))
+        })
 
-          // 3. 힌트 메시지 구독 (/queue/hint/{userId})
-          this.stompClient.subscribe(`/queue/hint/${userId}`, (message) => {
-            console.log('💡 힌트 메시지 수신:', message.body)
-            this.handleHintMessage(JSON.parse(message.body))
-          })
-        }
+        // 3. 힌트 메시지 구독 (/queue/hint/{userId})
+        this.stompClient.subscribe(`/queue/hint/${userId}`, (message) => {
+          console.log('💡 힌트 메시지 수신:', message.body)
+          this.handleHintMessage(JSON.parse(message.body))
+        })
         console.log('📡 STOMP 토픽 구독 완료')
         console.log(`roomId: ${this.roomId}, userId: ${this.userId}`)
       } catch (error) {
