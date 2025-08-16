@@ -10,13 +10,13 @@
     ></iframe>
   </div>
   
-  <!-- YouTube 동영상 (매우 작게) -->
-  <div class="youtube-container">
+  <!-- YouTube 동영상 (숨김) -->
+  <div class="youtube-container" style="position: absolute; left: -9999px; top: -9999px; width: 1px; height: 1px; overflow: hidden;">
     <iframe
       ref="youtubeFrame"
       :src="youtubeSrc"
-      width="200"
-      height="150"
+      width="1"
+      height="1"
       frameborder="0"
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
       allowfullscreen
@@ -878,7 +878,7 @@ export default {
     // 라운드 문제 처리
     handleRoundQuestion(data) {
       console.log('❓ 라운드 문제:', data)
-      
+
       // 영상 재생
       const videoId = data.videoId
       this.changeYouTubeVideo(videoId)
@@ -1109,11 +1109,10 @@ iframe {
 
 .youtube-container {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 1000;
-  border-radius: 8px;
+  left: -9999px;
+  top: -9999px;
+  width: 1px;
+  height: 1px;
   overflow: hidden;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 </style>
