@@ -101,7 +101,14 @@ public class GameService {
         log.info("[3] 플레이어 상태: answered={}, correctCount={}",
                 player.isAnswered(), player.getCorrectCount());
 
-        if(player == null) return;
+        if(player == null){
+            log.warn("[FLOW] 플레이어 없음 -> 리턴");
+            return;
+        }
+
+        // 정답 채팅을 방에 먼저 broadcast (참여자 모두 해당 내용 공유)
+        broadcaster.broadcastToRoom(roomId,
+                messageFactory.createInfoMessage(GameMessageType.ANSWER_SUBMIT, roomId, answer));
 
         if(player.isAnswered()){
             log.info("[FLOW] 이미 정답 맞춘 상태 → 리턴");
