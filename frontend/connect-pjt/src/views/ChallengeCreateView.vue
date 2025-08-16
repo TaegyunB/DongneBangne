@@ -1,8 +1,7 @@
 <template>
   <div class="container">
     <div class="header">
-      <h1>경로당 맞춤형 도전을 생성하시겠어요?</h1>
-      <h2>몇 가지만 작성해주세요</h2>
+      <h1>경로당 맞춤형 도전을 생성해주세요</h1>
     </div>
     
     <div class="form-group">
@@ -34,12 +33,36 @@
       </button>
     </div>
     
+    <!-- 20자 초과 경고 모달 -->
+    <div v-if="showTitleLengthModal" class="modal-overlay">
+      <div class="modal-content warning-modal">
+        <h2 class="modal-title warning-title">입력 제한</h2>
+        <p class="modal-subtext warning-text">
+          도전 제목은 <br>
+          <strong>20자 이내</strong>로 입력해주세요.
+        </p>
+        <p class="current-length">현재: {{ title.length }}자</p>
+        <button class="modal-button warning-button" @click="closeTitleLengthModal">
+          확인
+        </button>
+      </div>
+    </div>
+    
     <!-- 생성 완료 모달 -->
     <div v-if="showModal" class="modal-overlay">
       <div class="modal-content">
         <h2 class="modal-title">경로당 도전</h2>
         <p class="modal-subtext">도전이 <br> 성공적으로 저장되었습니다.</p>
         <button class="modal-button" @click="goToList">도전 목록으로</button>
+      </div>
+    </div>
+
+    <!-- 알림 모달 -->
+    <div v-if="showAlertModal" class="modal-overlay" @click.self="closeAlertModal">
+      <div class="modal-content">
+        <h2 class="modal-title">{{ alertTitle }}</h2>
+        <p class="modal-subtext">{{ alertMessage }}</p>
+        <button class="modal-button" @click="closeAlertModal">확인</button>
       </div>
     </div>
   </div>
@@ -54,6 +77,7 @@ const title = ref('')
 const place = ref('')
 const description = ref('')
 const showModal = ref(false)
+const showTitleLengthModal = ref(false)
 const loading = ref(false)
 const router = useRouter()
 
@@ -63,7 +87,13 @@ const isValid = computed(() => {
 
 const handleSubmit = async () => {
   if (!isValid.value) {
-    alert('모든 항목을 입력해주세요.')
+    showAlert('모든 항목을 입력해주세요.')
+    return
+  }
+
+  // 제목 20자 초과 검증
+  if (title.value.trim().length > 20) {
+    showTitleLengthModal.value = true
     return
   }
 
@@ -94,13 +124,35 @@ const handleSubmit = async () => {
     console.error('도전과제 생성 실패:', error)
 
     if (error.response?.status === 401 || error.response?.status === 403) {
-      alert('로그인이 필요합니다. 다시 로그인해주세요.')
+      showAlert('로그인이 필요합니다. 다시 로그인해주세요.')
     } else {
-      alert('도전 생성 중 오류가 발생했습니다.')
+      showAlert('도전 생성 중 오류가 발생했습니다.')
     }
   } finally {
     loading.value = false
   }
+}
+
+// 알림 모달 관련
+const showAlertModal = ref(false)
+const alertTitle = ref('')
+const alertMessage = ref('')
+
+const showAlert = (title, message) => {
+  alertTitle.value = title
+  alertMessage.value = message
+  showAlertModal.value = true
+}
+
+const closeAlertModal = () => {
+  showAlertModal.value = false
+  alertTitle.value = ''
+  alertMessage.value = ''
+}
+
+const closeTitleLengthModal = () => {
+  showTitleLengthModal.value = false
+  // 입력된 내용은 그대로 유지 (title.value를 초기화하지 않음)
 }
 
 const goToList = () => {
@@ -121,7 +173,12 @@ const goToList = () => {
 }
 
 .header h1 {
-  font-size: 32px;
+  font-size: 40px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.header h2 {
+  font-size: 35px;
   font-weight: 700;
   margin-bottom: 10px;
 }
@@ -246,5 +303,33 @@ const goToList = () => {
 
 .modal-button:hover {
   background-color: #6c9dff;
+}
+
+/* 경고 모달 스타일 */
+.warning-modal {
+  border: 2px solid #ff6b6b;
+}
+
+.warning-title {
+  color: #ff6b6b;
+}
+
+.warning-text {
+  color: #333;
+}
+
+.current-length {
+  font-size: 18px;
+  color: #ff6b6b;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.warning-button {
+  background-color: #ff6b6b;
+}
+
+.warning-button:hover {
+  background-color: #ff5252;
 }
 </style>

@@ -6,7 +6,7 @@
       <button @click="generateAndUploadPDF" :disabled="generating" class="generate-pdf-btn">
         {{ generating ? 'PDF 생성 중...' : 'PDF 생성하기' }}
       </button>
-      
+      <!-- . -->
       <!-- 진행 상태 표시 -->
       <div v-if="generating" class="progress-info">
         <p>{{ progressMessage }}</p>
@@ -15,16 +15,27 @@
         </div>
       </div>
     </div>
-
+<!--  -->
     <!-- PDF 템플릿 (숨김) -->
     <div ref="pdfTemplate" class="pdf-template" style="position: absolute; left: -9999px; top: -9999px;">
       <div class="newspaper-container">
         <!-- 헤더 -->
         <div class="newspaper-header">
           <h1 class="newspaper-title">{{ newsData.newsTitle }}</h1>
-          <div class="newspaper-date">{{ formatDate(newsData.year, newsData.month) }}</div>
-          <div class="center-name">{{ newsData.centerName }}</div>
+          <div class="newspaper-date">{{ newsData.centerName }} - {{ formatDate(newsData.year, newsData.month) }}</div>
         </div>
+
+    <!-- 알림 모달 -->
+    <div v-if="showAlertModal" class="modal-overlay" @click.self="closeAlertModal">
+      <div class="modal-content">
+        <button class="modal-close-btn" @click="closeAlertModal">×</button>
+        <h2>{{ alertTitle }}</h2>
+        <p class="modal-description">{{ alertMessage }}</p>
+        <div class="modal-action-buttons">
+          <button class="modal-button" @click="closeAlertModal">확인</button>
+        </div>
+      </div>
+    </div>
 
         <!-- 도전과제별 기사 (상하 2행 레이아웃) -->
         <div class="articles-container">
@@ -38,8 +49,7 @@
               <div class="article-header">
                 <h2 class="article-title">{{ challenge.challengeTitle }}</h2>
                 <div class="article-meta">
-                  <span class="article-date">{{ formatChallengeDate(challenge.completedAt) }}</span>
-                  <span class="article-location">{{ challenge.challengePlace }}</span>
+                  <span class="article-location-date">{{ challenge.challengePlace }} - {{ formatChallengeDate(challenge.completedAt) }}</span>
                 </div>
               </div>
 
@@ -69,8 +79,7 @@
               <div class="article-header">
                 <h2 class="article-title">{{ challenge.challengeTitle }}</h2>
                 <div class="article-meta">
-                  <span class="article-date">{{ formatChallengeDate(challenge.completedAt) }}</span>
-                  <span class="article-location">{{ challenge.challengePlace }}</span>
+                  <span class="article-location-date">{{ challenge.challengePlace }} - {{ formatChallengeDate(challenge.completedAt) }}</span>
                 </div>
               </div>
 
@@ -253,7 +262,7 @@ const convertAllImagesToBase64 = async () => {
 // PDF 생성 및 업로드
 const generateAndUploadPDF = async () => {
   if (completedChallenges.value.length === 0) {
-    alert('완료된 도전과제가 없어 PDF를 생성할 수 없습니다.')
+    showAlert('알림', '완료된 도전과제가 없어 PDF를 생성할 수 없습니다.')
     return
   }
 
@@ -372,7 +381,7 @@ const generateAndUploadPDF = async () => {
     pdfGenerated.value = true
     emit('pdf-generated', response.data)
 
-    alert('AI 신문 PDF가 성공적으로 생성되었습니다!')
+    showAlert('성공', 'AI 신문 PDF가 성공적으로 생성되었습니다!')
 
   } catch (error) {
     console.error('PDF 생성 실패:', error)
@@ -385,12 +394,30 @@ const generateAndUploadPDF = async () => {
       errorMessage = 'PDF 변환 중 오류가 발생했습니다. 이미지 로딩을 확인해주세요.'
     }
     
-    alert(errorMessage)
+    showAlert('오류', errorMessage)
   } finally {
     generating.value = false
     progressMessage.value = ''
     imageProgress.value = { loaded: 0, total: 0 }
   }
+}
+
+// 알림 모달 관련
+const showAlertModal = ref(false)
+const alertTitle = ref('')
+const alertMessage = ref('')
+
+// 알림 모달 함수
+const showAlert = (title, message) => {
+  alertTitle.value = title
+  alertMessage.value = message
+  showAlertModal.value = true
+}
+
+const closeAlertModal = () => {
+  showAlertModal.value = false
+  alertTitle.value = ''
+  alertMessage.value = ''
 }
 </script>
 
@@ -450,7 +477,8 @@ const generateAndUploadPDF = async () => {
 
 .newspaper-header {
   text-align: center;
-  border-bottom: 2px solid #333;
+  border-top: 1px solid #333;
+  border-bottom: 1px solid #333;
   padding-bottom: 10px;
   margin-bottom: 15px;
   flex-shrink: 0;
@@ -467,12 +495,6 @@ const generateAndUploadPDF = async () => {
   font-size: 16px;
   color: #666;
   margin-bottom: 2px;
-}
-
-.center-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: #2d3748;
 }
 
 .articles-container {
@@ -517,6 +539,11 @@ const generateAndUploadPDF = async () => {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  font-size: 16px;
+  color: #666;
+}
+
+.article-location-date {
   font-size: 16px;
   color: #666;
 }
@@ -572,5 +599,95 @@ const generateAndUploadPDF = async () => {
 .footer-date {
   font-size: 8px;
   color: #999;
+}
+
+/* 모달 스타일  */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: white;
+  border-radius: 20px;
+  padding: 32px;
+  width: 90%;
+  max-width: 480px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  text-align: center;
+  z-index: 1001;
+  position: relative;
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s ease;
+}
+
+.modal-close-btn:hover {
+  background-color: #f3f4f6;
+}
+
+.modal-content h2 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: #333;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.modal-description {
+  font-size: 16px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+  color: #666;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.modal-action-buttons {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+
+.modal-button {
+  background-color: #4A90E2;
+  color: white;
+  padding: 14px 28px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.modal-button:hover {
+  background-color: #2b6ce5;
+  transform: translateY(-1px);
 }
 </style>

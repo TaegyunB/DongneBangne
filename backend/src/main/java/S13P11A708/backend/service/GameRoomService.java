@@ -80,6 +80,8 @@ public class GameRoomService {
         GameRoom room = gameRoomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("방이 존재하지 않습니다."));
 
+        int gameRound = room.getGameRound(); //해당 방 게임 라운드 수
+
         if(room.getGameStatus() != GameStatus.WAITING){
             throw new RuntimeException("대기 중인 방만 입장할 수 있습니다. 다른 방을 찾아주세요.");
         }
@@ -118,6 +120,7 @@ public class GameRoomService {
                 .gameRoomId(room.getId())
                 .userId(joinUser.getId())
                 .ready(false)
+                .gameRound(gameRound)
                 .message(joinUser.getNickname()+"님이 "+room.getRoomTitle()+" 방에 참여합니다.")
                 .build();
     }
