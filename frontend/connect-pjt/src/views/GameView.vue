@@ -103,7 +103,7 @@ export default {
 
             this.getUsersInfo(roomId)
           },
-                      'start-game': () => {
+          'start-game': () => {
               console.log('Unity → Vue 게임 시작 요청:')
               const jsonData = this.parseUnityData(data.data)
               const { roomId, userId } = jsonData
@@ -788,12 +788,13 @@ export default {
     },
 
     // STOMP 토픽 구독
-    subscribeToTopics() {
+    subscribeToTopics(roomId, userId) {
       if (!this.stompClient || !this.stompClient.connected) {
         console.warn('STOMP 클라이언트가 연결되지 않았습니다.')
         return
       }
 
+      console.log(`roomId: ${this.roomId}, userId: ${this.userId}`)
       try {
         // 1. 기본 구독 경로 (/sub)
         this.stompClient.subscribe('/sub', (message) => {
