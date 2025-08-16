@@ -9,6 +9,20 @@
       allowfullscreen
     ></iframe>
   </div>
+  
+  <!-- YouTube 동영상 (매우 작게) -->
+  <div class="youtube-container">
+    <iframe
+      ref="youtubeFrame"
+      :src="youtubeSrc"
+      width="200"
+      height="150"
+      frameborder="0"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen
+    ></iframe>
+  </div>
+  
   <div class="localCamera">
     <video ref="localVideo" id="localVideo" autoplay playsinline></video>
     <video ref="remoteVideo" id="remoteVideo" autoplay playsinline></video>
@@ -37,6 +51,7 @@ export default {
       remoteId: 'ID', // 상대방 아이디
       isUnityReady: false, // Unity 준비 여부
       stompClient: null, // STOMP 클라이언트
+      videoId: 'pkc1XoilQIc', // YouTube 비디오 ID
     }
   },
   async mounted() {
@@ -731,11 +746,9 @@ export default {
     connectStompWebSocket() {
       try {
         // STOMP 클라이언트 생성
+        console.log('1. STOMP 클라이언트 생성')
         this.stompClient = new Client({
-          brokerURL: `wss://i13a708.p.ssafy.io/ws-game`, // WebSocket 엔드포인트
-          debug: function (str) {
-            console.log('STOMP Debug:', str)
-          },
+          webSocketFactory: () => new SockJS(`wss://i13a708.p.ssafy.io/ws-game`),
           reconnectDelay: 5000, // 재연결 지연 시간 (5초)
           heartbeatIncoming: 4000, // 수신 하트비트
           heartbeatOutgoing: 4000, // 송신 하트비트
@@ -782,11 +795,17 @@ export default {
           console.log('✅ 기본 메시지 수신:', message.body)
         })
 
-        // 2. 특정 게임방 구독 (/sub/games/{roomId})
         if (this.roomId && this.roomId !== 'default') {
+          // 2. 특정 게임방 구독 (/sub/games/{roomId})
           this.stompClient.subscribe(`/sub/games/${this.roomId}`, (message) => {
             console.log('🎮 게임방 메시지 수신:', message.body)
             this.handleGameMessage(JSON.parse(message.body))
+          })
+
+          // 3. 힌트 메시지 구독 (/user/queue/hint)
+          this.stompClient.subscribe(`user/queue/hint`, (message) => {
+            console.log('💡 힌트 메시지 수신:', message.body)
+            this.handleHintMessage(JSON.parse(message.body))
           })
         }
 
@@ -804,28 +823,42 @@ export default {
         const { type, data } = message
 
         switch (type) {
-          case 'GAME_START':
+          case 'GAME_START':            // 게임 시작
             this.handleGameStart(data)
             break
-          case 'ROUND_QUESTION':
+          case 'ROUND_QUESTION':        // 문제 전송
             this.handleRoundQuestion(data)
             break
-          case 'ROUND_END':
+          case 'ROUND_END':             // 라운드 종료
             this.handleRoundEnd(data)
             break
-          case 'GAME_END':
+          case 'GAME_END':              // 게임 종료
             this.handleGameEnd(data)
             break
-          case 'ANSWER_RESULT':
+          case 'ANSWER_RESULT':         // 정답 결과
             this.handleAnswerResult(data)
             break
-          case 'ANSWER_REJECTED':
+          case 'ANSWER_REJECTED':       // 정답 거부
             this.handleAnswerRejected(data)
             break
-          case 'HINT_RESPONSE':
+          default:
+            console.warn('알 수 없는 게임 메시지 타입:', type)
+        }
+      } catch (error) {
+        console.error('게임 메시지 처리 오류:', error)
+      }
+    },
+
+    handleHintMessage(message) {
+      console.log('💡 힌트 메시지 처리:', message)
+      try {
+        const { type, data } = message
+
+        switch (type) {
+          case 'HINT_RESPONSE':         // 힌트 제공공
             this.handleHintResponse(data)
             break
-          case 'HINT_REJECTED':
+          case 'HINT_REJECTED':         // 힌트 제공 불가
             this.handleHintRejected(data)
             break
           default:
@@ -845,6 +878,13 @@ export default {
     // 라운드 문제 처리
     handleRoundQuestion(data) {
       console.log('❓ 라운드 문제:', data)
+      
+      // 영상 재생
+      const videoId = data.videoId
+      this.changeYouTubeVideo(videoId)
+      this.playYouTubeVideo()
+
+      // 라운드 시작을 알림
       this.sendToUnity('round-question', data)
     },
 
@@ -971,7 +1011,51 @@ export default {
         console.log('🔌 STOMP WebSocket 연결 해제 완료')
       }
     },
+    
+    // YouTube 비디오 ID 변경
+    changeYouTubeVideo(newVideoId) {
+      const iframe = this.youtubeIframe;
+        if (iframe) {
+          iframe.src = `https://youtube.com/embed/${newVideoId}?si=8IsRoXmN3OS1AwUH&enablejsapi=1`;
+        }
+
+      console.log('YouTube 비디오 ID 변경:', newVideoId)
+    },
+    
+    // YouTube 동영상 재생
+    playYouTubeVideo() {
+      const iframe = this.$refs.youtubeFrame
+      if (iframe) {
+        try {
+          iframe.contentWindow?.postMessage('{"event":"command","func":"playVideo","args":""}', 'https://www.youtube.com')
+          console.log('YouTube 동영상 재생')
+        } catch (error) {
+          console.error('YouTube 재생 명령 전송 중 오류:', error)
+        }
+      }
+    },
+    
+    // YouTube 동영상 정지
+    pauseYouTubeVideo() {
+      const iframe = this.$refs.youtubeFrame
+      if (iframe) {
+        try {
+          iframe.contentWindow?.postMessage('{"event":"command","func":"pauseVideo","args":""}', 'https://www.youtube.com')
+          console.log('YouTube 동영상 정지')
+        } catch (error) {
+          console.error('YouTube 정지 명령 전송 중 오류:', error)
+        }
+      }
+    },
   },
+  
+  computed: {
+    // YouTube iframe src 계산
+    youtubeSrc() {
+      return `https://youtube.com/embed/${this.videoId}?si=8IsRoXmN3OS1AwUH&enablejsapi=1`
+    }
+  },
+  
   name: 'UnityView',
 }
 </script>
@@ -1021,5 +1105,15 @@ iframe {
   border-radius: 6px;
   overflow: hidden;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.youtube-container {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 </style>
