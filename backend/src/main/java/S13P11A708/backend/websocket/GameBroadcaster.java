@@ -27,7 +27,7 @@ public class GameBroadcaster {
         System.out.println("[WS] SEND " + message.getType() + " -> " + dest);
         messagingTemplate.convertAndSend(dest, message);
     }
-
+    // 전체 방에 브로드캐스트
     public void broadcastAns(Long roomId, GameAnsSocketMessage message) {
         messagingTemplate.convertAndSend("/sub/games/" + roomId, message);
     }
