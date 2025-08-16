@@ -112,8 +112,8 @@ public class GameService {
 
         if(player.isAnswered()){
             log.info("[FLOW] 이미 정답 맞춘 상태 → 리턴");
-            broadcaster.broadcastToRoom(senderId,
-                    messageFactory.createInfoMessage(GameMessageType.ANSWER_REJECTED, roomId, "이미 정답을 맞추셨습니다"));
+            broadcaster.broadcastAns(roomId,
+                    messageFactory.createAnsMessage(GameMessageType.ANSWER_REJECTED, roomId, senderId, true));
             return;
         }
 
@@ -122,9 +122,10 @@ public class GameService {
         boolean isCorrect = correctAnswer.equalsIgnoreCase(answer.trim()); //입력받은 string 앞뒤 공백 지우기
         log.info("[4] 정답 여부 → {}", isCorrect);
 
+        //오답일 경우
         if (!isCorrect) {
             broadcaster.broadcastAns(roomId,
-                    messageFactory.createAnsMessage(GameMessageType.ANSWER_REJECTED, roomId, false));
+                    messageFactory.createAnsMessage(GameMessageType.ANSWER_REJECTED, roomId, senderId, false));
             log.info("[FLOW] 오답 → 라운드 유지");
             return;
         }
@@ -132,7 +133,7 @@ public class GameService {
         //4. 정답 처리
         gameRedisService.increaseCount(roomId, senderId);
         broadcaster.broadcastAns(roomId,
-                messageFactory.createAnsMessage(GameMessageType.ANSWER_RESULT, roomId, true));
+                messageFactory.createAnsMessage(GameMessageType.ANSWER_RESULT, roomId, senderId, true));
         log.info("[5] 정답자 카운트 증가");
 
         //5. 다음 라운드 진행
