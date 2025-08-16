@@ -95,11 +95,20 @@ public class GameService {
                 game.getRound(), game.getTotalRound(), game.getCurrentAnswer());
 
         //2. 이미 정답을 맞춘 사람인지
-        PlayerStatus player = gameRedisService.getPlayer(roomId, senderId);
+//        PlayerStatus player = gameRedisService.getPlayer(roomId, senderId);
+        //redis 호출 최소화
+        PlayerStatus player = game.getPlayerStatus(senderId);
         log.info("[3] 플레이어 상태: answered={}, correctCount={}",
                 player.isAnswered(), player.getCorrectCount());
 
-        if(player == null) return;
+        if(player == null){
+            log.warn("[FLOW] 플레이어 없음 -> 리턴");
+            return;
+        }
+
+        // 정답 채팅을 방에 먼저 broadcast (참여자 모두 해당 내용 공유)
+        broadcaster.broadcastToRoom(roomId,
+                messageFactory.createInfoMessage(GameMessageType.ANSWER_SUBMIT, roomId, answer));
 
         if(player.isAnswered()){
             log.info("[FLOW] 이미 정답 맞춘 상태 → 리턴");
@@ -243,9 +252,7 @@ public class GameService {
                 winnerEntity,
                 game.getStartedAt(),
                 LocalDateTime.now(),
-                game.getTotalRound(),
-                room.getMusicEra(),
-                room.getCategory()
+                game.getTotalRound()
         );
 
         //3-2. 게임 결과 기록 GameHistoryUser

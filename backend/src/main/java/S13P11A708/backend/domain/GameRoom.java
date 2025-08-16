@@ -30,12 +30,6 @@ public class GameRoom extends BaseEntity {
     @Column(name = "game_round")
     private Integer gameRound;
 
-    @Column(name = "music_era")
-    private String musicEra;
-
-    @Column(name = "category")
-    private String category;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "game_status")
     private GameStatus gameStatus;

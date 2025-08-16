@@ -34,6 +34,7 @@ public class GameBroadcaster {
 
     // 특정 유저에게만 전송 (힌트)
     public void sendToUser(Long userId, GameHintSocketMessage message) {
-        messagingTemplate.convertAndSend("/queue/hint/"+userId, message);
+        messagingTemplate.convertAndSendToUser(String.valueOf(userId), "/queue/hint/", message);
+//        messagingTemplate.convertAndSend("/queue/hint/"+userId, message);
     }
 }
