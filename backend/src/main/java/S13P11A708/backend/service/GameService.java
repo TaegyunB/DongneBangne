@@ -107,13 +107,16 @@ public class GameService {
         }
 
         // 정답 채팅을 방에 먼저 broadcast (참여자 모두 해당 내용 공유)
-        broadcaster.broadcastToRoom(roomId,
-                messageFactory.createInfoMessage(GameMessageType.ANSWER_SUBMIT, roomId, answer));
+        broadcaster.broadcastAns(roomId,
+                messageFactory.createAnsMessage(GameMessageType.ANSWER_SUBMIT, roomId, senderId, answer, false, "정답제출"));
+
+//        broadcaster.broadcastToRoom(roomId,
+//                messageFactory.createInfoMessage(GameMessageType.ANSWER_SUBMIT, roomId, answer));
 
         if(player.isAnswered()){
             log.info("[FLOW] 이미 정답 맞춘 상태 → 리턴");
             broadcaster.broadcastAns(roomId,
-                    messageFactory.createAnsMessage(GameMessageType.ANSWER_REJECTED, roomId, senderId, true));
+                    messageFactory.createAnsMessage(GameMessageType.ANSWER_REJECTED, roomId, senderId, answer, true, "이미 맞춘 유저"));
             return;
         }
 
@@ -125,7 +128,7 @@ public class GameService {
         //오답일 경우
         if (!isCorrect) {
             broadcaster.broadcastAns(roomId,
-                    messageFactory.createAnsMessage(GameMessageType.ANSWER_REJECTED, roomId, senderId, false));
+                    messageFactory.createAnsMessage(GameMessageType.ANSWER_REJECTED, roomId, senderId, answer, false, "오답"));
             log.info("[FLOW] 오답 → 라운드 유지");
             return;
         }
@@ -133,7 +136,7 @@ public class GameService {
         //4. 정답 처리
         gameRedisService.increaseCount(roomId, senderId);
         broadcaster.broadcastAns(roomId,
-                messageFactory.createAnsMessage(GameMessageType.ANSWER_RESULT, roomId, senderId, true));
+                messageFactory.createAnsMessage(GameMessageType.ANSWER_RESULT, roomId, senderId, answer, true, "정답"));
         log.info("[5] 정답자 카운트 증가");
 
         //5. 다음 라운드 진행
