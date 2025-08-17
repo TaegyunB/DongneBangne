@@ -52,6 +52,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registry.enableSimpleBroker("/sub", "/queue");
         // send destination(클라이언트 -> 서버)
         registry.setApplicationDestinationPrefixes("/pub");
+        registry.setUserDestinationPrefix("/user");
 
     }
 
