@@ -10,15 +10,15 @@
     ></iframe>
   </div>
   
-  <!-- YouTube 동영상 (숨김) -->
-  <div class="youtube-container" style="position: absolute; left: -9999px; top: -9999px; width: 1px; height: 1px; overflow: hidden;">
+  <!-- YouTube 동영상 (테스트용) -->
+  <div class="youtube-container">
     <iframe
       ref="youtubeFrame"
       :src="youtubeSrc"
-      width="1"
-      height="1"
+      width="320"
+      height="240"
       frameborder="0"
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"
       allowfullscreen
     ></iframe>
   </div>
@@ -103,22 +103,24 @@ export default {
 
             this.getUsersInfo(roomId)
           },
-          'start-game': () => {
-              console.log('Unity → Vue 게임 시작 요청:')
-              const jsonData = this.parseUnityData(data.data)
-              const { roomId, userId } = jsonData
+          // 'start-game': () => {
+          //     console.log('Unity → Vue 게임 시작 요청:')
+          //     const jsonData = this.parseUnityData(data.data)
+          //     const { roomId, userId } = jsonData
 
-              this.roomId = roomId
-              this.localId = userId
+          //     this.roomId = roomId
+          //     this.localId = userId
 
-              // WebSocket 연결
-              this.connectStompWebSocket(roomId, userId)
-            },
+          //     // WebSocket 연결
+          //     //this.connectStompWebSocket(roomId, userId)
+          // },
           'answer-submit': () => {
+            console.log('Unity → Vue 정답 제출 요청:')
             const answerData = this.parseUnityData(data.data)
             this.sendAnswerToServer(answerData)
           },
           'hint-request': () => {
+            console.log('Unity → Vue 힌트 요청:')
             const hintData = this.parseUnityData(data.data)
             this.sendHintRequestToServer(hintData)
           },
@@ -810,6 +812,7 @@ export default {
           console.log('✅ 기본 메시지 수신:', message.body)
         })
 
+        // 2. 특정 게임방 구독 (/sub/games/{roomId})
         this.stompClient.subscribe(`/sub/games/${roomId}`, (message) => {
           console.log('🎮 게임방 메시지 수신:', message.body)
           this.handleGameMessage(JSON.parse(message.body))
@@ -817,9 +820,17 @@ export default {
 
         // 3. 힌트 메시지 구독 (/queue/hint/{userId})
         this.stompClient.subscribe(`/queue/hint/${userId}`, (message) => {
-          console.log('💡 힌트 메시지 수신:', message.body)
+          console.log('💡 힌트 메시지 수신 1:', message.body)
           this.handleHintMessage(JSON.parse(message.body))
         })
+
+        // 4. 힌트 메시지 구독 (/user/queue/hint)
+        this.stompClient.subscribe(`user/queue/hint`, (message) => {
+          console.log('💡 힌트 메시지 수신 2:', message.body)
+          this.handleHintMessage(JSON.parse(message.body))
+        })
+
+
         console.log('📡 STOMP 토픽 구독 완료')
         console.log(`roomId: ${this.roomId}, userId: ${this.userId}`)
       } catch (error) {
@@ -832,26 +843,31 @@ export default {
       console.log('🎮 게임 메시지 처리:', message)
 
       try {
-        const { type, data } = message
+        // message의 type을 제외하고는 전부 형태가 다름
+        // 따라서 type에 따라 분기하고 함수 내부에서 처리
+        const { type } = message
 
         switch (type) {
           case 'GAME_START':            // 게임 시작
-            this.handleGameStart(data)
+            this.handleGameStart(message)
             break
           case 'ROUND_QUESTION':        // 문제 전송
-            this.handleRoundQuestion(data)
+            this.handleRoundQuestion(message)
             break
-          case 'ROUND_END':             // 라운드 종료
-            this.handleRoundEnd(data)
+          case 'ROUND_END':             // 라운드 종료 - 사용하지 않는 것으로 추정
+            this.handleRoundEnd(message)
             break
           case 'GAME_END':              // 게임 종료
-            this.handleGameEnd(data)
+            this.handleGameEnd(message)
+            break
+          case 'ANSWER_SUBMIT':         // 정답 제출
+            this.handleAnswerSubmit(message)
             break
           case 'ANSWER_RESULT':         // 정답 결과
-            this.handleAnswerResult(data)
+            this.handleAnswerResult(message)
             break
-          case 'ANSWER_REJECTED':       // 정답 거부
-            this.handleAnswerRejected(data)
+          case 'ANSWER_REJECTED':       // 정답 틀림
+            this.handleAnswerRejected(message)
             break
           default:
             console.warn('알 수 없는 게임 메시지 타입:', type)
@@ -864,14 +880,14 @@ export default {
     handleHintMessage(message) {
       console.log('💡 힌트 메시지 처리:', message)
       try {
-        const { type, data } = message
+        const { type } = message
 
         switch (type) {
-          case 'HINT_RESPONSE':         // 힌트 제공공
-            this.handleHintResponse(data)
+          case 'HINT_RESPONSE':         // 힌트 제공
+            this.handleHintResponse(message)
             break
           case 'HINT_REJECTED':         // 힌트 제공 불가
-            this.handleHintRejected(data)
+            this.handleHintRejected(message)
             break
           default:
             console.warn('알 수 없는 게임 메시지 타입:', type)
@@ -882,58 +898,66 @@ export default {
     },
 
     // 게임 시작 처리
-    handleGameStart(data) {
-      console.log('🎮 게임 시작:', data)
-      this.sendToUnity('game-start', data)
+    handleGameStart(message) {
+      const {type, roomId, payload} = message
+      console.log(`🎮 게임 시작 - 방 번호: ${roomId} 메시지: ${payload}`)
+
+      this.sendToUnity('game-start', message)
     },
 
     // 라운드 문제 처리
-    handleRoundQuestion(data) {
-      console.log('❓ 라운드 문제:', data)
+    handleRoundQuestion(message) {
+      const {type, roomId, payload} = message
+
+      console.log('❓ 라운드 문제:', message)
 
       // 영상 재생
-      const videoId = data.videoId
-      this.changeYouTubeVideo(videoId)
+      this.changeYouTubeVideo(payload)
       this.playYouTubeVideo()
 
       // 라운드 시작을 알림
-      this.sendToUnity('round-question', data)
+      this.sendToUnity('round-question', message)
     },
 
     // 라운드 종료 처리
-    handleRoundEnd(data) {
+    handleRoundEnd(message) {
       console.log('🏁 라운드 종료:', data)
       this.sendToUnity('round-end', data)
     },
 
     // 게임 종료 처리
-    handleGameEnd(data) {
+    handleGameEnd(message) {
       console.log('🎯 게임 종료:', data)
       this.sendToUnity('game-end', data)
     },
+    // 정답 제출
+    handleAnswerSubmit(message){
+      console.log('💡 정답 제출:', message)
+      this.sendToUnity('answer-submit', message)
+    },
 
     // 정답 결과 처리
-    handleAnswerResult(data) {
-      console.log('✅ 정답 결과:', data)
-      this.sendToUnity('answer-result', data)
+    handleAnswerResult(message) {
+      console.log('✅ 정답 결과:', message)
+      this.sendToUnity('answer-result', message)
     },
 
     // 정답 거부 처리
-    handleAnswerRejected(data) {
-      console.log('❌ 정답 거부:', data)
-      this.sendToUnity('answer-rejected', data)
+    handleAnswerRejected(message) {
+      console.log('❌ 정답 틀림:', message)
+      this.sendToUnity('answer-rejected', message)
     },
 
     // 힌트 응답 처리
-    handleHintResponse(data) {
-      console.log('💡 힌트 응답:', data)
-      this.sendToUnity('hint-response', data)
+    handleHintResponse(message) {
+      console.log('💡 힌트 응답:', message)
+      this.sendToUnity('hint-response', message)
     },
 
     // 힌트 거부 처리
-    handleHintRejected(data) {
-      console.log('🚫 힌트 거부:', data)
-      this.sendToUnity('hint-rejected', data)
+    handleHintRejected(message) {
+      console.log('🚫 힌트 거부:', message)
+      this.sendToUnity('hint-rejected', message)
     },
 
     // Unity로 메시지 전송
@@ -953,15 +977,13 @@ export default {
 
     // 정답 제출 (클라이언트 → 서버)
     sendAnswerToServer(answerData) {
+      const {roomId, answer} = answerData
+
       try {
         const message = {
           type: 'ANSWER_SUBMIT',
-          data: {
-            roomId: this.roomId,
-            userId: this.localId,
-            answer: answerData.answer,
-            timestamp: new Date().toISOString(),
-          },
+          roomId: roomId,
+          answer: answer,
         }
 
         this.sendStompMessage('/games/answer', message)
@@ -974,14 +996,10 @@ export default {
     // 힌트 요청 (클라이언트 → 서버)
     sendHintRequestToServer(hintData) {
       try {
+        const {roomId} = hintData
         const message = {
           type: 'HINT_REQUEST',
-          data: {
-            roomId: this.roomId,
-            userId: this.localId,
-            hintType: hintData.hintType,
-            timestamp: new Date().toISOString(),
-          },
+          roomId: roomId,
         }
 
         this.sendStompMessage('/games/hint', message)
@@ -1039,7 +1057,7 @@ export default {
       const iframe = this.$refs.youtubeFrame
       if (iframe) {
         try {
-          iframe.contentWindow?.postMessage('{"event":"command","func":"playVideo","args":""}', 'https://www.youtube.com')
+          iframe.contentWindow?.postMessage('{"event":"command","func":"playVideo","args":""}', '*')
           console.log('YouTube 동영상 재생')
         } catch (error) {
           console.error('YouTube 재생 명령 전송 중 오류:', error)
@@ -1052,7 +1070,7 @@ export default {
       const iframe = this.$refs.youtubeFrame
       if (iframe) {
         try {
-          iframe.contentWindow?.postMessage('{"event":"command","func":"pauseVideo","args":""}', 'https://www.youtube.com')
+          iframe.contentWindow?.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*')
           console.log('YouTube 동영상 정지')
         } catch (error) {
           console.error('YouTube 정지 명령 전송 중 오류:', error)
@@ -1120,11 +1138,14 @@ iframe {
 }
 
 .youtube-container {
-  position: absolute;
-  left: -9999px;
-  top: -9999px;
-  width: 1px;
-  height: 1px;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 320px;
+  height: 240px;
+  z-index: 1000;
+  border-radius: 8px;
   overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 </style>
