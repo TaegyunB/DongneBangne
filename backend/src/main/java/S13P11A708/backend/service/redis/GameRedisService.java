@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -45,18 +46,19 @@ public class GameRedisService {
      * roomId로 GameStatusRedis(게임방 정보) 가져오기
      */
     public GameStatusRedis getGameStatusRedis(Long roomId) {
-        Object data = gameStatusRedisTemplate.opsForValue().get(getKey(roomId));
-
-        if (data instanceof GameStatusRedis) {
-            return (GameStatusRedis) data;
-        }
-
-        if (data instanceof Map) {
-            ObjectMapper mapper = new ObjectMapper();
-            return mapper.convertValue(data, GameStatusRedis.class);
-        }
-
-        return null;
+        return gameStatusRedisTemplate.opsForValue().get(getKey(roomId));
+//        Object data = gameStatusRedisTemplate.opsForValue().get(getKey(roomId));
+//
+//        if (data instanceof GameStatusRedis) {
+//            return (GameStatusRedis) data;
+//        }
+//
+//        if (data instanceof Map) {
+//            ObjectMapper mapper = new ObjectMapper();
+//            return mapper.convertValue(data, GameStatusRedis.class);
+//        }
+//
+//        return null;
     }
 
     /**
@@ -93,17 +95,32 @@ public class GameRedisService {
      * 유저가 맞춘 문제 갯수 올리기
      */
     public void increaseCount(Long roomId, Long userId) {
-        GameStatusRedis status = getGameStatusRedis(roomId);
-        if(status == null) return;
+//        String key = getKey(roomId);
+//        GameStatusRedis status = getGameStatusRedis(roomId);
 
-        if (status != null) {
-            if (status.getUser1().getUserId().equals(userId)) {
-                status.getUser1().updateCorrectCount(status.getUser1().getCorrectCount() + 1);
-            } else if (status.getUser2().getUserId().equals(userId)) {
-                status.getUser2().updateCorrectCount(status.getUser2().getCorrectCount() + 1);
-            }
-            saveGameStatus(roomId, status);
+        GameStatusRedis s = getGameStatusRedis(roomId);
+        if (s == null) return;
+
+        PlayerStatus p1 = s.getUser1();
+        PlayerStatus p2 = s.getUser2();
+
+        if (p1 != null && Objects.equals(p1.getUserId(), userId)) {
+            p1.updateCorrectCount((p1.getCorrectCount()) + 1);
+        } else if (p2 != null && Objects.equals(p2.getUserId(), userId)) {
+            p2.updateCorrectCount((p2.getCorrectCount()) + 1);
         }
+        saveGameStatus(roomId, s);
+
+//        if(status == null) return;
+//
+//        if (status != null) {
+//            if (status.getUser1().getUserId().equals(userId)) {
+//                status.getUser1().updateCorrectCount(status.getUser1().getCorrectCount() + 1);
+//            } else if (status.getUser2().getUserId().equals(userId)) {
+//                status.getUser2().updateCorrectCount(status.getUser2().getCorrectCount() + 1);
+//            }
+//            saveGameStatus(roomId, status);
+//        }
     }
 
     /**
@@ -198,6 +215,21 @@ public class GameRedisService {
         //redis 정보 삭제
 //        String key = getKey(roomId);
 //        redisTemplate.delete(key);
+    }
+
+    public void updatePoint(Long roomId, Long winnerId){
+        GameStatusRedis s = getGameStatusRedis(roomId);
+        if (s == null) return;
+
+        PlayerStatus p1 = s.getUser1();
+        PlayerStatus p2 = s.getUser2();
+
+        if (p1 != null && Objects.equals(p1.getUserId(), winnerId)) {
+            p1.updatePoint((p1.getPoint()) + 200);
+        } else if (p2 != null && Objects.equals(p2.getUserId(), winnerId)) {
+            p2.updatePoint((p2.getPoint()) + 200);
+        }
+        saveGameStatus(roomId, s);
     }
 
 
