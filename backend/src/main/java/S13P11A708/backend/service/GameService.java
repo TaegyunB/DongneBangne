@@ -143,9 +143,10 @@ public class GameService {
         boolean isLastRound = game.getRound() >= game.getTotalRound();
         if(isLastRound) {
             log.info("[FLOW] 마지막 라운드 → 게임 종료 처리");
-            gameRedisService.finishGame(roomId);
             log.info("[FLOW] broadcasting GAME_END to /sub/game/"+ roomId);
             endGame(roomId, game); // db 저장, 최종 승자 판단
+            log.info("레디스 정보 삭제");
+            gameRedisService.finishGame(roomId);
             return;
         }
 
