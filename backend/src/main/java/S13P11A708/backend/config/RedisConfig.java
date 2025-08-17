@@ -46,15 +46,15 @@ public class RedisConfig {
         return tpl;
     }
 
-    @Bean
-    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory) {
-        RedisTemplate<String, Object> template = new RedisTemplate<>();
-        template.setConnectionFactory(factory);
-
-        //직렬화
-        template.setKeySerializer(new StringRedisSerializer());
-        template.setValueSerializer(new GenericJackson2JsonRedisSerializer()); // JSON 직렬화
-
-        return template;
-    }
+//    @Bean
+//    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory) {
+//        RedisTemplate<String, Object> template = new RedisTemplate<>();
+//        template.setConnectionFactory(factory);
+//
+//        //직렬화
+//        template.setKeySerializer(new StringRedisSerializer());
+//        template.setValueSerializer(new GenericJackson2JsonRedisSerializer()); // JSON 직렬화
+//
+//        return template;
+//    }
 }
