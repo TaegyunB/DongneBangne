@@ -20,9 +20,9 @@
           <th class="text-center">순위</th>
           <th class="text-center">경로당 이름</th>
           <th class="text-center narrow">도전 현황</th>
-          <th class="text-center">트로트 포인트</th>
-          <th class="text-center">도전 포인트</th>
-          <th class="text-blue text-center">월간 포인트</th>
+          <th class="text-center">트로트 점수</th>
+          <th class="text-center">도전 점수</th>
+          <th class="text-blue text-center">월간 점수</th>
         </tr>
       </thead>
 
