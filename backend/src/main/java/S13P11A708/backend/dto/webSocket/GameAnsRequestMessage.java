@@ -10,6 +10,8 @@ import lombok.*;
 @Builder
 public class GameAnsRequestMessage {
     private GameMessageType type;
+    private String answer;
     private Long roomId;
+    private Long userId;
     private String submitAnswer;
 }
