@@ -20,9 +20,9 @@
           <th class="text-center">순위</th>
           <th class="text-center">경로당 이름</th>
           <th class="text-center narrow">도전 현황</th>
-          <th class="text-center">트로트 포인트</th>
-          <th class="text-center">도전 포인트</th>
-          <th class="text-blue text-center">월간 포인트</th>
+          <th class="text-center">트로트 점수</th>
+          <th class="text-center">도전 점수</th>
+          <th class="text-blue text-center">월간 점수</th>
         </tr>
       </thead>
 
@@ -522,6 +522,31 @@ const onImageLoadSelected = () => {}
 </script>
 
 <style scoped>
+/* ===== 폰트 등록 ===== */
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-Regular.ttf') format('truetype');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-Bold.ttf') format('truetype');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-ExtraBold.ttf') format('truetype');
+  font-weight: 800; font-style: normal; font-display: swap;
+}
+
+/* 🔹 이 한 줄로 페이지 전체 적용 */
+.container{
+  font-family: 'KoddiUDOnGothic', -apple-system, BlinkMacSystemFont,
+               'Segoe UI', Roboto, 'Noto Sans KR', 'Apple SD Gothic Neo',
+               'Malgun Gothic', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 :root { --toolbar-height: 64px; --sticky-offset: var(--toolbar-height) } /* 헤더 높이에 맞게 조정 */
 
 /* 레이아웃/타이포 */

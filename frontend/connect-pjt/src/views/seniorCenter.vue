@@ -272,6 +272,23 @@ function handleOnboardingConfirm(payload) {
 </script>
 
 <style scoped>
+/* ===== 폰트 등록(페이지 단위) ===== */
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-Regular.ttf') format('truetype');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-Bold.ttf') format('truetype');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-ExtraBold.ttf') format('truetype');
+  font-weight: 800; font-style: normal; font-display: swap;
+}
+
 /* ========= 접근성/시니어 친화 기본값 ========= */
 .find-senior-center {
   /* 업로드된 이미지에서 추출한 브랜드 컬러 */
@@ -283,6 +300,12 @@ function handleOnboardingConfirm(payload) {
   background: #ffffff;
   color: #111;
   line-height: 1.55;
+
+  /* 🔹 페이지 전체 폰트 적용 */
+  font-family: 'KoddiUDOnGothic', -apple-system, BlinkMacSystemFont,
+               'Segoe UI', Roboto, 'Noto Sans KR', 'Apple SD Gothic Neo',
+               'Malgun Gothic', system-ui, sans-serif;
+
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -311,7 +334,7 @@ function handleOnboardingConfirm(payload) {
 
 .headline {
   font-size: 48px;
-  font-weight: 800;
+  font-weight: 800; /* Koddi ExtraBold(800) 사용 */
   letter-spacing: -0.5px;
   margin: 12px 0 24px;
 }
@@ -358,7 +381,7 @@ function handleOnboardingConfirm(payload) {
 }
 
 .search-btn {
-  font-weight: 800;
+  font-weight: 800; /* 800 */
   min-width: 140px;
   padding: 0 18px;
   background: var(--brand);
@@ -404,7 +427,7 @@ function handleOnboardingConfirm(payload) {
 .result-table thead th {
   background: #f4f6f8;
   font-size: 20px;
-  font-weight: 800;
+  font-weight: 800; /* 800 */
 }
 
 .result-table tbody tr:nth-child(even) {
@@ -438,7 +461,7 @@ function handleOnboardingConfirm(payload) {
 /* 버튼 공통 */
 .confirm-btn, .cancel-btn {
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 700; /* 700 */
   min-height: 44px;
   padding: 8px 18px;
   border: none;
@@ -480,7 +503,7 @@ function handleOnboardingConfirm(payload) {
 }
 
 .modal-title { font-size: 26px; font-weight: 800; margin-bottom: 10px }
-.modal-text { font-size: 18px; margin: 0 0 16px }
+.modal-text  { font-size: 18px; margin: 0 0 16px }
 
 .modal-actions {
   display: flex; justify-content: center; margin: 10px 0 18px;
@@ -502,3 +525,4 @@ function handleOnboardingConfirm(payload) {
   .result-table thead th { font-size: 20px }
 }
 </style>
+
