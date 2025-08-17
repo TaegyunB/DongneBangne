@@ -33,7 +33,7 @@
 
       <div class="content">{{ board.content }}</div>
 
-            <div class="footer">
+      <div class="footer">
         <!-- 좋아요 -->
         <button class="like-button" :disabled="likeBusy" @click="toggleLike">
           <span class="thumb" :class="{ on: liked }">👍</span>
@@ -97,19 +97,18 @@
             <!-- 보기 모드 -->
             <div v-else class="comment-content">{{ c.content }}</div>
 
-            <!-- 내 댓글만 조작 -->
-            <div class="comment-actions" v-if="isMyComment(c)">
+            <!-- 내 댓글만 조작 (편집 중에는 숨김) -->
+            <div class="comment-actions" v-if="isMyComment(c) && editTargetId !== c.commentId">
               <button class="btn" @click="startEdit(c)">수정</button>
-              <button class="btn danger" :disabled="commentBusy" @click="removeComment(c.commentId)">삭제</button>
+              <button class="btn danger" :disabled="commentBusy" @click="openCommentConfirm(c.commentId)">삭제</button>
             </div>
           </div>
         </div>
       </div>
       <!-- ===== /댓글 섹션 ===== -->
-
     </template>
 
-    <!-- 삭제 확인 모달 -->
+    <!-- 게시글 삭제 확인 모달 -->
     <div v-if="showConfirm" class="modal-backdrop" @click.self="closeConfirm">
       <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
         <h3 id="confirmTitle" class="modal-title">삭제하시겠어요?</h3>
@@ -119,6 +118,31 @@
           <button class="modal-danger" :disabled="deleting" @click="confirmDelete">
             {{ deleting ? '삭제 중...' : '삭제' }}
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 댓글 삭제 확인 모달 -->
+    <div v-if="showCmtConfirm" class="modal-backdrop" @click.self="closeCmtConfirm">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cmtConfirmTitle">
+        <h3 id="cmtConfirmTitle" class="modal-title">댓글을 삭제할까요?</h3>
+        <p class="modal-desc">삭제 후에는 복구할 수 없습니다.</p>
+        <div class="modal-actions">
+          <button class="modal-cancel" @click="closeCmtConfirm">취소</button>
+          <button class="modal-danger" :disabled="commentBusy" @click="confirmRemoveComment">
+            {{ commentBusy ? '삭제 중...' : '삭제' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 안내 모달 -->
+    <div v-if="notice.open" class="modal-backdrop" @click.self="closeNotice">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="noticeTitle">
+        <h3 id="noticeTitle" class="modal-title">{{ notice.title }}</h3>
+        <p class="modal-desc">{{ notice.message }}</p>
+        <div class="modal-actions">
+          <button class="modal-cancel" @click="closeNotice">확인</button>
         </div>
       </div>
     </div>
@@ -161,29 +185,35 @@ const showConfirm = ref(false)
 
 const me = ref(null)
 
-// 이미지 처리
-const getBoardImage = (boardData) => {
-  if (!boardData.boardImage) return defaultImage
-  return boardData.boardImage
-}
-const onImageError = (event, boardData) => {
-  console.error('이미지 로드 실패:', { src: event.target.src, boardId: boardData.boardId })
-  event.target.src = defaultImage
-}
-const onImageLoad = (event, boardData) => {
-  console.log('이미지 로드 성공:', { src: event.target.src, boardId: boardData.boardId })
-}
+/* 안내 모달 */
+const notice = ref({ open:false, title:'안내', message:'', onClose:null })
+const showNotice = (msg, title='안내', onClose=null) => { notice.value = { open:true, title, message:msg, onClose } }
+const closeNotice = () => { const cb = notice.value.onClose; notice.value.open = false; notice.value.onClose = null; if (cb) cb() }
 
-// 토큰 헤더(선택)
+/* 댓글 삭제 모달 상태 */
+const showCmtConfirm = ref(false)
+const targetCommentId = ref(null)
+const openCommentConfirm = (commentId) => { targetCommentId.value = commentId; showCmtConfirm.value = true }
+const closeCmtConfirm = () => { targetCommentId.value = null; showCmtConfirm.value = false }
+
+// 이미지 처리
+const getBoardImage = (boardData) => boardData.boardImage || defaultImage
+const onImageError = (event, boardData) => { console.error('이미지 로드 실패:', { src: event.target.src, boardId: boardData.boardId }); event.target.src = defaultImage }
+const onImageLoad = (event, boardData) => { /* noop */ }
+
+// 토큰 & AJAX 헤더
 const headersWithToken = () => {
   const token = getAccessToken?.()
-  return token ? { Authorization: `Bearer ${token}` } : {}
+  return {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    'X-Requested-With': 'XMLHttpRequest' // 서버가 리다이렉트 대신 401을 주도록 힌트
+  }
 }
 
 // 내 정보
 const fetchMe = async () => {
   try {
-    const { data } = await api.get('/api/v1/main/me', { headers: headersWithToken() })
+    const { data } = await api.get('/api/v1/main/me', { headers: headersWithToken(), withCredentials: true })
     me.value = data
   } catch {}
 }
@@ -195,16 +225,11 @@ const displayCategory = code => apiToKo[String(code||'').toUpperCase()] || code
 const listQueryCategory = computed(() => koToQuery[displayCategory(board.value.category)] || 'all')
 
 const badgeClass = (ko) => {
-  const base = 'badge'
   const map = {
-    '전체':'badge badge--all',
-    '인기':'badge badge--popular',
-    '잡담':'badge badge--chat',
-    '나눔':'badge badge--share',
-    '정보':'badge badge--info',
-    '취미':'badge badge--hobby'
+    '전체':'badge badge--all','인기':'badge badge--popular','잡담':'badge badge--chat',
+    '나눔':'badge badge--share','정보':'badge badge--info','취미':'badge badge--hobby'
   }
-  return map[ko] || base
+  return map[ko] || 'badge'
 }
 
 // 시간 포맷
@@ -225,11 +250,7 @@ const formatCreatedAt = (s, { thresholdHours=24 } = {}) => {
   return `${y}-${m}-${day} ${hh}:${mm}`
 }
 
-const normalize = (raw) => ({
-  ...raw,
-  category: (raw?.category || '').toString().toUpperCase(),
-  likeCount: Number(raw?.likeCount ?? 0),
-})
+const normalize = (raw) => ({ ...raw, category: (raw?.category || '').toString().toUpperCase(), likeCount: Number(raw?.likeCount ?? 0) })
 
 // 작성자 판별
 const isOwner = computed(() => {
@@ -245,20 +266,14 @@ const fetchDetail = async () => {
   loading.value = true
   error.value = false
   try {
-    const { data } = await api.get(`/api/v1/boards/${boardId.value}`, {  // boardId
-      headers: headersWithToken()
-    })
+    const { data } = await api.get(`/api/v1/boards/${boardId.value}`, { headers: headersWithToken(), withCredentials: true })
     const row = normalize(data || {})
     board.value = row
     likeCount.value = row.likeCount
     liked.value = Boolean(row?.liked ?? row?.isLiked ?? false)
   } catch (e) {
     const status = e?.response?.status
-    if (status === 401) {
-      alert('로그인이 필요합니다.')
-      router.push({ name: 'onboarding' })
-      return
-    }
+    if (status === 401) { router.push({ name: 'onboarding' }); return }
     console.error('상세 조회 실패:', e)
     error.value = true
   } finally {
@@ -280,20 +295,10 @@ const isMyComment = (c) => {
   return false
 }
 const normalizeComment = (raw) => {
-  const uid =
-    raw?.userId ??
-    raw?.user?.id ??
-    raw?.writerId ??
-    null
-
+  const uid = raw?.userId ?? raw?.user?.id ?? raw?.writerId ?? null
   const nick =
-    raw?.nickname ??
-    raw?.authorNickname ??
-    raw?.writerNickname ??
-    raw?.userNickname ??
-    raw?.user?.nickname ??
+    raw?.nickname ?? raw?.authorNickname ?? raw?.writerNickname ?? raw?.userNickname ?? raw?.user?.nickname ??
     (uid && me.value?.userId && uid === me.value.userId ? me.value?.nickname : null)
-
   return {
     commentId: raw?.commentId ?? raw?.id,
     userId: uid,
@@ -305,125 +310,78 @@ const normalizeComment = (raw) => {
 
 const boardAuthor = computed(() => {
   const b = board.value
-  const candidate =
-    b?.nickname ??
-    b?.userNickname ??
-    b?.authorNickname ??
-    b?.user?.nickname ??
-    (isOwner.value ? me.value?.nickname : null)
+  const candidate = b?.nickname ?? b?.userNickname ?? b?.authorNickname ?? b?.user?.nickname ?? (isOwner.value ? me.value?.nickname : null)
   return candidate || '작성자'
 })
 
 const fetchCommentCount = async () => {
   try {
-    const { data } = await api.get(`/api/v1/boards/${boardId.value}/comments/count`, { headers: headersWithToken() })
+    const { data } = await api.get(`/api/v1/boards/${boardId.value}/comments/count`, { headers: headersWithToken(), withCredentials: true })
     commentCount.value = typeof data === 'number' ? data : Number(data?.count ?? 0)
-  } catch {
-    commentCount.value = comments.value.length
-  }
+  } catch { commentCount.value = comments.value.length }
 }
 const fetchComments = async () => {
   try {
-    const { data } = await api.get(`/api/v1/boards/${boardId.value}/comments`, { headers: headersWithToken() })
+    const { data } = await api.get(`/api/v1/boards/${boardId.value}/comments`, { headers: headersWithToken(), withCredentials: true })
     const rows = Array.isArray(data) ? data : []
     comments.value = rows.map(normalizeComment)
     if (!commentCount.value) commentCount.value = comments.value.length
-  } catch (e) {
-    console.error('댓글 목록 불러오기 실패:', e)
-    comments.value = []
-  }
+  } catch (e) { console.error('댓글 목록 불러오기 실패:', e); comments.value = [] }
 }
 const createComment = async () => {
   if (commentBusy.value || !newComment.value) return
   commentBusy.value = true
   try {
     const body = { content: newComment.value }
-    // const { data } = await api.post(`/api/v1/boards/${boardId.value}/comments`, body, { headers: headersWithToken() })
-    // const created = normalizeComment(data || { content: newComment.value, nickname: me.value?.nickname, userId: me.value?.userId, createdAt: new Date().toISOString() })
-    const { data } = await api.post(
-    `/api/v1/boards/${boardId.value}/comments`,
-    body,
-    { headers: headersWithToken() }
-  )
-  const created = normalizeComment({
-    ...data,
-    // 서버가 안 주면 내가 채운다
-    nickname: data?.nickname ?? me.value?.nickname,
-    userId: data?.userId ?? me.value?.userId,
-    content: data?.content ?? newComment.value,
-    createdAt: data?.createdAt ?? new Date().toISOString()
-  })
-    
+    const { data } = await api.post(`/api/v1/boards/${boardId.value}/comments`, body, { headers: headersWithToken(), withCredentials: true })
+    const created = normalizeComment({
+      ...data,
+      nickname: data?.nickname ?? me.value?.nickname,
+      userId: data?.userId ?? me.value?.userId,
+      content: data?.content ?? newComment.value,
+      createdAt: data?.createdAt ?? new Date().toISOString()
+    })
     comments.value.unshift(created)
     newComment.value = ''
     commentCount.value += 1
   } catch (e) {
     const s = e?.response?.status
-    if (s === 401) {
-      alert('로그인이 필요합니다.')
-      router.push({ name: 'onboarding' })
-    } else {
-      alert('댓글 등록에 실패했습니다.')
-      console.error(e)
-    }
-  } finally {
-    commentBusy.value = false
-  }
+    if (s === 401) router.push({ name: 'onboarding' })
+    else showNotice('댓글 등록에 실패했습니다.', '오류')
+  } finally { commentBusy.value = false }
 }
-const startEdit = (c) => {
-  editTargetId.value = c.commentId
-  editContent.value = c.content
-}
-const cancelEdit = () => {
-  editTargetId.value = null
-  editContent.value = ''
-}
+const startEdit = (c) => { editTargetId.value = c.commentId; editContent.value = c.content }
+const cancelEdit = () => { editTargetId.value = null; editContent.value = '' }
 const saveEdit = async (commentId) => {
   if (commentBusy.value || !editContent.value) return
   commentBusy.value = true
   try {
     const body = { content: editContent.value }
-    await api.put(`/api/v1/boards/${boardId.value}/comments/${commentId}`, body, { headers: headersWithToken() })
+    await api.put(`/api/v1/boards/${boardId.value}/comments/${commentId}`, body, { headers: headersWithToken(), withCredentials: true })
     const idx = comments.value.findIndex(c => c.commentId === commentId)
     if (idx !== -1) comments.value[idx] = { ...comments.value[idx], content: editContent.value }
     cancelEdit()
   } catch (e) {
     const s = e?.response?.status
-    if (s === 401) {
-      alert('로그인이 필요합니다.')
-      router.push({ name: 'onboarding' })
-    } else if (s === 403) {
-      alert('수정 권한이 없습니다.')
-    } else {
-      alert('댓글 수정에 실패했습니다.')
-      console.error(e)
-    }
-  } finally {
-    commentBusy.value = false
-  }
+    if (s === 401) router.push({ name: 'onboarding' })
+    else if (s === 403) showNotice('수정 권한이 없습니다.', '안내')
+    else { console.error(e); showNotice('댓글 수정에 실패했습니다.', '오류') }
+  } finally { commentBusy.value = false }
 }
-const removeComment = async (commentId) => {
-  if (commentBusy.value) return
-  if (!confirm('댓글을 삭제하시겠어요?')) return
+const confirmRemoveComment = async () => {
+  if (commentBusy.value || !targetCommentId.value) return
   commentBusy.value = true
   try {
-    await api.delete(`/api/v1/boards/${boardId.value}/comments/${commentId}`, { headers: headersWithToken() })
-    comments.value = comments.value.filter(c => c.commentId !== commentId)
+    await api.delete(`/api/v1/boards/${boardId.value}/comments/${targetCommentId.value}`, { headers: headersWithToken(), withCredentials: true })
+    comments.value = comments.value.filter(c => c.commentId !== targetCommentId.value)
     commentCount.value = Math.max(0, commentCount.value - 1)
+    closeCmtConfirm()
   } catch (e) {
     const s = e?.response?.status
-    if (s === 401) {
-      alert('로그인이 필요합니다.')
-      router.push({ name: 'onboarding' })
-    } else if (s === 403) {
-      alert('삭제 권한이 없습니다.')
-    } else {
-      alert('댓글 삭제에 실패했습니다.')
-      console.error(e)
-    }
-  } finally {
-    commentBusy.value = false
-  }
+    if (s === 401) router.push({ name: 'onboarding' })
+    else if (s === 403) showNotice('삭제 권한이 없습니다.', '안내')
+    else { console.error(e); showNotice('댓글 삭제에 실패했습니다.', '오류') }
+  } finally { commentBusy.value = false }
 }
 /* ===== /댓글 ===== */
 
@@ -437,9 +395,7 @@ const toggleLike = async () => {
   likeCount.value = prevLiked ? Math.max(0, prevCount - 1) : prevCount + 1
 
   try {
-    const { data } = await api.post(`/api/v1/boards/${boardId.value}/like`, null, { 
-      headers: headersWithToken() 
-    })
+    const { data } = await api.post(`/api/v1/boards/${boardId.value}/like`, null, { headers: headersWithToken(), withCredentials: true })
     if (data) {
       liked.value = data.isLiked ?? data.liked ?? !prevLiked
       likeCount.value = data.likeCount ?? likeCount.value
@@ -448,55 +404,28 @@ const toggleLike = async () => {
     liked.value = prevLiked
     likeCount.value = prevCount
     const status = e?.response?.status
-    if (status === 401) {
-      alert('로그인이 필요합니다.')
-      router.push({ name: 'onboarding' })
-    } else {
-      console.error('좋아요 처리 실패:', e)
-      alert('좋아요 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.')
-    }
-  } finally {
-    likeBusy.value = false
-  }
+    if (status === 401) router.push({ name: 'onboarding' })
+    else console.error('좋아요 처리 실패:', e)
+  } finally { likeBusy.value = false }
 }
 
-const openConfirm = () => {
-  showConfirm.value = true
-  document.addEventListener('keydown', onEscClose)
-}
-const closeConfirm = () => {
-  showConfirm.value = false
-  document.removeEventListener('keydown', onEscClose)
-}
-const onEscClose = (e) => {
-  if (e.key === 'Escape') closeConfirm()
-}
+const openConfirm = () => { showConfirm.value = true; document.addEventListener('keydown', onEscClose) }
+const closeConfirm = () => { showConfirm.value = false; document.removeEventListener('keydown', onEscClose) }
+const onEscClose = (e) => { if (e.key === 'Escape') closeConfirm() }
 
 const confirmDelete = async () => {
   if (deleting.value) return
   deleting.value = true
   try {
-    await api.delete(`/api/v1/boards/${boardId.value}`, { headers: headersWithToken() })
-    alert('삭제되었습니다.')
+    await api.delete(`/api/v1/boards/${boardId.value}`, { headers: headersWithToken(), withCredentials: true })
     closeConfirm()
     goBack()
   } catch (e) {
     const status = e?.response?.status
-    if (status === 401) {
-      alert('로그인이 필요합니다.')
-      router.push({ name: 'onboarding' })
-      return
-    }
-    if (status === 403) {
-      alert('삭제 권한이 없습니다.')
-      closeConfirm()
-      return
-    }
-    console.error('삭제 실패:', e)
-    alert('삭제에 실패했습니다.')
-  } finally {
-    deleting.value = false
-  }
+    if (status === 401) router.push({ name: 'onboarding' })
+    else if (status === 403) { closeConfirm(); showNotice('삭제 권한이 없습니다.', '안내') }
+    else { console.error('삭제 실패:', e); showNotice('삭제에 실패했습니다. 잠시 후 다시 시도해 주세요.', '오류') }
+  } finally { deleting.value = false }
 }
 
 const goBack = () => {
@@ -515,6 +444,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onEscClose))
 </script>
 
 <style scoped>
+/* (스타일은 삭제 확인/안내/댓글 모달만 이미 존재하므로 기존 유지) */
 .detail-container{max-width:900px;margin:40px auto;padding:20px;font-family:'Noto Sans KR',sans-serif;border:1px solid #e5e7eb;border-radius:12px;background:#fff}
 .state{text-align:center;color:#6b7280;padding:40px 0}.state.error{color:#b91c1c}
 .header{margin-bottom:16px}.title-row{display:flex;align-items:center;gap:10px}
@@ -553,7 +483,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onEscClose))
 .badge--all{background:#f3f4f6;color:#1f2937}.badge--popular{background:#fee2e2;color:#b91c1c}.badge--chat{background:#dbeafe;color:#1e40af}
 .badge--share{background:#dcfce7;color:#14532d}.badge--info{background:#ede9fe;color:#6d28d9}.badge--hobby{background:#ffedd5;color:#9a3412}
 
-/* 모달 */
+/* 모달 (공통) */
 .modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
 .modal{width:100%;max-width:420px;background:#fff;border-radius:12px;border:1px solid #e5e7eb;box-shadow:0 10px 30px rgba(2,6,23,.2);padding:18px}
 .modal-title{font-size:18px;font-weight:800;color:#0f172a;margin:0 0 6px}
