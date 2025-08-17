@@ -222,6 +222,7 @@ public class GameService {
         log.info("[END] Player1: id={}, correctCount={}", user1.getUserId(), user1.getCorrectCount());
         log.info("[END] Player2: id={}, correctCount={}", user2.getUserId(), user2.getCorrectCount());
 
+
         int count1 = user1.getCorrectCount();
         int count2 = user2.getCorrectCount();
 
@@ -247,8 +248,10 @@ public class GameService {
         log.info("[END] GameRoom 조회 성공");
 
         log.info("[END] find Users from DB");
-        User user1Entity = userRepository.getReferenceById(user1.getUserId());
-        User user2Entity = userRepository.getReferenceById(user2.getUserId());
+        User user1Entity = userRepository.findById(user1.getUserId())
+                .orElseThrow(() -> new RuntimeException("User not found: " + user1.getUserId()));
+        User user2Entity = userRepository.findById(user2.getUserId())
+                .orElseThrow(() -> new RuntimeException("User not found: " + user2.getUserId()));
         log.info("[END] User 조회 성공");
 
         User winnerEntity = (winnerId != null)
