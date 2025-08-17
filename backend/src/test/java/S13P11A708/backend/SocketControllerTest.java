@@ -90,7 +90,7 @@ public class SocketControllerTest {
         // 브로드캐스트는 실제 송신 말고 그냥 통과
         doNothing().when(messagingTemplate).convertAndSend(anyString(), any(Object.class));
 
-        controller.submitAnswer(new GameAnsRequestMessage(GameMessageType.ANSWER_SUBMIT, 1L, "고향역"), principal);
+        controller.submitAnswer(new GameAnsRequestMessage("고향역", 1L, GameMessageType.ANSWER_SUBMIT,  101L), principal);
 
         verify(gameService, timeout(1000)).handleAnswer(1L, 101L, "고향역");
     }
