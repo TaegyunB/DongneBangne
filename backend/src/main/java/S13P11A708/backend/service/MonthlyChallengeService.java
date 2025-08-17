@@ -74,7 +74,7 @@ public class MonthlyChallengeService {
 
         challenges.put(8, List.of(
                 new ServiceChallenge("물놀이 소풍", "근처 계곡이나 냇가에서 발 담그기", "인근 야외"),
-                new ServiceChallenge("빙수 만들기", "과일과 팥을 넣은 빙수 만들어 나누기", "경로당 주방")
+                new ServiceChallenge("빙수 만들기", "과일과 팥을 넣은 빙수 만들어 먹기", "경로당 주방")
         ));
 
         challenges.put(9, List.of(
