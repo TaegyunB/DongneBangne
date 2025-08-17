@@ -11,5 +11,6 @@ import lombok.*;
 public class GameAnsSocketMessage {
     private GameMessageType type;
     private Long roomId;
+    private Long userId;
     private boolean isCorrect;
 }

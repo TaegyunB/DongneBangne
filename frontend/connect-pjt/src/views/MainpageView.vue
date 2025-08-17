@@ -1,5 +1,27 @@
 <template>
   <div class="main-landing">
+    <!-- 떠 있는 프로필 버튼 -->
+    <div class="floating-profile" @keydown.escape="showProfileMenu = false">
+      <img
+        ref="profileBtn"
+        src="@/assets/profile.png"
+        alt="프로필"
+        class="profile-btn"
+        @click.stop="toggleProfileMenu"
+        :aria-expanded="showProfileMenu"
+        aria-haspopup="menu"
+      />
+      <div
+        v-if="showProfileMenu"
+        class="profile-dropdown"
+        ref="menuRef"
+        role="menu"
+      >
+        <button class="menu-item" role="menuitem" @click="goProfile">프로필로 가기</button>
+        <button class="menu-item danger" role="menuitem" @click="logout">로그아웃</button>
+      </div>
+    </div>
+
     <!-- 제목과 로고를 함께 배치하는 헤더 섹션 -->
     <div class="header-section">
       <div class="section-title">이야기하고, 도전하고, 함께하는 동네방네</div>
@@ -39,14 +61,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user.js'
+import api from '@/api/axios'
 
 const router = useRouter()
 const userStore = useUserStore()
 
-console.log("UserStore 정보:", userStore)
+console.log('UserStore 정보:', userStore)
 
 // userRole을 백에서 가져오기
 const fetchUserInfo = async () => {
@@ -58,9 +81,44 @@ function goTo(url) {
   router.push(url)
 }
 
+// ── 프로필 드롭다운 전용 상태/핸들러 ──
+const showProfileMenu = ref(false)
+const profileBtn = ref(null)
+const menuRef = ref(null)
+
+const toggleProfileMenu = () => {
+  showProfileMenu.value = !showProfileMenu.value
+}
+
+const onDocClick = e => {
+  if (!showProfileMenu.value) return
+  if (profileBtn.value?.contains(e.target)) return
+  if (menuRef.value?.contains(e.target)) return
+  showProfileMenu.value = false
+}
+
+const goProfile = () => {
+  showProfileMenu.value = false
+  router.push('/profile')
+}
+
+const logout = () => {
+  showProfileMenu.value = false
+  delete api.defaults.headers.common['Authorization']
+  localStorage.removeItem('access_token')
+  sessionStorage.removeItem('access_token')
+  if (userStore?.$reset) userStore.$reset()
+  router.push('/login')
+}
+
 // 컴포넌트 마운트 시 사용자 정보 가져오기
 onMounted(() => {
   fetchUserInfo()
+  document.addEventListener('click', onDocClick, { capture: true })
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onDocClick, { capture: true })
 })
 
 // userRole을 외부에서 사용할 수 있도록 export (필요시)
@@ -99,16 +157,6 @@ defineExpose({
   padding: 40px 0;
 }
 
-/* .main-landing {
-  width: 100%;
-  min-height: 100vh;
-  background-image: url('@/assets/background/back3.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  padding: 60px 0;
-} */
-
 /* 헤더 섹션 - 제목과 로고를 함께 배치 */
 .header-section {
   display: flex;
@@ -123,7 +171,7 @@ defineExpose({
   font-weight: 750;
   text-align: center;
   color: #1e1e1e;
-  font-family: 'KoddiUD', sans-serif; /* KoddiUD 적용 */
+  font-family: 'KoddiUD', sans-serif;
 }
 
 .logo-icon {
@@ -181,21 +229,21 @@ defineExpose({
   font-weight: 750;
   margin-bottom: 30px;
   color: #222;
-  font-family: 'KoddiUD', sans-serif; /* KoddiUD 적용 */
+  font-family: 'KoddiUD', sans-serif;
 }
 .card-title_2 {
   font-size: 32px;
   font-weight: 750;
   margin-bottom: 20px;
   color: #222;
-  font-family: 'KoddiUD', sans-serif; /* KoddiUD 적용 */
+  font-family: 'KoddiUD', sans-serif;
 }
 
 .card-desc {
   font-size: 25px;
   color: #232426;
   margin-bottom: 6px;
-  font-family: 'KoddiUD', sans-serif; /* KoddiUD 적용 */
+  font-family: 'KoddiUD', sans-serif;
 }
 
 .card-icon {
@@ -245,25 +293,55 @@ defineExpose({
 .main-card.five {
   background: linear-gradient(135deg,#f7efd0 0%, #FFE082 100%);
 }
- /* ---------------------- */
- /* .main-card.one {
-  background: linear-gradient(135deg, #FFD7B9 0%, #FFBC8E 100%);
+
+/* ───────── 추가: 떠 있는 프로필 버튼/드롭다운 ───────── */
+.floating-profile {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 2000;
 }
 
-.main-card.two {
-  background: linear-gradient(135deg,#ABBAF9 0%, #8FA3F3 100%);
+.profile-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  cursor: pointer;
+  background: #fff;
+  padding: 4px;
+  box-shadow: 0 6px 16px rgba(0,0,0,.15);
+  border: 1px solid #e5e7eb;
 }
 
-.main-card.three {
-  background: linear-gradient(135deg,#ABBAF9 0%, #8FA3F3 100%);
+.profile-btn:focus {
+  outline: 3px solid #8ba3ff;
+  outline-offset: 3px;
 }
 
-.main-card.four {
-  background: linear-gradient(135deg, #FFD7B9 0%, #FFBC8E 100%);
+.profile-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 180px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(0,0,0,.12);
+  padding: 6px;
 }
 
-.main-card.five {
-  background: linear-gradient(135deg,#ABBAF9 0%, #8FA3F3 100%);
-} */
+.menu-item {
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 8px;
+  font-size: 16px;
+}
 
+.menu-item:hover { background: #f3f4f6 }
+.menu-item.danger { color: #dc2626 }
+.menu-item.danger:hover { background: #fee2e2 }
 </style>

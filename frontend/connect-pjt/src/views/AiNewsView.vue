@@ -11,7 +11,7 @@
         <div class="col-month">발간 월</div>
         <div class="col-challenges">수행한 도전</div>
         <div class="col-date header-date">발간일자</div>
-        <div class="col-action">PDF</div>
+        <div class="col-action">신문</div>
       </div>
       
       <div class="table-body">
@@ -50,7 +50,7 @@
               @click="viewNewsPdf(news.id)"
               class="action-btn view-btn"
             >
-              PDF 보기
+              신문 보기
             </button>
             
             <!-- AI 기사는 생성되었지만 PDF가 없는 경우: PDF 생성 버튼 -->
@@ -59,7 +59,7 @@
               @click="showPdfGenerator(news)"
               class="action-btn generate-pdf-btn"
             >
-              PDF 생성하기
+              신문 생성하기
             </button>
             
             <!-- 완료된 도전과제가 없는 경우 -->
@@ -68,7 +68,7 @@
               class="no-content-label"
               title="이번 달은 완료된 도전과제가 없어 PDF를 생성할 수 없습니다."
             >
-              PDF 생성 불가
+              신문 생성 불가
             </span>
           </div>
         </div>
@@ -79,7 +79,7 @@
     <div v-if="showPdfModal" class="modal-overlay" @click.self="closePdfModal">
       <div class="modal-content pdf-modal">
         <button class="modal-close-btn" @click="closePdfModal">×</button>
-        <h2>AI 신문 PDF 생성</h2>
+        <h2>AI 신문 생성</h2>
         <p>{{ selectedNews?.year }}년 {{ selectedNews?.month }}월 AI 신문을 PDF로 생성합니다.</p>
         
         <!-- PDF 생성 컴포넌트 -->
