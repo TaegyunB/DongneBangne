@@ -802,6 +802,9 @@ export default {
         console.warn('STOMP 클라이언트가 연결되지 않았습니다.')
         return
       }
+      // 이거 그냥 해
+      this.roomId = roomId
+      this.localId = userId
 
       console.log(`1 - roomId: ${this.roomId}, userId: ${this.localId}`)
       console.log(`2 - roomId: ${roomId}, userId: ${userId}`)
@@ -835,14 +838,14 @@ export default {
           this.handleHintMessage(JSON.parse(message.body))
         })
 
-        this.stompClient.subscribe(`/queue/hint`, (message) => {
+        this.stompClient.subscribe(`/queue/hint/`, (message) => {
           console.log('💡 힌트 메시지 수신 4:', message.body)
           this.handleHintMessage(JSON.parse(message.body))
         })
 
 
         console.log('📡 STOMP 토픽 구독 완료')
-        console.log(`roomId: ${this.roomId}, userId: ${this.userId}`)
+        console.log(`roomId: ${this.roomId}, userId: ${this.localId}`)
       } catch (error) {
         console.error('STOMP 토픽 구독 오류:', error)
       }
@@ -937,12 +940,12 @@ export default {
 
     // 게임 종료 처리
     handleGameEnd(message) {
-      console.log('🎯 게임 종료:', data)
-      this.sendToUnity('game-end', data)
+      console.log('🎯 게임 종료:', message)
+      this.sendToUnity('game-end', message)
     },
     // 정답 제출
     handleAnswerSubmit(message){
-      console.log('💡 정답 제출:', message)
+      console.log('💡 다른 사람 정답:', message)
       this.sendToUnity('answer-submit', message)
     },
 
@@ -987,14 +990,14 @@ export default {
 
     // 정답 제출 (클라이언트 → 서버)
     sendAnswerToServer(answerData) {
-      const {roomId, userId, submitAnswer} = answerData
+      const {roomId, userId, answer} = answerData
 
       try {
         const message = {
           type: 'ANSWER_SUBMIT',
           roomId: roomId,
           userId: userId,
-          answer: submitAnswer,
+          answer: answer,
         }
 
         this.sendStompMessage('/games/answer', message)
@@ -1055,12 +1058,12 @@ export default {
     
     // YouTube 비디오 ID 변경
     changeYouTubeVideo(newVideoId) {
-      const iframe = this.youtubeFrame;
+      const iframe = this.$refs.youtubeFrame;
         if (iframe) {
           iframe.src = `https://youtube.com/embed/${newVideoId}?si=8IsRoXmN3OS1AwUH&enablejsapi=1`;
         }
 
-      console.log('YouTube 비디오 ID 변경:', newVideoId)
+      console.log('YouTube 비디오 ID 변경:', iframe.src)
     },
     
     // YouTube 동영상 재생
