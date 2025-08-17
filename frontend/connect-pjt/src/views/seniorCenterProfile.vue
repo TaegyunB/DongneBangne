@@ -35,9 +35,9 @@
               <li>권장 크기: <b>400×400px</b></li>
               <li>파일 용량: <b>2MB 이하</b></li>
             </ul>
-            <p v-if="coepBlocked" class="coep-hint">
+            <!-- <p v-if="coepBlocked" class="coep-hint"> 
               외부 프로필 이미지를 표시할 수 없어요. 사진을 직접 첨부해 주세요.
-            </p>
+            </p> -->
           </div>
         </div>
       </div>
@@ -171,23 +171,27 @@ watch(() => notice.value.open, open => {
 })
 
 /* === load current profile ===
-   정확한 엔드포인트: /api/v1/users/senior-center/profile (GET)
+   정확한 엔드포인트: /api/v1/users/profile (GET)
+   센터명은 /api/v1/main/me 에서 별도 조회
 */
 onMounted(async () => {
   try {
-    const { data } = await api.get('/api/v1/users/senior-center/profile', { withCredentials: true })
+    const { data } = await api.get('/api/v1/users/profile', { withCredentials: true })
     nickname.value = data?.nickname || ''
     // 응답 키 대응: profileImage | profile_image
     const img = data?.profileImage ?? data?.profile_image ?? null
     previewUrl.value = ensureHttps(img)
-    // 센터명 후보 키들
+  } catch {}
+
+  try {
+    const { data: me } = await api.get('/api/v1/main/me', { withCredentials: true })
     myCenterName.value =
-      data?.seniorCenter?.centerName ??
-      data?.senior_center?.center_name ??
-      data?.seniorCenterName ??
-      data?.centerName ??
+      me?.seniorCenter?.centerName ??
+      me?.senior_center?.center_name ??
+      me?.seniorCenterName ??
+      me?.centerName ??
       ''
-  } catch {} // 첫 진입 시 비어있어도 OK
+  } catch {}
 })
 
 /* === nickname rules & dup-check === */
@@ -261,7 +265,7 @@ function removeFile() {
 }
 
 /* === save profile ===
-   정확한 엔드포인트: /api/v1/users/senior-center/profile (PUT)
+   정확한 엔드포인트: /api/v1/users/profile (PUT)
    - 이미지 업로드 엔드포인트가 별도로 없으므로 URL만 전달 (blob 은 전송 X)
 */
 async function completeProfile() {
@@ -276,7 +280,7 @@ async function completeProfile() {
       payload.profileImage = ensureHttps(previewUrl.value)
     }
 
-    await api.put('/api/v1/users/senior-center/profile', payload, { withCredentials: true })
+    await api.put('/api/v1/users/profile', payload, { withCredentials: true })
     showNotice('저장되었습니다.', '완료', () => router.push('/mainpage'))
   } catch {
     showNotice('저장에 실패했습니다. 잠시 후 다시 시도해주세요.', '오류')
