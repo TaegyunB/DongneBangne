@@ -206,7 +206,8 @@ const headersWithToken = () => {
   const token = getAccessToken?.()
   return {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    'X-Requested-With': 'XMLHttpRequest' // 서버가 리다이렉트 대신 401을 주도록 힌트
+    'X-Requested-With': 'XMLHttpRequest', // 서버가 리다이렉트 대신 401을 주도록 힌트
+    'Accept': 'application/json',
   }
 }
 
@@ -413,20 +414,44 @@ const openConfirm = () => { showConfirm.value = true; document.addEventListener(
 const closeConfirm = () => { showConfirm.value = false; document.removeEventListener('keydown', onEscClose) }
 const onEscClose = (e) => { if (e.key === 'Escape') closeConfirm() }
 
+// helper: /login 또는 /oauth2/authorization로 최종 URL이 바뀌었는지 체크
+const isLoginRedirect = (err) => {
+  const url = err?.request?.responseURL || ''
+  return url.includes('/login') || url.includes('/oauth2/authorization')
+}
+
 const confirmDelete = async () => {
   if (deleting.value) return
   deleting.value = true
   try {
-    await api.delete(`/api/v1/boards/${boardId.value}`, { headers: headersWithToken(), withCredentials: true })
+    await api.delete(`/api/v1/boards/${boardId.value}`, {
+      headers: headersWithToken(),
+      withCredentials: true
+    })
     closeConfirm()
     goBack()
   } catch (e) {
-    const status = e?.response?.status
-    if (status === 401) router.push({ name: 'onboarding' })
-    else if (status === 403) { closeConfirm(); showNotice('삭제 권한이 없습니다.', '안내') }
-    else { console.error('삭제 실패:', e); showNotice('삭제에 실패했습니다. 잠시 후 다시 시도해 주세요.', '오류') }
-  } finally { deleting.value = false }
+    // 302→/login 따라간 케이스 or 진짜 401
+    if (isLoginRedirect(e) || e?.response?.status === 401) {
+      closeConfirm()
+      showNotice('로그인이 필요합니다.', '안내', () => {
+        router.push({ name: 'onboarding' })
+      })
+      return
+    }
+    if (e?.response?.status === 403) {
+      closeConfirm()
+      showNotice('삭제 권한이 없습니다.', '안내')
+      return
+    }
+    console.error('삭제 실패:', e)
+    showNotice('삭제에 실패했습니다. 잠시 후 다시 시도해 주세요.', '오류')
+  } finally {
+    deleting.value = false
+  }
 }
+
+
 
 const goBack = () => {
   const qcat = typeof route.query.category === 'string' ? route.query.category : listQueryCategory.value
