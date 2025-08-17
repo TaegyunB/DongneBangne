@@ -103,7 +103,7 @@ public class MonthlyChallengeService {
     /**
      * 서비스 제공 미션만 생성
      */
-    @Scheduled(cron = "0 50 8 17 * ?")  // 초 분 시 일 월
+    @Scheduled(cron = "0 07 17 17 * ?")  // 초 분 시 일 월
     public void createServiceChallengesForAllSeniorCenters() {
         LocalDateTime now = LocalDateTime.now();
         int currentMonth = now.getMonthValue();
