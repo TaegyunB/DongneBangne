@@ -10,15 +10,15 @@
     ></iframe>
   </div>
   
-  <!-- YouTube 동영상 (숨김) -->
-  <div class="youtube-container" style="position: absolute; left: -9999px; top: -9999px; width: 1px; height: 1px; overflow: hidden;">
+  <!-- YouTube 동영상 (테스트용) -->
+  <div class="youtube-container">
     <iframe
       ref="youtubeFrame"
       :src="youtubeSrc"
-      width="1"
-      height="1"
+      width="320"
+      height="240"
       frameborder="0"
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"
       allowfullscreen
     ></iframe>
   </div>
@@ -103,22 +103,24 @@ export default {
 
             this.getUsersInfo(roomId)
           },
-          'start-game': () => {
-              console.log('Unity → Vue 게임 시작 요청:')
-              const jsonData = this.parseUnityData(data.data)
-              const { roomId, userId } = jsonData
+          // 'start-game': () => {
+          //     console.log('Unity → Vue 게임 시작 요청:')
+          //     const jsonData = this.parseUnityData(data.data)
+          //     const { roomId, userId } = jsonData
 
-              this.roomId = roomId
-              this.localId = userId
+          //     this.roomId = roomId
+          //     this.localId = userId
 
-              // WebSocket 연결
-              this.connectStompWebSocket(roomId, userId)
-            },
+          //     // WebSocket 연결
+          //     //this.connectStompWebSocket(roomId, userId)
+          // },
           'answer-submit': () => {
+            console.log('Unity → Vue 정답 제출 요청:')
             const answerData = this.parseUnityData(data.data)
             this.sendAnswerToServer(answerData)
           },
           'hint-request': () => {
+            console.log('Unity → Vue 힌트 요청:')
             const hintData = this.parseUnityData(data.data)
             this.sendHintRequestToServer(hintData)
           },
@@ -858,6 +860,9 @@ export default {
           case 'GAME_END':              // 게임 종료
             this.handleGameEnd(message)
             break
+          case 'ANSWER_SUBMIT':         // 정답 제출
+            this.handleAnswerSubmit(message)
+            break
           case 'ANSWER_RESULT':         // 정답 결과
             this.handleAnswerResult(message)
             break
@@ -878,7 +883,7 @@ export default {
         const { type } = message
 
         switch (type) {
-          case 'HINT_RESPONSE':         // 힌트 제공공
+          case 'HINT_RESPONSE':         // 힌트 제공
             this.handleHintResponse(message)
             break
           case 'HINT_REJECTED':         // 힌트 제공 불가
@@ -925,6 +930,11 @@ export default {
       console.log('🎯 게임 종료:', data)
       this.sendToUnity('game-end', data)
     },
+    // 정답 제출
+    handleAnswerSubmit(message){
+      console.log('💡 정답 제출:', message)
+      this.sendToUnity('answer-submit', message)
+    },
 
     // 정답 결과 처리
     handleAnswerResult(message) {
@@ -967,15 +977,13 @@ export default {
 
     // 정답 제출 (클라이언트 → 서버)
     sendAnswerToServer(answerData) {
+      const {roomId, answer} = answerData
+
       try {
         const message = {
           type: 'ANSWER_SUBMIT',
-          data: {
-            roomId: this.roomId,
-            userId: this.localId,
-            answer: answerData.answer,
-            timestamp: new Date().toISOString(),
-          },
+          roomId: roomId,
+          answer: answer,
         }
 
         this.sendStompMessage('/games/answer', message)
@@ -988,14 +996,10 @@ export default {
     // 힌트 요청 (클라이언트 → 서버)
     sendHintRequestToServer(hintData) {
       try {
+        const {roomId} = hintData
         const message = {
           type: 'HINT_REQUEST',
-          data: {
-            roomId: this.roomId,
-            userId: this.localId,
-            hintType: hintData.hintType,
-            timestamp: new Date().toISOString(),
-          },
+          roomId: roomId,
         }
 
         this.sendStompMessage('/games/hint', message)
@@ -1053,7 +1057,7 @@ export default {
       const iframe = this.$refs.youtubeFrame
       if (iframe) {
         try {
-          iframe.contentWindow?.postMessage('{"event":"command","func":"playVideo","args":""}', 'https://www.youtube.com')
+          iframe.contentWindow?.postMessage('{"event":"command","func":"playVideo","args":""}', '*')
           console.log('YouTube 동영상 재생')
         } catch (error) {
           console.error('YouTube 재생 명령 전송 중 오류:', error)
@@ -1066,7 +1070,7 @@ export default {
       const iframe = this.$refs.youtubeFrame
       if (iframe) {
         try {
-          iframe.contentWindow?.postMessage('{"event":"command","func":"pauseVideo","args":""}', 'https://www.youtube.com')
+          iframe.contentWindow?.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*')
           console.log('YouTube 동영상 정지')
         } catch (error) {
           console.error('YouTube 정지 명령 전송 중 오류:', error)
@@ -1134,11 +1138,14 @@ iframe {
 }
 
 .youtube-container {
-  position: absolute;
-  left: -9999px;
-  top: -9999px;
-  width: 1px;
-  height: 1px;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 320px;
+  height: 240px;
+  z-index: 1000;
+  border-radius: 8px;
   overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 </style>
