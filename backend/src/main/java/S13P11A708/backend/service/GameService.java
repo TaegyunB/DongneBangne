@@ -147,6 +147,8 @@ public class GameService {
         if(current == total) {
             log.info("[FLOW] 마지막 라운드 → 게임 종료 처리");
             log.info("[FLOW] broadcasting GAME_END to /sub/game/"+ roomId);
+            broadcaster.broadcastToRoom(roomId,
+                    messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, "game 종료 로직으로 들어옴"));
             endGame(roomId, game); // db 저장, 최종 승자 판단
             log.info("레디스 정보 삭제");
 //            gameRedisService.finishGame(roomId);
