@@ -49,11 +49,13 @@
           </div>
           <div class="info">
             <span class="label">개인 포인트</span>
-            <span class="value no-wrap" :title="n(me.personalPoint)">{{ n(me.personalPoint) }}</span>
+            <!-- 말줄임 제거 + 필요시 줄바꿈 -->
+            <span class="value break-number">{{ n(me.personalPoint) }}</span>
           </div>
           <div class="info">
-            <span class="label">센터 총 포인트</span>
-            <span class="value no-wrap" :title="n(me.seniorCenter?.totalPoint)">{{ n(me.seniorCenter?.totalPoint) }}</span>
+            <span class="label">센터 포인트</span>
+            <!-- 말줄임 제거 + 필요시 줄바꿈 -->
+            <span class="value break-number">{{ n(me.seniorCenter?.totalPoint) }}</span>
           </div>
         </div>
 
@@ -68,7 +70,7 @@
         <div v-if="me.seniorCenter" class="center-block">
           <div class="info">
             <span class="label">이름</span>
-            <span class="value no-wrap" :title="me.seniorCenter.centerName">{{ me.seniorCenter.centerName }}</span>
+            <span class="value" :title="me.seniorCenter.centerName">{{ me.seniorCenter.centerName }}</span>
           </div>
           <div class="info">
             <span class="label">주소</span>
@@ -78,21 +80,16 @@
           <div class="points">
             <div class="point-box">
               <span class="point-label">트로트</span>
-              <span class="point-value no-wrap" :title="n(me.seniorCenter.trotPoint)">
-                {{ n(me.seniorCenter.trotPoint) }}
-              </span>
+              <!-- 말줄임 제거 + 필요시 줄바꿈 -->
+              <span class="point-value break-number">{{ n(me.seniorCenter.trotPoint) }}</span>
             </div>
             <div class="point-box">
               <span class="point-label">도전</span>
-              <span class="point-value no-wrap" :title="n(me.seniorCenter.challengePoint)">
-                {{ n(me.seniorCenter.challengePoint) }}
-              </span>
+              <span class="point-value break-number">{{ n(me.seniorCenter.challengePoint) }}</span>
             </div>
             <div class="point-box">
               <span class="point-label">총 포인트</span>
-              <span class="point-value no-wrap" :title="n(me.seniorCenter.totalPoint)">
-                {{ n(me.seniorCenter.totalPoint) }}
-              </span>
+              <span class="point-value break-number">{{ n(me.seniorCenter.totalPoint) }}</span>
             </div>
           </div>
         </div>
@@ -202,7 +199,6 @@ const fetchMe = async () => {
   try {
     const { data } = await api.get(ME_ENDPOINT, { withCredentials: true })
     const normalized = { ...data }
-    // 이미지 키 정규화(profileImage 또는 profile_image → profileImage)
     normalized.profileImage = data?.profileImage ?? data?.profile_image ?? data?.imageUrl ?? ''
     Object.assign(me, normalized)
   } catch (e) {
@@ -216,7 +212,6 @@ const fetchMe = async () => {
 /* 편집/저장 */
 const startEdit = () => {
   editing.value = true
-  // 입력창에는 접두어 제거된 닉네임만 표시
   formNickname.value = stripCenterPrefix(me.nickname || '', centerName.value)
   nickError.value = ''
 }
@@ -252,7 +247,6 @@ onUnmounted(() => { if (blobUrl.value) URL.revokeObjectURL(blobUrl.value) })
 .profile-page { max-width: 1080px; margin: 0 auto; padding: 24px }
 .page-title { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 16px }
 
-/* 그리드가 내용 폭에 맞춰 잘 줄어들도록 minmax(0,1fr) 사용 */
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px }
 @media (max-width: 880px) { .grid-2 { grid-template-columns: 1fr } }
 
@@ -275,7 +269,7 @@ onUnmounted(() => { if (blobUrl.value) URL.revokeObjectURL(blobUrl.value) })
 .btn[disabled] { opacity:.6; cursor:not-allowed }
 .btn.primary { border-color: #3074FF; background: #3074FF; color:#fff }
 
-/* 정보 그리드 – 칸이 좁아져도 숫자가 줄바꿈되지 않도록 */
+/* 정보 그리드 */
 .info-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -284,20 +278,23 @@ onUnmounted(() => { if (blobUrl.value) URL.revokeObjectURL(blobUrl.value) })
 }
 @media (max-width: 640px) { .info-grid { grid-template-columns: 1fr } }
 
-.info { display:flex; gap: 8px; font-size: 18px; min-width: 0 } /* ellipsis 동작 위해 min-width:0 */
+.info { display:flex; gap: 8px; font-size: 18px; min-width: 0 }
 .label { min-width: 110px; color:#555; white-space: nowrap }
-.value {
-  font-weight: 800;
-  min-width: 0;
-  white-space: normal; /* 기본값 */
-}
-.no-wrap {
-  white-space: nowrap;            /* 줄바꿈 방지 */
-  overflow: hidden;               /* 넘치면 숨김 */
-  text-overflow: ellipsis;        /* 말줄임 */
+.value { font-weight: 800; min-width: 0 }
+
+/* ▽ 숫자 완전 표시: 말줄임 없이 필요시 줄바꿈 */
+.break-number {
+  white-space: normal;
+  overflow-wrap: anywhere;  /* 긴 숫자도 줄바꿈 */
+  word-break: break-word;
+  text-overflow: clip;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
 }
+
+/* 이름/역할처럼 한 줄 유지하고 싶을 때만 사용 */
+.no-wrap { white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+
 .info-grid .info:first-child .label { min-width: 72px }
 @media (max-width: 640px) { .info-grid .info:first-child .label { min-width: 64px } }
 
@@ -305,7 +302,7 @@ onUnmounted(() => { if (blobUrl.value) URL.revokeObjectURL(blobUrl.value) })
 .center-block { display: flex; flex-direction: column; gap: 8px }
 .points {
   display:grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)); /* 칸이 줄어도 내부가 줄바꿈 없이 말줄임 */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-top: 10px
 }
@@ -318,15 +315,12 @@ onUnmounted(() => { if (blobUrl.value) URL.revokeObjectURL(blobUrl.value) })
   display:flex;
   justify-content: space-between;
   align-items: center;
-  min-width: 0; /* ellipsis */
-}
-.point-label { color:#666; font-size: 16px; white-space: nowrap }
-.point-value {
-  font-size: 20px;
-  font-weight: 800;
   min-width: 0;
 }
-.point-value.no-wrap { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; letter-spacing: -0.02em }
+.point-label { color:#666; font-size: 16px; white-space: nowrap }
+.point-value { font-size: 20px; font-weight: 800; min-width: 0 }
+/* 내 경로당 숫자도 전부 보이게 */
+.point-value.break-number { white-space: normal; overflow-wrap: anywhere; word-break: break-word }
 
 .empty { color:#666; font-size:16px; padding: 12px; background:#fafafa; border-radius:12px }
 
