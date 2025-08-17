@@ -167,7 +167,7 @@
                 </h3>
                 <p class="card-description">{{ truncateText(m.description) }}</p>
                 <p class="card-subtext">📍 {{ m.challengePlace }}</p>
-                <p class="card-point">💎 {{ m.point }}점</p>
+                <p class="card-point">⭐ {{ m.point }}점</p>
                 <button class="more-info" @click="openDetailModal(m.id)">더보기 →</button>
               </div>
             </template>
