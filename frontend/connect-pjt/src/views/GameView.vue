@@ -987,12 +987,13 @@ export default {
 
     // 정답 제출 (클라이언트 → 서버)
     sendAnswerToServer(answerData) {
-      const {roomId, submitAnswer} = answerData
+      const {roomId, userId, submitAnswer} = answerData
 
       try {
         const message = {
           type: 'ANSWER_SUBMIT',
           roomId: roomId,
+          userId: userId,
           answer: submitAnswer,
         }
 
