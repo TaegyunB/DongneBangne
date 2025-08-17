@@ -217,5 +217,20 @@ public class GameRedisService {
 //        redisTemplate.delete(key);
     }
 
+    public void updatePoint(Long roomId, Long winnerId){
+        GameStatusRedis s = getGameStatusRedis(roomId);
+        if (s == null) return;
+
+        PlayerStatus p1 = s.getUser1();
+        PlayerStatus p2 = s.getUser2();
+
+        if (p1 != null && Objects.equals(p1.getUserId(), winnerId)) {
+            p1.updatePoint((p1.getPoint()) + 200);
+        } else if (p2 != null && Objects.equals(p2.getUserId(), winnerId)) {
+            p2.updatePoint((p2.getPoint()) + 200);
+        }
+        saveGameStatus(roomId, s);
+    }
+
 
 }

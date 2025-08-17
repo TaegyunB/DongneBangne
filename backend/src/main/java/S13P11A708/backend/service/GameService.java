@@ -110,9 +110,6 @@ public class GameService {
         broadcaster.broadcastAns(roomId,
                 messageFactory.createAnsMessage(GameMessageType.ANSWER_SUBMIT, roomId, senderId, answer, false, "정답제출"));
 
-//        broadcaster.broadcastToRoom(roomId,
-//                messageFactory.createInfoMessage(GameMessageType.ANSWER_SUBMIT, roomId, answer));
-
         if(player.isAnswered()){
             log.info("[FLOW] 이미 정답 맞춘 상태 → 리턴");
             broadcaster.broadcastAns(roomId,
@@ -136,7 +133,7 @@ public class GameService {
         //4. 정답 처리
         gameRedisService.increaseCount(roomId, senderId);
         broadcaster.broadcastAns(roomId,
-                messageFactory.createAnsMessage(GameMessageType.ANSWER_RESULT, roomId, senderId, answer, true, "정답"+game.getRound()+game.getTotalRound()));
+                messageFactory.createAnsMessage(GameMessageType.ANSWER_RESULT, roomId, senderId, answer, true, "정답"));
         log.info("[5] 정답자 카운트 증가");
 
         //5. 다음 라운드 진행
@@ -147,8 +144,8 @@ public class GameService {
         if(current == total) {
             log.info("[FLOW] 마지막 라운드 → 게임 종료 처리");
             log.info("[FLOW] broadcasting GAME_END to /sub/game/"+ roomId);
-            broadcaster.broadcastToRoom(roomId,
-                    messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, "game 종료 로직으로 들어옴"));
+//            broadcaster.broadcastToRoom(roomId,
+//                    messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, "game 종료 로직으로 들어옴"));
             endGame(roomId, game); // db 저장, 최종 승자 판단
             log.info("레디스 정보 삭제");
 //            gameRedisService.finishGame(roomId);
@@ -223,20 +220,9 @@ public class GameService {
         PlayerStatus user2 = latest.getUser2();
         log.info("[END] Player1: id={}, correctCount={}", user1.getUserId(), user1.getCorrectCount());
         log.info("[END] Player2: id={}, correctCount={}", user2.getUserId(), user2.getCorrectCount());
-        broadcaster.broadcastToRoom(roomId,
-                messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, "getUser1"+user1));
-
-
-        broadcaster.broadcastToRoom(roomId,
-                messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, "endGame 안임"));
-
 
         int count1 = user1.getCorrectCount();
         int count2 = user2.getCorrectCount();
-
-        broadcaster.broadcastToRoom(roomId,
-                messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, "count"+count1+" "+count2));
-
 
         Long winnerId = null;
         if(count1>count2) {
@@ -244,27 +230,21 @@ public class GameService {
         }else if(count1<count2){
             winnerId = user2.getUserId();
         }
-        broadcaster.broadcastToRoom(roomId,
-                messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, "winnerId 받아짐"+winnerId));
 
         log.info("[END] winnerId={}", winnerId);
 
         //1. 포인트 부여 (무승부일 경우 생략)
-//        if(winnerId != null){
+        if(winnerId != null){
             log.info("[END] addWinPoint(winnerId={}) 호출", winnerId);
             userService.addWinPoint(winnerId);
-        broadcaster.broadcastToRoom(roomId,
-                messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, "addWinPoint 성공"));
-//        }
+            gameRedisService.updatePoint(roomId, winnerId);
+        }
 
         //2. 엔티티 조회
         log.info("[END] find GameRoom from DB");
         GameRoom room = gameRoomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("게임방을 찾을 수 없습니다."));
         log.info("[END] GameRoom 조회 성공");
-
-        broadcaster.broadcastToRoom(roomId,
-                messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, "GameRoom 정보"+room));
 
         log.info("[END] find Users from DB");
         User user1Entity = userRepository.findById(user1.getUserId())
@@ -273,15 +253,9 @@ public class GameService {
                 .orElseThrow(() -> new RuntimeException("User not found: " + user2.getUserId()));
         log.info("[END] User 조회 성공");
 
-        broadcaster.broadcastToRoom(roomId,
-                messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, "userEntity"+user1Entity));
-
         User winnerEntity = (winnerId != null)
                 ? (winnerId.equals(user1.getUserId()) ? user1Entity : user2Entity)
                 : null;
-
-        broadcaster.broadcastToRoom(roomId,
-                messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, "winnerEntity"+winnerEntity));
 
         //3-1. 게임 결과 기록 GameHistory
         log.info("[END] save GameHistory");
@@ -292,8 +266,6 @@ public class GameService {
 //                LocalDateTime.now(),
                 game.getTotalRound()
         );
-        broadcaster.broadcastToRoom(roomId,
-                messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, "history"+history));
 
         //3-2. 게임 결과 기록 GameHistoryUser
         log.info("[END] save GameHistoryUser1,2");
@@ -316,8 +288,6 @@ public class GameService {
                         winnerId != null && winnerId.equals(user2.getUserId())
                 )
         );
-        broadcaster.broadcastToRoom(roomId,
-                messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, "GameHistoryUser"+historyUsers));
 
         log.info("[END] GameHistoryUser 저장 완료");
         historyUsers.forEach(history::addHistoryUser);
@@ -327,6 +297,10 @@ public class GameService {
         room.changeGameStatus(GameStatus.FINISHED);
         log.info("[END] GameRoom 상태 변경 -> FINISHED");
 
+        GameStatusRedis last = gameRedisService.getGameStatusRedis(roomId);
+
+        PlayerStatus user1_end = last.getUser1();
+        PlayerStatus user2_end = last.getUser2();
         //4. webSocket 알림 전송
         String winnerNickname = (winnerEntity != null) ? winnerEntity.getNickname() : null;
         String resultMessage = (winnerEntity != null)
@@ -336,7 +310,7 @@ public class GameService {
         log.info("[END] broadcasting GAME_END to /sub/games/{}", roomId);
         broadcaster.broadcastEndToRoom(roomId,
                 messageFactory.createEndMessage(GameMessageType.GAME_END, roomId, winnerId, winnerNickname,
-                        user1.getPoint(), user2.getPoint(), resultMessage));
+                        user1_end.getPoint(), user2_end.getPoint(), resultMessage));
 
         //5. redis 정리
         gameRedisService.finishGame(roomId);
