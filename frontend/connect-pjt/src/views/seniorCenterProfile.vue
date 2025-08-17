@@ -128,28 +128,19 @@ const notice = ref({ open: false, title: '안내', message: '' })
 const showNotice = (message, title = '안내') => { notice.value = { open: true, title, message } }
 const closeNotice = () => { notice.value.open = false }
 
-// 진입 시 사용자/센터 정보
+// 진입 시 사용자/센터 정보: /api/v1/main/me 한 번으로 처리
 onMounted(async () => {
   try {
-    const res = await api.get('/api/v1/users/profile', { withCredentials: true })
-    nickname.value = res.data?.nickname || ''
-    previewUrl.value = ensureHttps(res.data?.profileImage || null)
-  } catch (e) {}
-
-  try {
-    const me = await api.get('/api/v1/me', { withCredentials: true })
-    myCenterName.value =
-      me.data?.seniorCenterName ??
-      me.data?.centerName ??
-      me.data?.myCenter?.centerName ??
-      me.data?.mySeniorCenter?.name ??
-      ''
+    const { data } = await api.get('/api/v1/main/me', { withCredentials: true })
+    nickname.value = data?.nickname || ''
+    previewUrl.value = ensureHttps(data?.profileImage || null)
+    myCenterName.value = data?.seniorCenter?.centerName || ''
   } catch (e) {
-    myCenterName.value = ''
+    // 표시만 비워두고 진행
   }
 })
 
-// 입력 규칙: 공백 없이 한/영/숫자 2~12자 (최종 저장 문자열에는 공백 포함됨)
+// 입력 규칙: 공백 없이 한/영/숫자 2~12자
 const nicknamePattern = /^[가-힣A-Za-z0-9]{2,12}$/
 const nicknameValid = computed(() => nicknamePattern.test(nickname.value.trim()))
 
@@ -179,8 +170,8 @@ async function checkNickname() {
     checkingDup.value = true
     const nameForCheck = buildFinalNickname(nickname.value, myCenterName.value)
 
-    // 실제 API가 있으면 아래 사용
-    // const { data } = await api.get('/api/v1/users/nickname-check', { params: { nickname: nameForCheck }, withCredentials: true })
+    // 실제 API가 있으면 여기로 확인:
+    // const { data } = await api.get('/api/v1/main/me/nickname-check', { params: { nickname: nameForCheck }, withCredentials: true })
     // const exists = !!data?.exists
 
     // 데모 금칙어 로직
@@ -237,9 +228,8 @@ function removeFile() {
   selectedFile.value = null
 }
 
-// 저장 (최종 문자열 = “소속경로당 닉네임”)
-// 백엔드가 이미지 URL을 재수급하므로 닉네임 중심으로 저장하고,
-// 공개 URL(비-blob)만 있으면 선택적으로 함께 전달
+// 저장: PUT /api/v1/main/me  (닉네임은 “센터명 닉네임”)
+// 업로드 API가 없으므로 파일(blob)은 전송하지 않음. 공개 URL만 전달.
 async function completeProfile() {
   if (!nicknameAvailable.value) {
     showNotice('닉네임 중복 확인 후 저장해주세요.', '저장 안내')
@@ -255,7 +245,7 @@ async function completeProfile() {
       payload.profileImage = ensureHttps(previewUrl.value)
     }
 
-    await api.put('/api/v1/users/profile', payload, { withCredentials: true })
+    await api.put('/api/v1/main/me', payload, { withCredentials: true })
 
     showNotice('저장되었습니다.', '완료')
     const unwatch = watch(() => notice.value.open, v => { if (!v) router.push('/mainpage') })
@@ -274,110 +264,57 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* 브랜드/모달 컬러 */
+/* (스타일 원문 유지) */
 .profile-wrap {
   --brand:#3074FF; --brand-hover:#2866E6; --brand-active:#2258CC;
   --notice:#4B5563; --notice-hover:#374151; --notice-active:#1F2937;
 }
-
-/* 전체 */
-.profile-wrap {
-  width: 100%;
-  min-height: 100vh;
-  background: #fff;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  color: #111;
-}
-
-/* 포커스 */
-:focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; border-radius: 8px }
-
-/* 제목 */
-.headline { font-size: 44px; font-weight: 800; margin: 48px 0 28px; letter-spacing: -0.5px; width: 960px }
-
-/* 카드 */
-.profile-card {
-  background: #fff; border: 2px solid #dcdcdc; border-radius: 14px;
-  padding: 32px 36px; display: flex; gap: 48px; width: 960px; min-height: 340px;
-  margin-bottom: 56px; box-sizing: border-box; box-shadow: 0 2px 12px rgba(0,0,0,.06);
-}
-
-/* 왼쪽 */
-.profile-pic-area { display: flex; gap: 20px; align-items: flex-start; min-width: 320px; flex: 1.3 }
-.pic-and-btns { display: flex; flex-direction: column; align-items: center; gap: 16px }
-
-.profile-img-preview {
-  width: 128px; height: 128px; border-radius: 50%; background: #f3f4f6;
-  display: flex; align-items: center; justify-content: center; overflow: hidden; border: 2px solid #e5e7eb;
-}
-.profile-img { width: 100%; height: 100%; object-fit: cover }
-
-.default-profile {
-  width: 72px; height: 72px; border-radius: 50%;
-  background: #e2e4ea;
-  background-image: url('data:image/svg+xml;utf8,<svg fill="gray" height="64" width="64" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg"><circle cx="25" cy="20" r="12"/><ellipse cx="25" cy="41" rx="15" ry="9"/></svg>');
-  background-repeat: no-repeat; background-position: center; background-size: 72px 72px;
-}
-
-.pic-btns { display: flex; flex-direction: column; gap: 10px }
-
-/* 파란 버튼 공통 */
-.upload-btn, .dup-btn, .submit-btn { background: var(--brand); color: #fff; border: none; border-radius: 10px; cursor: pointer; transition: background .15s, transform .05s, opacity .15s }
-.upload-btn:hover, .dup-btn:hover, .submit-btn:hover { background: var(--brand-hover) }
-.upload-btn:active, .dup-btn:active, .submit-btn:active { background: var(--brand-active); transform: translateY(1px) }
-
-.upload-btn { font-size: 18px; min-height: 44px; padding: 8px 16px; font-weight: 800; text-align: center }
-.del-btn {
-  font-size: 18px; min-height: 44px; background: #fff5f5; border: 2px solid #ffdcdc;
-  color: #d33b3b; padding: 8px 16px; border-radius: 10px; cursor: pointer; font-weight: 800;
-}
-
-/* 안내 */
-.profile-info { padding-top: 6px; min-width: 200px }
-.guide-title { font-size: 18px; font-weight: 800; margin-bottom: 6px }
-.pic-restrictions { font-size: 16px; line-height: 1.7; color: #333 }
-.pic-restrictions ul { padding-left: 18px; margin: 4px 0 0 }
-
-/* 오른쪽 */
-.profile-input-area { display: flex; flex-direction: column; gap: 12px; flex: 2; min-width: 360px }
-.user-detail-title { font-size: 20px; font-weight: 800; color: #111; margin-bottom: 6px }
-.nickname-label { font-size: 18px; margin-bottom: 4px; color: #2a2d33; font-weight: 700 }
-.nickname-input-row { display: flex; gap: 10px }
-
-.nickname-input {
-  flex: 1; font-size: 20px; padding: 14px 16px; border: 2px solid #c6cbd1; border-radius: 10px; background: #fbfdff; outline: none; transition: border .15s
-}
-.nickname-input:focus { border: 2px solid var(--brand) }
-
-.dup-btn { padding: 0 18px; min-width: 120px; min-height: 48px; font-size: 18px; font-weight: 800 }
-.dup-btn:disabled { opacity: .45; cursor: not-allowed }
-
-.nickname-help { margin-top: 6px; font-size: 16px; color: #444 }
+.profile-wrap { width:100%; min-height:100vh; background:#fff; display:flex; flex-direction:column; align-items:center; color:#111 }
+:focus-visible { outline:3px solid var(--brand); outline-offset:3px; border-radius:8px }
+.headline { font-size:44px; font-weight:800; margin:48px 0 28px; letter-spacing:-.5px; width:960px }
+.profile-card { background:#fff; border:2px solid #dcdcdc; border-radius:14px; padding:32px 36px; display:flex; gap:48px; width:960px; min-height:340px; margin-bottom:56px; box-sizing:border-box; box-shadow:0 2px 12px rgba(0,0,0,.06) }
+.profile-pic-area { display:flex; gap:20px; align-items:flex-start; min-width:320px; flex:1.3 }
+.pic-and-btns { display:flex; flex-direction:column; align-items:center; gap:16px }
+.profile-img-preview { width:128px; height:128px; border-radius:50%; background:#f3f4f6; display:flex; align-items:center; justify-content:center; overflow:hidden; border:2px solid #e5e7eb }
+.profile-img { width:100%; height:100%; object-fit:cover }
+.default-profile { width:72px; height:72px; border-radius:50%; background:#e2e4ea; background-image:url('data:image/svg+xml;utf8,<svg fill="gray" height="64" width="64" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg"><circle cx="25" cy="20" r="12"/><ellipse cx="25" cy="41" rx="15" ry="9"/></svg>'); background-repeat:no-repeat; background-position:center; background-size:72px 72px }
+.pic-btns { display:flex; flex-direction:column; gap:10px }
+.upload-btn, .dup-btn, .submit-btn { background:var(--brand); color:#fff; border:none; border-radius:10px; cursor:pointer; transition:background .15s, transform .05s, opacity .15s }
+.upload-btn:hover, .dup-btn:hover, .submit-btn:hover { background:var(--brand-hover) }
+.upload-btn:active, .dup-btn:active, .submit-btn:active { background:var(--brand-active); transform:translateY(1px) }
+.upload-btn { font-size:18px; min-height:44px; padding:8px 16px; font-weight:800; text-align:center }
+.del-btn { font-size:18px; min-height:44px; background:#fff5f5; border:2px solid #ffdcdc; color:#d33b3b; padding:8px 16px; border-radius:10px; cursor:pointer; font-weight:800 }
+.profile-info { padding-top:6px; min-width:200px }
+.guide-title { font-size:18px; font-weight:800; margin-bottom:6px }
+.pic-restrictions { font-size:16px; line-height:1.7; color:#333 }
+.pic-restrictions ul { padding-left:18px; margin:4px 0 0 }
+.profile-input-area { display:flex; flex-direction:column; gap:12px; flex:2; min-width:360px }
+.user-detail-title { font-size:20px; font-weight:800; color:#111; margin-bottom:6px }
+.nickname-label { font-size:18px; margin-bottom:4px; color:#2a2d33; font-weight:700 }
+.nickname-input-row { display:flex; gap:10px }
+.nickname-input { flex:1; font-size:20px; padding:14px 16px; border:2px solid #c6cbd1; border-radius:10px; background:#fbfdff; outline:none; transition:border .15s }
+.nickname-input:focus { border:2px solid var(--brand) }
+.dup-btn { padding:0 18px; min-width:120px; min-height:48px; font-size:18px; font-weight:800 }
+.dup-btn:disabled { opacity:.45; cursor:not-allowed }
+.nickname-help { margin-top:6px; font-size:16px; color:#444 }
 .nickname-help .muted { color:#6b7280 }
-.nickname-msg { margin-top: 10px; font-size: 18px; font-weight: 800 }
-.nickname-msg.valid { color: #15803d }
-.nickname-msg.invalid { color: #b91c1c }
-
-.submit-btn { margin-top: 22px; font-size: 20px; padding: 14px 0; min-height: 52px; font-weight: 900; width: 100%; border-radius: 12px }
-.submit-btn:disabled { opacity: .45; cursor: not-allowed }
-
-/* 안내 모달 */
-.notice-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.38); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 16px }
-.notice-modal { background: #fff; width: min(420px, 92vw); border-radius: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.18); padding: 22px 20px; text-align: center }
-.notice-title { font-size: 22px; font-weight: 800; margin-bottom: 8px }
-.notice-text { font-size: 16px; color: #222; margin-bottom: 14px }
-.notice-btn { background: var(--notice); color:#fff; border:none; border-radius:10px; padding:10px 16px; min-height:44px; min-width:120px; cursor:pointer; transition: background .15s, transform .05s }
-.notice-btn:hover { background: var(--notice-hover) }
-.notice-btn:active { background: var(--notice-active); transform: translateY(1px) }
-
-/* 반응형 */
-@media (max-width: 960px) {
-  .headline { width: 100%; padding: 0 16px }
-  .profile-card { width: 100%; border-radius: 0; padding: 24px 16px; gap: 24px }
-  .profile-pic-area { min-width: 0; flex-direction: column }
-  .nickname-input-row { flex-direction: column }
-  .dup-btn { width: 100% }
+.nickname-msg { margin-top:10px; font-size:18px; font-weight:800 }
+.nickname-msg.valid { color:#15803d }
+.nickname-msg.invalid { color:#b91c1c }
+.submit-btn { margin-top:22px; font-size:20px; padding:14px 0; min-height:52px; font-weight:900; width:100%; border-radius:12px }
+.submit-btn:disabled { opacity:.45; cursor:not-allowed }
+.notice-overlay { position:fixed; inset:0; background:rgba(0,0,0,.38); display:flex; align-items:center; justify-content:center; z-index:2000; padding:16px }
+.notice-modal { background:#fff; width:min(420px,92vw); border-radius:14px; box-shadow:0 6px 24px rgba(0,0,0,.18); padding:22px 20px; text-align:center }
+.notice-title { font-size:22px; font-weight:800; margin-bottom:8px }
+.notice-text { font-size:16px; color:#222; margin-bottom:14px }
+.notice-btn { background:var(--notice); color:#fff; border:none; border-radius:10px; padding:10px 16px; min-height:44px; min-width:120px; cursor:pointer; transition:background .15s, transform .05s }
+.notice-btn:hover { background:var(--notice-hover) }
+.notice-btn:active { background:var(--notice-active); transform:translateY(1px) }
+@media (max-width:960px){
+  .headline{width:100%;padding:0 16px}
+  .profile-card{width:100%;border-radius:0;padding:24px 16px;gap:24px}
+  .profile-pic-area{min-width:0;flex-direction:column}
+  .nickname-input-row{flex-direction:column}
+  .dup-btn{width:100%}
 }
 </style>

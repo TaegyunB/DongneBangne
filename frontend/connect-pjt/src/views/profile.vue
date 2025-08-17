@@ -13,6 +13,7 @@
             :src="blobUrl || normalizeImageUrl(me.profileImage)"
             alt="프로필 이미지"
             class="avatar"
+            crossorigin="anonymous"
             @error="onImgError"
           />
           <div v-else class="avatar-fallback" aria-hidden="true">{{ initials }}</div>
@@ -100,10 +101,9 @@
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import api from '@/api/axios'
 
-// ⚠️ baseURL에 경로가 포함되어 있어도 안전하게 합쳐지도록 상대경로 사용
-// 예) baseURL = https://api.example.com/api/v1  =>  GET {base}/main/me
-const ME_ENDPOINT = 'main/me'
-const NICKNAME_ENDPOINT = 'main/me/nickname'
+// 읽기/수정 모두 같은 리소스
+const ME_ENDPOINT = '/api/v1/main/me'
+const NICKNAME_ENDPOINT = '/api/v1/main/me'
 
 const me = reactive({})
 const loading = ref(true)
@@ -124,23 +124,22 @@ const initials = computed(() => {
 
 const n = v => (v ?? 0).toLocaleString()
 
-// http → https 업그레이드 + 상대경로를 baseURL 기준 절대화(안전한 결합)
-const normalizeImageUrl = url => {
+// http → https 업그레이드 + baseURL 기준 해석(루트 강제 제거)
+const normalizeImageUrl = (url) => {
   if (!url) return ''
-  let u = url.trim()
+  let u = String(url).trim()
+  if (u.startsWith('data:') || u.startsWith('blob:')) return u
   if (u.startsWith('//')) u = 'https:' + u
   if (u.startsWith('http://')) u = u.replace(/^http:\/\//, 'https://')
   if (/^https?:\/\//.test(u)) return u
-  // 상대 경로를 baseURL(상대일 수도 있음)과 안전하게 결합
+  // 상대 경로는 baseURL 경로 뒤에 자연스럽게 붙도록 함 (선행 슬래시를 강제로 붙이지 않음)
   const base = api.defaults?.baseURL || '/'
-  const baseAbs = new URL(base, window.location.origin) // 상대 baseURL 지원
-  // u가 'files/...'든 '/files/...'든 동일하게 처리
-  const rel = u.startsWith('/') ? u : `/${u}`
-  return new URL(rel, baseAbs).toString()
+  const baseAbs = new URL(base, window.location.origin)
+  return new URL(u, baseAbs).toString()
 }
 
-// 동일 오리진 판별: baseURL이 상대여도 안전하게 처리
-const isSameOriginAsApi = url => {
+// 동일 오리진 판별
+const isSameOriginAsApi = (url) => {
   try {
     const finalUrl = new URL(normalizeImageUrl(url))
     const base = api.defaults?.baseURL || '/'
@@ -151,8 +150,12 @@ const isSameOriginAsApi = url => {
   }
 }
 
-const loadProfileImage = async url => {
-  blobUrl.value = ''
+const loadProfileImage = async (url) => {
+  // 기존 blob 해제
+  if (blobUrl.value) {
+    URL.revokeObjectURL(blobUrl.value)
+    blobUrl.value = ''
+  }
   if (!url) return
   // 외부 공개 이미지면 blob 불필요
   if (!isSameOriginAsApi(url)) {
@@ -175,7 +178,7 @@ const loadProfileImage = async url => {
 
 const onImgError = () => { imageOk.value = false }
 
-const validateNickname = nick => {
+const validateNickname = (nick) => {
   if (!nick) { nickError.value = '닉네임을 입력하세요'; return false }
   if (nick.length < 2 || nick.length > 12) { nickError.value = '2~12자만 가능해요'; return false }
   const ok = /^[\p{L}\p{N}_\- ]+$/u.test(nick)
@@ -216,12 +219,17 @@ const save = async () => {
   if (!canSave.value || submitting.value) return
   submitting.value = true
   try {
-    await api.patch(NICKNAME_ENDPOINT, { nickname: formNickname.value }, { withCredentials: true })
-    me.nickname = formNickname.value
+    await api.put(
+      NICKNAME_ENDPOINT,
+      { nickname: formNickname.value },
+      { withCredentials: true }
+    )
+    me.nickname = formNickname.value // 화면 즉시 반영
     editing.value = false
+    nickError.value = ''
   } catch (e) {
-    console.error('PATCH 닉네임 실패', e)
-    nickError.value = '저장에 실패했어요'
+    console.error('PUT 닉네임 실패', e)
+    nickError.value = e?.response?.data?.message || '저장에 실패했어요'
   } finally {
     submitting.value = false
   }
@@ -281,11 +289,10 @@ onUnmounted(() => {
 .label { min-width: 110px; color:#555 }
 .value { font-weight: 800 }
 .info-grid .info:first-child .label { min-width: 72px }
-
-/* 모바일에선 어차피 1열이니 더 자연스럽게 */
 @media (max-width: 640px) {
   .info-grid .info:first-child .label { min-width: 64px }
 }
+
 /* 내 경로당 */
 .center-block { display: flex; flex-direction: column; gap: 8px }
 .points { display:grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 10px }
