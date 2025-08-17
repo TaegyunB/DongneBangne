@@ -31,7 +31,7 @@ public class GameSocketController {
 
         Long userId = extractUserIdFromPrincipal(principal);
         Long roomId = message.getRoomId();
-        String answer = message.getSubmitAnswer();
+        String answer = message.getAnswer();
 
         log.info("[ANSWER_SUBMIT] roomId: {}, userId: {}, answer: {}", roomId, userId, answer);
 
