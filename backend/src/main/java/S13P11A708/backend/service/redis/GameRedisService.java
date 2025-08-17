@@ -17,7 +17,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class GameRedisService {
 
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final RedisTemplate<String, GameStatusRedis> redisTemplate;
 
     private static final int HINT_COST = 20;
     //우승 시 100
@@ -188,14 +188,16 @@ public class GameRedisService {
      * 게임이 종료되면 게임상태를 finished로 바꾼다.
      */
     public void finishGame(Long roomId) {
+        String key = getKey(roomId);
         GameStatusRedis status = getGameStatusRedis(roomId);
         if (status != null) {
             status.updateStatus(GameStatus.FINISHED);
             saveGameStatus(roomId, status);
+            redisTemplate.opsForValue().set(key, status, Duration.ofMinutes(10));
         }
         //redis 정보 삭제
-        String key = getKey(roomId);
-        redisTemplate.delete(key);
+//        String key = getKey(roomId);
+//        redisTemplate.delete(key);
     }
 
 
