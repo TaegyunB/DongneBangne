@@ -140,8 +140,11 @@ public class GameService {
         log.info("[5] 정답자 카운트 증가");
 
         //5. 다음 라운드 진행
-        boolean isLastRound = game.getRound() >= game.getTotalRound();
-        if(isLastRound) {
+        int current = game.getRound();
+        int total   = game.getTotalRound();
+
+//        boolean isLastRound = game.getRound() >= game.getTotalRound();
+        if(current == total) {
             log.info("[FLOW] 마지막 라운드 → 게임 종료 처리");
             log.info("[FLOW] broadcasting GAME_END to /sub/game/"+ roomId);
             endGame(roomId, game); // db 저장, 최종 승자 판단
