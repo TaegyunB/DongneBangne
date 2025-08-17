@@ -7,9 +7,9 @@
       <div class="nav-menu">
         <router-link to="/games" class="nav-item">게임</router-link>
         <a href="#" @click.prevent="navigateTo('/challenges')" class="nav-item">도전과제</a>
-        <a href="#" class="nav-item">게시판</a>
-        <a href="#" class="nav-item">순위</a>
-        <a href="#" class="nav-item">AI 신문</a>
+        <a href="#" @click.prevent="navigateTo('/boards')" class="nav-item">게시판</a>
+        <a href="#" @click.prevent="navigateTo('/rankings')" class="nav-item">순위</a>
+        <a href="#" @click.prevent="navigateTo('/news')" class="nav-item">AI 신문</a>
       </div>
 
       <div class="profile-wrap">

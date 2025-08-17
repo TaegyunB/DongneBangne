@@ -7,17 +7,11 @@
       <div class="profile-pic-area">
         <div class="pic-and-btns">
           <div class="profile-img-preview" aria-label="프로필 사진 미리보기">
-            <img
-              v-if="previewUrl"
-              :src="previewUrl"
-              alt="프로필 사진"
-              class="profile-img"
-            />
+            <img v-if="previewUrl" :src="previewUrl" alt="프로필 사진" class="profile-img" />
             <div v-else class="default-profile" aria-hidden="true"></div>
           </div>
 
           <div class="pic-btns">
-            <!-- 필요 시: 이미지 수정 불가로 만들려면 disabled 처리 -->
             <label class="upload-btn">
               사진 첨부
               <input type="file" accept="image/*" @change="onFileChange" hidden />
@@ -30,9 +24,9 @@
           <div class="pic-restrictions" id="photo-guide">
             <p class="guide-title">사진 안내</p>
             <ul>
-              <li>권장 크기: 400 × 400픽셀 이상</li>
-              <li>파일 용량: 2MB 이하</li>
-              <li>선택 사항입니다(나중에 변경 가능)</li>
+              <li>권장 크기: <b>400×400px 이상</b></li>
+              <li>파일 용량: <b>2MB 이하</b></li>
+              <li>필수 아님, <b>나중에 변경 가능</b></li>
             </ul>
           </div>
         </div>
@@ -55,11 +49,19 @@
             @blur="nicknameTouched = true"
             @keyup.enter="checkNickname"
           />
-          <button type="button" class="dup-btn" @click="checkNickname">중복 검사</button>
+          <button
+            type="button"
+            class="dup-btn"
+            :disabled="!nicknameValid || checkingDup"
+            @click="checkNickname"
+          >
+            {{ checkingDup ? '확인 중…' : '중복 확인' }}
+          </button>
         </div>
 
         <div id="nickname-help" class="nickname-help">
           공백 없이 한글/영문/숫자 2~12자
+          <br /><small class="muted">저장 시 “소속경로당 닉네임” 형식으로 표시됩니다.</small>
         </div>
 
         <div
@@ -76,79 +78,116 @@
         <button
           type="button"
           class="submit-btn"
-          :disabled="!nicknameAvailable"
+          :disabled="!nicknameAvailable || saving"
           @click="completeProfile"
         >
-          저장하기
+          {{ saving ? '저장 중…' : '저장하기' }}
         </button>
+      </div>
+    </div>
+
+    <!-- 안내 모달 -->
+    <div v-if="notice.open" class="notice-overlay" @keydown.escape="closeNotice">
+      <div class="notice-modal" role="dialog" aria-modal="true" aria-labelledby="noticeTitle">
+        <h3 id="noticeTitle" class="notice-title">{{ notice.title }}</h3>
+        <p class="notice-text">{{ notice.message }}</p>
+        <button class="notice-btn" @click="closeNotice">확인</button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/api/axios'
+
+const router = useRouter()
 
 const nickname = ref('')
 const nicknameAvailable = ref(false)
 const nicknameMessage = ref('')
 const nicknameTouched = ref(false)
-const previewUrl = ref(null)   // 프로필 이미지 URL(기본/업로드)
-const selectedFile = ref(null) // 선택한 파일(옵션)
+const checkingDup = ref(false)
+const saving = ref(false)
 
-const router = useRouter()
+const previewUrl = ref(null)
+const selectedFile = ref(null)
 
-// 페이지 진입 시 기본값 조회
+const myCenterName = ref('') // “소속경로당 닉네임”용 접두어
+
+// 안내 모달
+const notice = ref({ open: false, title: '안내', message: '' })
+const showNotice = (message, title = '안내') => { notice.value = { open: true, title, message } }
+const closeNotice = () => { notice.value.open = false }
+
+// 진입 시 사용자/센터 정보
 onMounted(async () => {
   try {
     const res = await api.get('/api/v1/users/profile')
-    nickname.value = res.data.nickname || ''
-    previewUrl.value = res.data.profileImage || null
+    nickname.value = res.data?.nickname || ''
+    previewUrl.value = res.data?.profileImage || null
+  } catch (e) {}
+
+  try {
+    const me = await api.get('/api/v1/me')
+    myCenterName.value =
+      me.data?.seniorCenterName ??
+      me.data?.centerName ??
+      me.data?.myCenter?.centerName ??
+      me.data?.mySeniorCenter?.name ??
+      ''
   } catch (e) {
-    // 필요 시 토큰 만료 처리
+    myCenterName.value = ''
   }
 })
 
-// 닉네임 입력 유효성(프론트 가드)
-const nicknameValid = computed(() => {
-  const v = nickname.value.trim()
-  if (!v) return false
-  if (v.length < 2 || v.length > 12) return false
-  return true
-})
+// 입력 규칙: 공백 없이 한/영/숫자 2~12자 (최종 저장 문자열에는 공백 포함됨)
+const nicknamePattern = /^[가-힣A-Za-z0-9]{2,12}$/
+const nicknameValid = computed(() => nicknamePattern.test(nickname.value.trim()))
 
 function onNicknameInput() {
   nicknameMessage.value = ''
   nicknameAvailable.value = false
+  nicknameTouched.value = true
 }
 
-// 닉네임 중복 검사
+// 최종 표시용 닉네임: “센터명 닉네임”(센터명이 없으면 닉네임만)
+const buildFinalNickname = (base, center) => {
+  const b = base.trim()
+  if (!center) return b
+  return `${center} ${b}`
+}
+
+// 닉네임 중복 검사 (최종 문자열 기준)
 async function checkNickname() {
   nicknameTouched.value = true
   if (!nicknameValid.value) {
-    nicknameMessage.value = '닉네임 형식을 확인해주세요.'
+    showNotice('닉네임 형식을 확인해주세요. (공백 없이 한글/영문/숫자 2~12자)', '닉네임 안내')
     nicknameAvailable.value = false
+    nicknameMessage.value = '닉네임 형식을 확인해주세요.'
     return
   }
   try {
-    // 실제 API가 있다면 아래 주석 해제
-    // const res = await api.get('/api/v1/users/nickname-check', { params: { nickname: nickname.value } })
-    // nicknameAvailable.value = !res.data.exists
-    // nicknameMessage.value = res.data.exists ? '이미 사용 중인 닉네임입니다.' : '사용 가능한 닉네임입니다.'
+    checkingDup.value = true
+    const nameForCheck = buildFinalNickname(nickname.value, myCenterName.value)
 
-    // 데모 로직(교체 예정)
-    if (nickname.value.includes('관리자') || nickname.value.includes('운영자')) {
-      nicknameAvailable.value = false
-      nicknameMessage.value = '이미 사용 중인 닉네임입니다.'
-    } else {
-      nicknameAvailable.value = true
-      nicknameMessage.value = '사용 가능한 닉네임입니다.'
-    }
+    // 실제 API가 있으면 아래 사용
+    // const { data } = await api.get('/api/v1/users/nickname-check', { params: { nickname: nameForCheck } })
+    // const exists = !!data?.exists
+
+    // 데모 금칙어 로직
+    const exists = /관리자|운영자/.test(nameForCheck)
+
+    nicknameAvailable.value = !exists
+    nicknameMessage.value = exists ? '이미 사용 중인 닉네임입니다.' : `사용 가능: ${nameForCheck}`
+    if (exists) showNotice('이미 사용 중인 닉네임입니다.', '중복 확인')
   } catch (e) {
     nicknameAvailable.value = false
     nicknameMessage.value = '확인 중 오류가 발생했습니다.'
+    showNotice('닉네임 중복 확인 중 오류가 발생했습니다.', '오류')
+  } finally {
+    checkingDup.value = false
   }
 }
 
@@ -158,7 +197,7 @@ function onFileChange(e) {
   if (!file) return
 
   if (file.size > 2 * 1024 * 1024) {
-    alert('파일 용량은 2MB 이하만 가능합니다.')
+    showNotice('파일 용량은 2MB 이하만 가능합니다.', '사진 안내')
     return
   }
 
@@ -166,16 +205,19 @@ function onFileChange(e) {
   const img = new Image()
   img.onload = () => {
     if (img.width < 400 || img.height < 400) {
-      alert('이미지는 400×400픽셀 이상이어야 합니다.')
+      showNotice('이미지는 400×400픽셀 이상이어야 합니다.', '사진 안내')
       URL.revokeObjectURL(tempUrl)
       return
     }
-    // 이전 blob 정리
     if (previewUrl.value && previewUrl.value.startsWith('blob:')) {
       URL.revokeObjectURL(previewUrl.value)
     }
     previewUrl.value = tempUrl
     selectedFile.value = file
+  }
+  img.onerror = () => {
+    showNotice('이미지 파일을 불러올 수 없습니다.', '사진 안내')
+    URL.revokeObjectURL(tempUrl)
   }
   img.src = tempUrl
 }
@@ -188,9 +230,14 @@ function removeFile() {
   selectedFile.value = null
 }
 
-// 저장(닉네임 + 프로필 이미지 URL)
+// 저장 (최종 문자열 = “소속경로당 닉네임”)
 async function completeProfile() {
+  if (!nicknameAvailable.value) {
+    showNotice('닉네임 중복 확인 후 저장해주세요.', '저장 안내')
+    return
+  }
   try {
+    saving.value = true
     let profileImageUrl = previewUrl.value
 
     // 실제 업로드 API가 있다면 사용
@@ -201,21 +248,36 @@ async function completeProfile() {
     //   profileImageUrl = uploadRes.data.url
     // }
 
+    const finalNickname = buildFinalNickname(nickname.value, myCenterName.value)
+
     await api.put('/api/v1/users/profile', {
-      nickname: nickname.value.trim(),
+      nickname: finalNickname,
       profileImage: profileImageUrl
     })
 
-    alert('저장되었습니다.')
-    router.push('/mainpage')
+    showNotice('저장되었습니다.', '완료')
+    const unwatch = watch(() => notice.value.open, v => { if (!v) router.push('/mainpage') })
+    // setTimeout(() => { notice.value.open = false; unwatch() }, 900)
   } catch (e) {
-    alert('저장에 실패했습니다.')
+    showNotice('저장에 실패했습니다. 잠시 후 다시 시도해주세요.', '오류')
+  } finally {
+    saving.value = false
   }
 }
+
+onBeforeUnmount(() => {
+  if (previewUrl.value && previewUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(previewUrl.value)
+  }
+})
 </script>
 
 <style scoped>
-:root { --accent:#12795a }
+/* 브랜드/모달 컬러 */
+.profile-wrap {
+  --brand:#3074FF; --brand-hover:#2866E6; --brand-active:#2258CC;
+  --notice:#4B5563; --notice-hover:#374151; --notice-active:#1F2937;
+}
 
 /* 전체 */
 .profile-wrap {
@@ -228,202 +290,86 @@ async function completeProfile() {
   color: #111;
 }
 
-/* 포커스 가시성(키보드 접근성) */
-:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 3px;
-  border-radius: 8px;
-}
+/* 포커스 */
+:focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; border-radius: 8px }
 
 /* 제목 */
-.headline {
-  font-size: 44px;            /* 큰 제목 */
-  font-weight: 800;
-  margin: 48px 0 28px 0;
-  letter-spacing: -0.5px;
-  width: 960px;
-}
+.headline { font-size: 44px; font-weight: 800; margin: 48px 0 28px; letter-spacing: -0.5px; width: 960px }
 
 /* 카드 */
 .profile-card {
-  background: #fff;
-  border: 2px solid #dcdcdc;  /* 더 굵은 테두리로 대비 */
-  border-radius: 14px;
-  padding: 32px 36px;
-  display: flex;
-  gap: 48px;
-  width: 960px;
-  min-height: 340px;
-  margin-bottom: 56px;
-  box-sizing: border-box;
-  box-shadow: 0 2px 12px rgba(0,0,0,.06);
+  background: #fff; border: 2px solid #dcdcdc; border-radius: 14px;
+  padding: 32px 36px; display: flex; gap: 48px; width: 960px; min-height: 340px;
+  margin-bottom: 56px; box-sizing: border-box; box-shadow: 0 2px 12px rgba(0,0,0,.06);
 }
 
-/* 왼쪽: 프로필 사진 */
-.profile-pic-area {
-  display: flex;
-  gap: 20px;
-  align-items: flex-start;
-  min-width: 320px;
-  flex: 1.3;
-}
-
-.pic-and-btns {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-}
+/* 왼쪽 */
+.profile-pic-area { display: flex; gap: 20px; align-items: flex-start; min-width: 320px; flex: 1.3 }
+.pic-and-btns { display: flex; flex-direction: column; align-items: center; gap: 16px }
 
 .profile-img-preview {
-  width: 128px;               /* 더 큰 이미지 */
-  height: 128px;
-  border-radius: 50%;
-  background: #f3f4f6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  border: 2px solid #e5e7eb;
+  width: 128px; height: 128px; border-radius: 50%; background: #f3f4f6;
+  display: flex; align-items: center; justify-content: center; overflow: hidden; border: 2px solid #e5e7eb;
 }
-
-.profile-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
+.profile-img { width: 100%; height: 100%; object-fit: cover }
 
 .default-profile {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
+  width: 72px; height: 72px; border-radius: 50%;
   background: #e2e4ea;
   background-image: url('data:image/svg+xml;utf8,<svg fill="gray" height="64" width="64" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg"><circle cx="25" cy="20" r="12"/><ellipse cx="25" cy="41" rx="15" ry="9"/></svg>');
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 72px 72px;
+  background-repeat: no-repeat; background-position: center; background-size: 72px 72px;
 }
 
-.pic-btns {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
+.pic-btns { display: flex; flex-direction: column; gap: 10px }
 
-.upload-btn, .del-btn {
-  font-size: 18px;            /* 버튼 글자 확대 */
-  min-height: 44px;           /* 터치 영역 확대 */
-  background: #effaf5;
-  border: 2px solid #cdeee1;
-  color: var(--accent);
-  padding: 8px 16px;
-  border-radius: 10px;
-  cursor: pointer;
-  font-weight: 800;
-  text-align: center;
-}
+/* 파란 버튼 공통 */
+.upload-btn, .dup-btn, .submit-btn { background: var(--brand); color: #fff; border: none; border-radius: 10px; cursor: pointer; transition: background .15s, transform .05s, opacity .15s }
+.upload-btn:hover, .dup-btn:hover, .submit-btn:hover { background: var(--brand-hover) }
+.upload-btn:active, .dup-btn:active, .submit-btn:active { background: var(--brand-active); transform: translateY(1px) }
+
+.upload-btn { font-size: 18px; min-height: 44px; padding: 8px 16px; font-weight: 800; text-align: center }
 .del-btn {
-  background: #fff5f5;
-  border: 2px solid #ffdcdc;
-  color: #d33b3b;
+  font-size: 18px; min-height: 44px; background: #fff5f5; border: 2px solid #ffdcdc;
+  color: #d33b3b; padding: 8px 16px; border-radius: 10px; cursor: pointer; font-weight: 800;
 }
 
+/* 안내 */
 .profile-info { padding-top: 6px; min-width: 200px }
 .guide-title { font-size: 18px; font-weight: 800; margin-bottom: 6px }
 .pic-restrictions { font-size: 16px; line-height: 1.7; color: #333 }
 .pic-restrictions ul { padding-left: 18px; margin: 4px 0 0 }
 
-/* 오른쪽: 닉네임 */
-.profile-input-area {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  flex: 2;
-  min-width: 360px;
-}
-
-.user-detail-title {
-  font-size: 20px;
-  font-weight: 800;
-  color: #111;
-  margin-bottom: 6px;
-}
-
-.nickname-label {
-  font-size: 18px;
-  margin-bottom: 4px;
-  color: #2a2d33;
-  font-weight: 700;
-}
-
-.nickname-input-row {
-  display: flex;
-  gap: 10px;
-}
+/* 오른쪽 */
+.profile-input-area { display: flex; flex-direction: column; gap: 12px; flex: 2; min-width: 360px }
+.user-detail-title { font-size: 20px; font-weight: 800; color: #111; margin-bottom: 6px }
+.nickname-label { font-size: 18px; margin-bottom: 4px; color: #2a2d33; font-weight: 700 }
+.nickname-input-row { display: flex; gap: 10px }
 
 .nickname-input {
-  flex: 1;
-  font-size: 20px;            /* 큰 입력 글자 */
-  padding: 14px 16px;
-  border: 2px solid #c6cbd1;
-  border-radius: 10px;
-  background: #fbfdff;
-  outline: none;
-  transition: border .15s;
+  flex: 1; font-size: 20px; padding: 14px 16px; border: 2px solid #c6cbd1; border-radius: 10px; background: #fbfdff; outline: none; transition: border .15s
 }
-.nickname-input:focus {
-  border: 2px solid var(--accent);
-}
+.nickname-input:focus { border: 2px solid var(--brand) }
 
-.dup-btn {
-  font-size: 18px;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 10px;
-  padding: 0 18px;
-  min-width: 120px;
-  min-height: 48px;           /* 충분한 터치 영역 */
-  font-weight: 800;
-  cursor: pointer;
-  transition: background .15s;
-}
-.dup-btn:hover { background: #0f6148 }
+.dup-btn { padding: 0 18px; min-width: 120px; min-height: 48px; font-size: 18px; font-weight: 800 }
+.dup-btn:disabled { opacity: .45; cursor: not-allowed }
 
-.nickname-help {
-  margin-top: 6px;
-  font-size: 16px;
-  color: #444;
-}
+.nickname-help { margin-top: 6px; font-size: 16px; color: #444 }
+.nickname-help .muted { color:#6b7280 }
+.nickname-msg { margin-top: 10px; font-size: 18px; font-weight: 800 }
+.nickname-msg.valid { color: #15803d }
+.nickname-msg.invalid { color: #b91c1c }
 
-.nickname-msg {
-  margin-top: 10px;
-  font-size: 18px;
-  font-weight: 800;
-}
-.nickname-msg.valid { color: #15803d }     /* 초록 */
-.nickname-msg.invalid { color: #b91c1c }   /* 빨강(고대비) */
+.submit-btn { margin-top: 22px; font-size: 20px; padding: 14px 0; min-height: 52px; font-weight: 900; width: 100%; border-radius: 12px }
+.submit-btn:disabled { opacity: .45; cursor: not-allowed }
 
-.submit-btn {
-  margin-top: 22px;
-  font-size: 20px;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  padding: 14px 0;
-  min-height: 52px;            /* 큰 버튼 */
-  font-weight: 900;
-  cursor: pointer;
-  transition: background .15s;
-  width: 100%;
-}
-.submit-btn:hover { background: #0f6148 }
-.submit-btn:disabled {
-  background: #b7c9c2;
-  color: #fff;
-  cursor: not-allowed;
-}
+/* 안내 모달 */
+.notice-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.38); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 16px }
+.notice-modal { background: #fff; width: min(420px, 92vw); border-radius: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.18); padding: 22px 20px; text-align: center }
+.notice-title { font-size: 22px; font-weight: 800; margin-bottom: 8px }
+.notice-text { font-size: 16px; color: #222; margin-bottom: 14px }
+.notice-btn { background: var(--notice); color:#fff; border:none; border-radius:10px; padding:10px 16px; min-height:44px; min-width:120px; cursor:pointer; transition: background .15s, transform .05s }
+.notice-btn:hover { background: var(--notice-hover) }
+.notice-btn:active { background: var(--notice-active); transform: translateY(1px) }
 
 /* 반응형 */
 @media (max-width: 960px) {
