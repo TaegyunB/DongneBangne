@@ -53,6 +53,7 @@ public class OpenAiService {
         promptBuilder.append("3. 각 미션의 의미와 가치를 부각\n");
         promptBuilder.append("4. 신문 기사 형식이긴 하지만 본문으로만 구성\n");
         promptBuilder.append("5. HTML 태그는 사용하지 말고 순수 텍스트로 작성\n");
+        promptBuilder.append("6. 오타나 맞춤법 오류 발견 시 수정\n");
 
         return callOpenAiApi(promptBuilder.toString());
     }

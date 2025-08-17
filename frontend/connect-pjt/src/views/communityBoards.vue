@@ -70,7 +70,7 @@
                   {{ displayCategory(item.category) }}
                 </span>
                 <span v-if="item.boardImage" class="image-indicator" title="이미지 첨부됨">
-                  사진 첨부
+                  📎사진 첨부
                 </span>
               </div>
 
