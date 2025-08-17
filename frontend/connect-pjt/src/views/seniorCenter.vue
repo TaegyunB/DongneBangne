@@ -129,8 +129,12 @@
         >
           <h3 id="doneTitle" class="modal-title">회원가입이 완료되었어요!</h3>
           <p class="modal-text">
-            회원 정보(프로필)를 간단히 수정하신 뒤<br />
-            동네방네를 즐겨주세요.
+            지금 바로 메인으로 가면 <br />
+            현재 <b>카카오 닉네임</b> 앞에 <b>‘{{ chosenCenterName }}’</b>이 자동으로 붙어 저장돼요.<br />
+            <span v-if="previewNick" style="display:inline-block;margin-top:6px;color:#444">
+              예: <b>{{ previewNick }}</b>
+            </span>
+            <br />언제든지 프로필에서 변경할 수 있어요.
           </p>
           <div class="modal-buttons">
             <button class="confirm-btn lg" @click="goEditProfile">
@@ -169,6 +173,22 @@ const modalCenter = ref({ id: null, name: '', address: '' })
 const showOnboarding = ref(false)
 const isConfirmed = ref(false)
 const selectedId = ref(null)
+
+/* ▼ 추가 상태: 선택한 센터명, 미리보기 닉네임 */
+const chosenCenterName = ref('')
+const previewNick = ref('')
+
+/* === 닉네임 접두어 유틸 === */
+const buildFinalNickname = (base, center) => {
+  const b = String(base || '').trim()
+  const c = String(center || '').trim()
+  return c ? `${c} ${b}` : b
+}
+const stripCenterPrefix = (full, center) => {
+  const f = String(full || '').trim()
+  const c = String(center || '').trim()
+  return c && f.startsWith(c + ' ') ? f.slice(c.length + 1) : f
+}
 
 const isSearchDisabled = computed(() => !keyword.value.trim() || isLoading.value)
 
@@ -241,6 +261,18 @@ async function confirmCenter() {
     await api.post('/api/v1/users/senior-center', {
       seniorCenterId: modalCenter.value.id
     })
+    // 선택한 센터명 보관
+    chosenCenterName.value = modalCenter.value.name || ''
+    // 카카오 닉네임 가져와 미리보기 생성
+    try {
+      const { data: me } = await api.get('/api/v1/main/me', { withCredentials: true })
+      const current = me?.nickname || ''
+      const pure = stripCenterPrefix(current, chosenCenterName.value)
+      previewNick.value = buildFinalNickname(pure, chosenCenterName.value)
+    } catch (e) {
+      // 조회 실패 시에도 모달은 열어둠(미리보기만 생략)
+      previewNick.value = ''
+    }
     showModal.value = false
     showDoneModal.value = true
   } catch (err) {
@@ -254,8 +286,24 @@ async function confirmCenter() {
 function goEditProfile() {
   router.push('/senior-center/profile')
 }
-function goMain() {
-  router.push('/mainpage')
+
+async function goMain() {
+  // 바로 메인: 닉네임을 "센터명 + (카카오 닉네임의 순수본)"으로 저장 후 이동
+  try {
+    // me 재조회(최신 정보)
+    const { data: me } = await api.get('/api/v1/main/me', { withCredentials: true })
+    const center = chosenCenterName.value || me?.seniorCenter?.centerName || modalCenter.value.name || ''
+    const current = me?.nickname || ''
+    const pure = stripCenterPrefix(current, center)
+    const finalNickname = buildFinalNickname(pure, center)
+    if (center && finalNickname !== current) {
+      await api.put('/api/v1/users/profile', { nickname: finalNickname }, { withCredentials: true })
+    }
+  } catch (e) {
+    console.error('메인 이동 전 닉네임 자동 저장 실패(무시 후 진행):', e)
+  } finally {
+    router.push('/mainpage')
+  }
 }
 
 onMounted(() => {
@@ -291,17 +339,15 @@ function handleOnboardingConfirm(payload) {
 
 /* ========= 접근성/시니어 친화 기본값 ========= */
 .find-senior-center {
-  /* 업로드된 이미지에서 추출한 브랜드 컬러 */
-  --brand: #3074FF;       /* 기본 */
-  --brand-hover: #2966E6; /* hover */
-  --brand-active: #2359CC;/* active */
+  --brand: #3074FF;
+  --brand-hover: #2966E6;
+  --brand-active: #2359CC;
 
   min-height: 100vh;
   background: #ffffff;
   color: #111;
   line-height: 1.55;
 
-  /* 🔹 페이지 전체 폰트 적용 */
   font-family: 'KoddiUDOnGothic', -apple-system, BlinkMacSystemFont,
                'Segoe UI', Roboto, 'Noto Sans KR', 'Apple SD Gothic Neo',
                'Malgun Gothic', system-ui, sans-serif;
@@ -334,7 +380,7 @@ function handleOnboardingConfirm(payload) {
 
 .headline {
   font-size: 48px;
-  font-weight: 800; /* Koddi ExtraBold(800) 사용 */
+  font-weight: 800;
   letter-spacing: -0.5px;
   margin: 12px 0 24px;
 }
@@ -381,7 +427,7 @@ function handleOnboardingConfirm(payload) {
 }
 
 .search-btn {
-  font-weight: 800; /* 800 */
+  font-weight: 800;
   min-width: 140px;
   padding: 0 18px;
   background: var(--brand);
@@ -427,7 +473,7 @@ function handleOnboardingConfirm(payload) {
 .result-table thead th {
   background: #f4f6f8;
   font-size: 20px;
-  font-weight: 800; /* 800 */
+  font-weight: 800;
 }
 
 .result-table tbody tr:nth-child(even) {
@@ -461,7 +507,7 @@ function handleOnboardingConfirm(payload) {
 /* 버튼 공통 */
 .confirm-btn, .cancel-btn {
   font-size: 18px;
-  font-weight: 700; /* 700 */
+  font-weight: 700;
   min-height: 44px;
   padding: 8px 18px;
   border: none;
@@ -525,4 +571,3 @@ function handleOnboardingConfirm(payload) {
   .result-table thead th { font-size: 20px }
 }
 </style>
-
