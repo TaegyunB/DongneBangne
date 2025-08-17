@@ -222,6 +222,9 @@ public class GameService {
         log.info("[END] Player1: id={}, correctCount={}", user1.getUserId(), user1.getCorrectCount());
         log.info("[END] Player2: id={}, correctCount={}", user2.getUserId(), user2.getCorrectCount());
 
+        broadcaster.broadcastToRoom(roomId,
+                messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, "endGame 안임"));
+
 
         int count1 = user1.getCorrectCount();
         int count2 = user2.getCorrectCount();
