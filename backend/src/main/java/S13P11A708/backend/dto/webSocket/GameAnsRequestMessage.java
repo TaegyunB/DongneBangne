@@ -9,9 +9,8 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class GameAnsRequestMessage {
-    private GameMessageType type;
     private String answer;
     private Long roomId;
+    private GameMessageType type;
     private Long userId;
-    private String submitAnswer;
 }
