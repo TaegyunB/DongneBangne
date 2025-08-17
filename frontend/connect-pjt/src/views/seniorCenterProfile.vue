@@ -7,7 +7,15 @@
       <div class="profile-pic-area">
         <div class="pic-and-btns">
           <div class="profile-img-preview" aria-label="프로필 사진 미리보기">
-            <img v-if="safePreviewUrl" :src="safePreviewUrl" alt="프로필 사진" class="profile-img" />
+            <img
+              v-if="displaySrc"
+              :src="displaySrc"
+              alt="프로필 사진"
+              class="profile-img"
+              crossorigin="anonymous"
+              referrerpolicy="no-referrer"
+              @error="onImgError"
+            />
             <div v-else class="default-profile" aria-hidden="true"></div>
           </div>
 
@@ -27,6 +35,9 @@
               <li>권장 크기: <b>400×400px</b></li>
               <li>파일 용량: <b>2MB 이하</b></li>
             </ul>
+            <p v-if="coepBlocked" class="coep-hint">
+              외부 프로필 이미지를 표시할 수 없어요. 사진을 직접 첨부해 주세요.
+            </p>
           </div>
         </div>
       </div>
@@ -86,7 +97,13 @@
     </div>
 
     <!-- 안내 모달 -->
-    <div v-if="notice.open" class="notice-overlay" @keydown.escape="closeNotice">
+    <div
+      v-if="notice.open"
+      class="notice-overlay"
+      tabindex="-1"
+      @keydown.esc="closeNotice"
+      @click.self="closeNotice"
+    >
       <div class="notice-modal" role="dialog" aria-modal="true" aria-labelledby="noticeTitle">
         <h3 id="noticeTitle" class="notice-title">{{ notice.title }}</h3>
         <p class="notice-text">{{ notice.message }}</p>
@@ -103,13 +120,18 @@ import api from '@/api/axios'
 
 const router = useRouter()
 
+/* === helpers === */
 const isBlobUrl = url => typeof url === 'string' && url.startsWith('blob:')
 const ensureHttps = url => {
   if (!url) return null
   if (isBlobUrl(url)) return url
-  return url.replace(/^http:\/\//, 'https://')
+  return String(url).replace(/^http:\/\//, 'https://')
+}
+const isExternal = src => {
+  try { return new URL(src, location.href).origin !== location.origin } catch { return false }
 }
 
+/* === state === */
 const nickname = ref('')
 const nicknameAvailable = ref(false)
 const nicknameMessage = ref('')
@@ -117,47 +139,71 @@ const nicknameTouched = ref(false)
 const checkingDup = ref(false)
 const saving = ref(false)
 
-const previewUrl = ref(null)
-const selectedFile = ref(null)
-const safePreviewUrl = computed(() => ensureHttps(previewUrl.value))
+const previewUrl = ref(null)      // 서버/외부/blob URL
+const selectedFile = ref(null)    // 파일 업로드는 아직 없음(URL만 저장)
+const coepBlocked = ref(false)
 
-const myCenterName = ref('') // “소속경로당 닉네임”용 접두어
-
-// 안내 모달
-const notice = ref({ open: false, title: '안내', message: '' })
-const showNotice = (message, title = '안내') => { notice.value = { open: true, title, message } }
-const closeNotice = () => { notice.value.open = false }
-
-// 진입 시 사용자/센터 정보: /api/v1/main/me 한 번으로 처리
-onMounted(async () => {
-  try {
-    const { data } = await api.get('/api/v1/main/me', { withCredentials: true })
-    nickname.value = data?.nickname || ''
-    previewUrl.value = ensureHttps(data?.profileImage || null)
-    myCenterName.value = data?.seniorCenter?.centerName || ''
-  } catch (e) {
-    // 표시만 비워두고 진행
+const displaySrc = computed(() => {
+  const src = ensureHttps(previewUrl.value)
+  if (!src) return null
+  if (isBlobUrl(src)) return src
+  if (window.crossOriginIsolated && isExternal(src)) {
+    coepBlocked.value = true
+    return null
   }
+  coepBlocked.value = false
+  return src
 })
 
-// 입력 규칙: 공백 없이 한/영/숫자 2~12자
+const myCenterName = ref('') // “소속경로당 닉네임” 접두어
+
+/* === notice modal === */
+const notice = ref({ open: false, title: '안내', message: '', onClose: null })
+const showNotice = (message, title = '안내', onClose = null) => { notice.value = { open: true, title, message, onClose } }
+const closeNotice = () => {
+  const cb = notice.value.onClose
+  notice.value.open = false
+  notice.value.onClose = null
+  if (typeof cb === 'function') cb()
+}
+watch(() => notice.value.open, open => {
+  if (open) setTimeout(() => document.querySelector('.notice-overlay')?.focus())
+})
+
+/* === load current profile ===
+   정확한 엔드포인트: /api/v1/users/senior-center/profile (GET)
+*/
+onMounted(async () => {
+  try {
+    const { data } = await api.get('/api/v1/users/senior-center/profile', { withCredentials: true })
+    nickname.value = data?.nickname || ''
+    // 응답 키 대응: profileImage | profile_image
+    const img = data?.profileImage ?? data?.profile_image ?? null
+    previewUrl.value = ensureHttps(img)
+    // 센터명 후보 키들
+    myCenterName.value =
+      data?.seniorCenter?.centerName ??
+      data?.senior_center?.center_name ??
+      data?.seniorCenterName ??
+      data?.centerName ??
+      ''
+  } catch {} // 첫 진입 시 비어있어도 OK
+})
+
+/* === nickname rules & dup-check === */
 const nicknamePattern = /^[가-힣A-Za-z0-9]{2,12}$/
 const nicknameValid = computed(() => nicknamePattern.test(nickname.value.trim()))
-
 function onNicknameInput() {
   nicknameMessage.value = ''
   nicknameAvailable.value = false
   nicknameTouched.value = true
 }
 
-// 최종 표시용 닉네임: “센터명 닉네임”(센터명이 없으면 닉네임만)
 const buildFinalNickname = (base, center) => {
   const b = base.trim()
-  if (!center) return b
-  return `${center} ${b}`
+  return center ? `${center} ${b}` : b
 }
 
-// 닉네임 중복 검사 (최종 문자열 기준)
 async function checkNickname() {
   nicknameTouched.value = true
   if (!nicknameValid.value) {
@@ -169,18 +215,12 @@ async function checkNickname() {
   try {
     checkingDup.value = true
     const nameForCheck = buildFinalNickname(nickname.value, myCenterName.value)
-
-    // 실제 API가 있으면 여기로 확인:
-    // const { data } = await api.get('/api/v1/main/me/nickname-check', { params: { nickname: nameForCheck }, withCredentials: true })
-    // const exists = !!data?.exists
-
-    // 데모 금칙어 로직
+    // 서버 중복확인 API 명세가 없어서 데모 금칙어로 대체
     const exists = /관리자|운영자/.test(nameForCheck)
-
     nicknameAvailable.value = !exists
     nicknameMessage.value = exists ? '이미 사용 중인 닉네임입니다.' : `사용 가능: ${nameForCheck}`
     if (exists) showNotice('이미 사용 중인 닉네임입니다.', '중복 확인')
-  } catch (e) {
+  } catch {
     nicknameAvailable.value = false
     nicknameMessage.value = '확인 중 오류가 발생했습니다.'
     showNotice('닉네임 중복 확인 중 오류가 발생했습니다.', '오류')
@@ -189,15 +229,11 @@ async function checkNickname() {
   }
 }
 
-// 사진 첨부
+/* === image handlers === */
 function onFileChange(e) {
   const file = e.target.files?.[0]
   if (!file) return
-
-  if (file.size > 2 * 1024 * 1024) {
-    showNotice('파일 용량은 2MB 이하만 가능합니다.', '사진 안내')
-    return
-  }
+  if (file.size > 2 * 1024 * 1024) { showNotice('파일 용량은 2MB 이하만 가능합니다.', '사진 안내'); return }
 
   const tempUrl = URL.createObjectURL(file)
   const img = new Image()
@@ -207,49 +243,42 @@ function onFileChange(e) {
       URL.revokeObjectURL(tempUrl)
       return
     }
-    if (previewUrl.value && previewUrl.value.startsWith('blob:')) {
-      URL.revokeObjectURL(previewUrl.value)
-    }
+    if (previewUrl.value && previewUrl.value.startsWith('blob:')) URL.revokeObjectURL(previewUrl.value)
     previewUrl.value = tempUrl
     selectedFile.value = file
   }
-  img.onerror = () => {
-    showNotice('이미지 파일을 불러올 수 없습니다.', '사진 안내')
-    URL.revokeObjectURL(tempUrl)
-  }
+  img.onerror = () => { showNotice('이미지 파일을 불러올 수 없습니다.', '사진 안내'); URL.revokeObjectURL(tempUrl) }
   img.src = tempUrl
 }
-
+function onImgError() {
+  if (previewUrl.value && previewUrl.value.startsWith('blob:')) URL.revokeObjectURL(previewUrl.value)
+  previewUrl.value = null
+}
 function removeFile() {
-  if (previewUrl.value && previewUrl.value.startsWith('blob:')) {
-    URL.revokeObjectURL(previewUrl.value)
-  }
+  if (previewUrl.value && previewUrl.value.startsWith('blob:')) URL.revokeObjectURL(previewUrl.value)
   previewUrl.value = null
   selectedFile.value = null
 }
 
-// 저장: PUT /api/v1/main/me  (닉네임은 “센터명 닉네임”)
-// 업로드 API가 없으므로 파일(blob)은 전송하지 않음. 공개 URL만 전달.
+/* === save profile ===
+   정확한 엔드포인트: /api/v1/users/senior-center/profile (PUT)
+   - 이미지 업로드 엔드포인트가 별도로 없으므로 URL만 전달 (blob 은 전송 X)
+*/
 async function completeProfile() {
-  if (!nicknameAvailable.value) {
-    showNotice('닉네임 중복 확인 후 저장해주세요.', '저장 안내')
-    return
-  }
+  if (!nicknameAvailable.value) { showNotice('닉네임 중복 확인 후 저장해주세요.', '저장 안내'); return }
   try {
     saving.value = true
-
     const finalNickname = buildFinalNickname(nickname.value, myCenterName.value)
     const payload = { nickname: finalNickname }
 
+    // 외부/서버 URL만 전달 (blob 은 제외)
     if (previewUrl.value && !isBlobUrl(previewUrl.value)) {
       payload.profileImage = ensureHttps(previewUrl.value)
     }
 
-    await api.put('/api/v1/main/me', payload, { withCredentials: true })
-
-    showNotice('저장되었습니다.', '완료')
-    const unwatch = watch(() => notice.value.open, v => { if (!v) router.push('/mainpage') })
-  } catch (e) {
+    await api.put('/api/v1/users/senior-center/profile', payload, { withCredentials: true })
+    showNotice('저장되었습니다.', '완료', () => router.push('/mainpage'))
+  } catch {
     showNotice('저장에 실패했습니다. 잠시 후 다시 시도해주세요.', '오류')
   } finally {
     saving.value = false
@@ -257,14 +286,12 @@ async function completeProfile() {
 }
 
 onBeforeUnmount(() => {
-  if (previewUrl.value && previewUrl.value.startsWith('blob:')) {
-    URL.revokeObjectURL(previewUrl.value)
-  }
+  if (previewUrl.value && previewUrl.value.startsWith('blob:')) URL.revokeObjectURL(previewUrl.value)
 })
 </script>
 
 <style scoped>
-/* (스타일 원문 유지) */
+/* (기존 스타일 유지) */
 .profile-wrap {
   --brand:#3074FF; --brand-hover:#2866E6; --brand-active:#2258CC;
   --notice:#4B5563; --notice-hover:#374151; --notice-active:#1F2937;
@@ -288,6 +315,7 @@ onBeforeUnmount(() => {
 .guide-title { font-size:18px; font-weight:800; margin-bottom:6px }
 .pic-restrictions { font-size:16px; line-height:1.7; color:#333 }
 .pic-restrictions ul { padding-left:18px; margin:4px 0 0 }
+.coep-hint { margin-top:8px; color:#b45309; background:#fffbeb; border:1px solid #fef3c7; padding:6px 8px; border-radius:8px; font-size:14px }
 .profile-input-area { display:flex; flex-direction:column; gap:12px; flex:2; min-width:360px }
 .user-detail-title { font-size:20px; font-weight:800; color:#111; margin-bottom:6px }
 .nickname-label { font-size:18px; margin-bottom:4px; color:#2a2d33; font-weight:700 }

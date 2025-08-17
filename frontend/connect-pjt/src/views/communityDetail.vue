@@ -33,7 +33,7 @@
 
       <div class="content">{{ board.content }}</div>
 
-            <div class="footer">
+      <div class="footer">
         <!-- 좋아요 -->
         <button class="like-button" :disabled="likeBusy" @click="toggleLike">
           <span class="thumb" :class="{ on: liked }">👍</span>
@@ -97,8 +97,11 @@
             <!-- 보기 모드 -->
             <div v-else class="comment-content">{{ c.content }}</div>
 
-            <!-- 내 댓글만 조작 -->
-            <div class="comment-actions" v-if="isMyComment(c)">
+            <!-- 내 댓글만 조작 (편집 중에는 숨김) -->
+            <div
+              class="comment-actions"
+              v-if="isMyComment(c) && editTargetId !== c.commentId"
+            >
               <button class="btn" @click="startEdit(c)">수정</button>
               <button class="btn danger" :disabled="commentBusy" @click="removeComment(c.commentId)">삭제</button>
             </div>
@@ -245,7 +248,7 @@ const fetchDetail = async () => {
   loading.value = true
   error.value = false
   try {
-    const { data } = await api.get(`/api/v1/boards/${boardId.value}`, {  // boardId
+    const { data } = await api.get(`/api/v1/boards/${boardId.value}`, {
       headers: headersWithToken()
     })
     const row = normalize(data || {})
@@ -338,22 +341,18 @@ const createComment = async () => {
   commentBusy.value = true
   try {
     const body = { content: newComment.value }
-    // const { data } = await api.post(`/api/v1/boards/${boardId.value}/comments`, body, { headers: headersWithToken() })
-    // const created = normalizeComment(data || { content: newComment.value, nickname: me.value?.nickname, userId: me.value?.userId, createdAt: new Date().toISOString() })
     const { data } = await api.post(
-    `/api/v1/boards/${boardId.value}/comments`,
-    body,
-    { headers: headersWithToken() }
-  )
-  const created = normalizeComment({
-    ...data,
-    // 서버가 안 주면 내가 채운다
-    nickname: data?.nickname ?? me.value?.nickname,
-    userId: data?.userId ?? me.value?.userId,
-    content: data?.content ?? newComment.value,
-    createdAt: data?.createdAt ?? new Date().toISOString()
-  })
-    
+      `/api/v1/boards/${boardId.value}/comments`,
+      body,
+      { headers: headersWithToken() }
+    )
+    const created = normalizeComment({
+      ...data,
+      nickname: data?.nickname ?? me.value?.nickname,
+      userId: data?.userId ?? me.value?.userId,
+      content: data?.content ?? newComment.value,
+      createdAt: data?.createdAt ?? new Date().toISOString()
+    })
     comments.value.unshift(created)
     newComment.value = ''
     commentCount.value += 1
