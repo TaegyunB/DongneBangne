@@ -19,12 +19,17 @@
           <div v-else class="avatar-fallback" aria-hidden="true">{{ initials }}</div>
 
           <div class="name-block">
-            <div v-if="!editing" class="nickname-row">
-              <span class="nickname">{{ me.nickname || '닉네임 없음' }}</span>
+            <!-- 이름 + 역할 + (우측) 수정버튼 -->
+            <div class="name-line">
+              <div class="name-and-role">
+                <span class="nickname">{{ me.nickname || '닉네임 없음' }}</span>
+                <span class="role-chip" :title="me.userRole || '-'">{{ me.userRole || '-' }}</span>
+              </div>
               <button class="btn" @click="startEdit" :disabled="loading">닉네임 수정</button>
             </div>
 
-            <div v-else class="edit-row" role="group" aria-label="닉네임 편집">
+            <!-- 편집 모드 -->
+            <div v-if="editing" class="edit-row" role="group" aria-label="닉네임 편집">
               <input
                 v-model.trim="formNickname"
                 class="input"
@@ -34,28 +39,24 @@
                 :aria-invalid="!!nickError"
                 :aria-errormessage="nickError ? 'nick-error' : undefined"
               />
-              <button class="btn primary" @click="save" :disabled="submitting || !canSave">저장</button>
-              <button class="btn" @click="cancel" :disabled="submitting">취소</button>
+              <div class="edit-actions">
+                <button class="btn primary" @click="save" :disabled="submitting || !canSave">저장</button>
+                <button class="btn" @click="cancel" :disabled="submitting">취소</button>
+              </div>
+              <p v-if="nickError" id="nick-error" class="error">{{ nickError }}</p>
             </div>
 
-            <p v-if="nickError" id="nick-error" class="error">{{ nickError }}</p>
-          </div>
-        </div>
-
-        <div class="info-grid">
-          <div class="info">
-            <span class="label">역할</span>
-            <span class="value no-wrap" :title="me.userRole || '-'">{{ me.userRole || '-' }}</span>
-          </div>
-          <div class="info">
-            <span class="label">개인 포인트</span>
-            <!-- 말줄임 제거 + 필요시 줄바꿈 -->
-            <span class="value break-number">{{ n(me.personalPoint) }}</span>
-          </div>
-          <div class="info">
-            <span class="label">센터 포인트</span>
-            <!-- 말줄임 제거 + 필요시 줄바꿈 -->
-            <span class="value break-number">{{ n(me.seniorCenter?.totalPoint) }}</span>
+            <!-- 포인트 요약 -->
+            <div class="stats">
+              <div class="stat">
+                <span class="stat-label">개인 점수</span>
+                <span class="stat-value nowrap" :title="n(me.personalPoint)">{{ n(me.personalPoint) }}</span>
+              </div>
+              <div class="stat">
+                <span class="stat-label">센터 점수</span>
+                <span class="stat-value nowrap" :title="n(me.seniorCenter?.totalPoint)">{{ n(me.seniorCenter?.totalPoint) }}</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -63,14 +64,14 @@
         <p v-if="loadError" class="error mt">{{ loadError }}</p>
       </section>
 
-      <!-- === 내 경로당 === -->
+      <!-- === 내 경로당 === (이전 레이아웃 유지) -->
       <section class="card">
         <h2 class="card-title">내 경로당</h2>
 
         <div v-if="me.seniorCenter" class="center-block">
           <div class="info">
             <span class="label">이름</span>
-            <span class="value" :title="me.seniorCenter.centerName">{{ me.seniorCenter.centerName }}</span>
+            <span class="value no-wrap" :title="me.seniorCenter.centerName">{{ me.seniorCenter.centerName }}</span>
           </div>
           <div class="info">
             <span class="label">주소</span>
@@ -80,16 +81,21 @@
           <div class="points">
             <div class="point-box">
               <span class="point-label">트로트</span>
-              <!-- 말줄임 제거 + 필요시 줄바꿈 -->
-              <span class="point-value break-number">{{ n(me.seniorCenter.trotPoint) }}</span>
+              <span class="point-value no-wrap" :title="n(me.seniorCenter.trotPoint)">
+                {{ n(me.seniorCenter.trotPoint) }}
+              </span>
             </div>
             <div class="point-box">
               <span class="point-label">도전</span>
-              <span class="point-value break-number">{{ n(me.seniorCenter.challengePoint) }}</span>
+              <span class="point-value no-wrap" :title="n(me.seniorCenter.challengePoint)">
+                {{ n(me.seniorCenter.challengePoint) }}
+              </span>
             </div>
             <div class="point-box">
-              <span class="point-label">총 포인트</span>
-              <span class="point-value break-number">{{ n(me.seniorCenter.totalPoint) }}</span>
+              <span class="point-label">총 점수</span>
+              <span class="point-value no-wrap" :title="n(me.seniorCenter.totalPoint)">
+                {{ n(me.seniorCenter.totalPoint) }}
+              </span>
             </div>
           </div>
         </div>
@@ -247,82 +253,78 @@ onUnmounted(() => { if (blobUrl.value) URL.revokeObjectURL(blobUrl.value) })
 .profile-page { max-width: 1080px; margin: 0 auto; padding: 24px }
 .page-title { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 16px }
 
+/* 2열 그리드 */
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px }
 @media (max-width: 880px) { .grid-2 { grid-template-columns: 1fr } }
 
 .card { background: #fff; border: 1px solid #e6e6e6; border-radius: 16px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.04) }
 .card-title { font-size: 22px; font-weight: 800; margin-bottom: 12px }
 
-/* 내 정보 */
-.top-row { display: flex; align-items: center; gap: 16px }
-.avatar { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; border: 2px solid #f0f0f0 }
-.avatar-fallback { width: 96px; height: 96px; border-radius: 50%; background:#f5f5f5; display:flex; align-items:center; justify-content:center; font-size: 22px; font-weight: 700 }
-.name-block { display: flex; flex-direction: column; gap: 6px; min-width: 0 }
-.nickname-row, .edit-row { display:flex; align-items:center; gap: 8px; flex-wrap: wrap }
-.nickname { font-size: 22px; font-weight: 800 }
+/* === 내 정보 상단 === */
+.top-row { display: flex; align-items: center; gap: 16px; min-width: 0 }
+.avatar { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; border: 2px solid #f0f0f0; flex: 0 0 auto }
+.avatar-fallback {
+  width: 96px; height: 96px; border-radius: 50%;
+  background:#f5f5f5; display:flex; align-items:center; justify-content:center; font-size: 22px; font-weight: 700
+}
+.name-block { display: flex; flex-direction: column; gap: 10px; min-width: 0; flex: 1 }
 
-.input { font-size: 18px; padding: 10px 12px; border: 1px solid #d5d5d5; border-radius: 10px; min-width: 260px }
+/* 이름 줄: 좌측(이름+역할), 우측(버튼) */
+.name-line { display:flex; align-items:center; justify-content:space-between; gap: 12px; flex-wrap: wrap }
+.name-and-role { display:flex; align-items:center; gap: 10px; min-width: 0 }
+.nickname { font-size: 24px; font-weight: 900; white-space: nowrap }
+.role-chip {
+  font-size: 12px; font-weight: 800; padding: 4px 8px; border-radius: 999px;
+  background:#eef2ff; color:#3730a3; white-space: nowrap; border:1px solid #e5e7eb
+}
+
+/* 닉네임 편집 */
+.edit-row { display:flex; flex-direction: column; gap: 8px }
+.input { font-size: 18px; padding: 10px 12px; border: 1px solid #d5d5d5; border-radius: 10px; min-width: 260px; max-width: 440px }
 .input:focus { outline: 3px solid #f5b30155 }
-
+.edit-actions { display:flex; gap:8px }
 .btn { font-size: 16px; padding: 10px 14px; border: 1px solid #cfcfcf; background: #fafafa; border-radius: 12px; cursor: pointer }
 .btn:hover { background: #f4f4f4 }
 .btn[disabled] { opacity:.6; cursor:not-allowed }
 .btn.primary { border-color: #3074FF; background: #3074FF; color:#fff }
 
-/* 정보 그리드 */
-.info-grid {
+/* 포인트 요약 */
+.stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
   gap: 12px;
-  margin-top: 18px;
 }
-@media (max-width: 640px) { .info-grid { grid-template-columns: 1fr } }
-
-.info { display:flex; gap: 8px; font-size: 18px; min-width: 0 }
-.label { min-width: 110px; color:#555; white-space: nowrap }
-.value { font-weight: 800; min-width: 0 }
-
-/* ▽ 숫자 완전 표시: 말줄임 없이 필요시 줄바꿈 */
-.break-number {
-  white-space: normal;
-  overflow-wrap: anywhere;  /* 긴 숫자도 줄바꿈 */
-  word-break: break-word;
-  text-overflow: clip;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+@media (max-width: 520px) {
+  .stats { grid-template-columns: 1fr; }
 }
-
-/* 이름/역할처럼 한 줄 유지하고 싶을 때만 사용 */
-.no-wrap { white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
-
-.info-grid .info:first-child .label { min-width: 72px }
-@media (max-width: 640px) { .info-grid .info:first-child .label { min-width: 64px } }
-
-/* 내 경로당 */
-.center-block { display: flex; flex-direction: column; gap: 8px }
-.points {
-  display:grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 10px
-}
-@media (max-width: 640px) { .points { grid-template-columns: 1fr } }
-
-.point-box {
+.stat {
   border: 1px dashed #e9e9e9;
   border-radius: 12px;
-  padding: 12px;
-  display:flex;
-  justify-content: space-between;
-  align-items: center;
+  padding: 12px 14px;
+  display:flex; align-items: baseline; justify-content: space-between;
   min-width: 0;
 }
+.stat-label { color:#666; font-size: 16px; white-space: nowrap }
+.stat-value {
+  font-size: 22px; font-weight: 900; min-width: 0;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.nowrap { white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+
+/* === 내 경로당 (기존 유지, 숫자 줄바꿈 방지) === */
+.center-block { display: flex; flex-direction: column; gap: 8px }
+.info { display:flex; gap: 8px; font-size: 18px; min-width: 0 }
+.label { min-width: 72px; color:#555; white-space: nowrap }
+.value { font-weight: 800; min-width: 0 }
+.no-wrap { white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+
+.points { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 10px }
+@media (max-width: 640px) { .points { grid-template-columns: 1fr } }
+.point-box { border: 1px dashed #e9e9e9; border-radius: 12px; padding: 12px; display:flex; justify-content: space-between; align-items: center; min-width: 0 }
 .point-label { color:#666; font-size: 16px; white-space: nowrap }
 .point-value { font-size: 20px; font-weight: 800; min-width: 0 }
-/* 내 경로당 숫자도 전부 보이게 */
-.point-value.break-number { white-space: normal; overflow-wrap: anywhere; word-break: break-word }
-
-.empty { color:#666; font-size:16px; padding: 12px; background:#fafafa; border-radius:12px }
+.point-value.no-wrap { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; letter-spacing: -0.01em }
 
 .hint { margin-top: 12px; color:#666; font-size: 16px }
 .error { color: #b42318; margin-top: 6px; font-size: 14px }
