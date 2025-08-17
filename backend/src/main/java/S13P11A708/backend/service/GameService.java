@@ -217,8 +217,10 @@ public class GameService {
     public void endGame(Long roomId, GameStatusRedis game){
         log.info("[END] >>> enter endGame(roomId={})", roomId);
 
-        PlayerStatus user1 = game.getUser1();
-        PlayerStatus user2 = game.getUser2();
+        GameStatusRedis latest = gameRedisService.getGameStatusRedis(roomId);
+
+        PlayerStatus user1 = latest.getUser1();
+        PlayerStatus user2 = latest.getUser2();
         log.info("[END] Player1: id={}, correctCount={}", user1.getUserId(), user1.getCorrectCount());
         log.info("[END] Player2: id={}, correctCount={}", user2.getUserId(), user2.getCorrectCount());
         broadcaster.broadcastToRoom(roomId,
