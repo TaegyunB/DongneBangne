@@ -61,6 +61,17 @@
       </button>
       <button class="cancel-button" :disabled="submitting" @click="goBack">취소</button>
     </div>
+
+    <!-- 안내 모달 -->
+    <div v-if="notice.open" class="modal-backdrop" @click.self="closeNotice" @keydown.esc="closeNotice">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="noticeTitle" aria-describedby="noticeDesc" tabindex="-1">
+        <h3 id="noticeTitle" class="modal-title">{{ notice.title }}</h3>
+        <p id="noticeDesc" class="modal-desc">{{ notice.message }}</p>
+        <div class="modal-actions">
+          <button class="modal-primary" @click="closeNotice" autofocus>확인</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -83,6 +94,18 @@ const imageFile = ref(null)
 const previewUrl = ref('')
 const submitting = ref(false)
 const errors = ref({ category: '', title: '', content: '', image: '' })
+
+// 안내 모달 상태
+const notice = ref({ open: false, title: '안내', message: '', onClose: null })
+const showNotice = (message, title = '안내', onClose = null) => {
+  notice.value = { open: true, title, message, onClose }
+}
+const closeNotice = () => {
+  const cb = notice.value.onClose
+  notice.value.open = false
+  notice.value.onClose = null
+  if (typeof cb === 'function') cb()
+}
 
 // URL 쿼리로 넘어온 category 프리셋 적용
 onMounted(() => {
@@ -193,10 +216,12 @@ const submitPost = async () => {
 
     const response = await api.post('/api/v1/boards', formData)
     console.log('등록 성공:', response.data)
-    alert('글이 등록되었습니다.')
 
+    // ✅ 성공 안내 모달 → 확인 누르면 목록으로 이동
     const categoryParam = uiToApiLower[form.value.category] || 'chat'
-    router.push({ name: 'boards', query: { category: categoryParam } })
+    showNotice('글이 등록되었습니다.', '완료', () => {
+      router.push({ name: 'boards', query: { category: categoryParam } })
+    })
   } catch (err) {
     console.error('등록 실패:', err)
     if (err?.response?.status === 401) {
@@ -225,6 +250,23 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* ===== 폰트 등록 ===== */
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-Regular.ttf') format('truetype');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-Bold.ttf') format('truetype');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-ExtraBold.ttf') format('truetype');
+  font-weight: 800; font-style: normal; font-display: swap;
+}
+
 .write-container {
   max-width: 700px;
   margin: 40px auto;
@@ -232,7 +274,12 @@ onBeforeUnmount(() => {
   border: 1px solid #ddd;
   border-radius: 12px;
   background-color: #fff;
-  font-family: 'Noto Sans KR', sans-serif;
+
+  /* ▼ 폰트 적용 */
+  font-family: 'KoddiUDOnGothic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+               'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+
   font-size: 18px;
 }
 .page-title {
@@ -337,4 +384,21 @@ textarea:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .submit-button:hover, .cancel-button:hover { transform: none; }
 }
+
+/* ===== 안내 모달 ===== */
+.modal-backdrop{
+  position:fixed; inset:0; background:rgba(15,23,42,.45);
+  display:flex; align-items:center; justify-content:center; padding:16px; z-index:1000
+}
+.modal{
+  width:100%; max-width:420px; background:#fff; border-radius:12px;
+  border:1px solid #e5e7eb; box-shadow:0 10px 30px rgba(2,6,23,.2); padding:18px
+}
+.modal-title{ font-size:18px; font-weight:800; color:#0f172a; margin:0 0 6px }
+.modal-desc{ font-size:14px; color:#475569; margin:0 0 14px }
+.modal-actions{ display:flex; justify-content:flex-end; gap:8px }
+.modal-primary{
+  border:none; background:#2563eb; color:#fff; border-radius:8px; padding:8px 12px; cursor:pointer
+}
+.modal-primary:hover{ background:#1e40af }
 </style>

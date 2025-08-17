@@ -5,11 +5,11 @@
       <img src="@/assets/logo.png" alt="로고" class="logo" @click="router.push('/')" />
 
       <div class="nav-menu">
-        <router-link to="/games" class="nav-item">게임</router-link>
         <a href="#" @click.prevent="navigateTo('/challenges')" class="nav-item">도전과제</a>
+        <router-link to="/games" class="nav-item">트로트 게임</router-link>
+        <a href="#" @click.prevent="navigateTo('/news')" class="nav-item">AI 신문</a>
         <a href="#" @click.prevent="navigateTo('/boards')" class="nav-item">게시판</a>
         <a href="#" @click.prevent="navigateTo('/rankings')" class="nav-item">순위</a>
-        <a href="#" @click.prevent="navigateTo('/news')" class="nav-item">AI 신문</a>
       </div>
 
       <div class="profile-wrap">

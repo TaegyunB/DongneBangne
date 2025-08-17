@@ -96,6 +96,10 @@
                 unityInstance.SendMessage("VueReceiver", "ReceiveGameEnd", data.data);
                 console.log("Vue → Unity 게임 종료: ", data.data);
               },
+              "answer-submit": () =>{
+                unityInstance.SendMessage("VueReceiver", "ReceiveAnswerSubmit", data.data);
+                console.log("Vue → Unity 정답 제출: ", data.data);
+              },
               "answer-result": () =>{
                 unityInstance.SendMessage("VueReceiver", "ReceiveAnswerResult", data.data);
                 console.log("Vue → Unity 정답 결과: ", data.data);

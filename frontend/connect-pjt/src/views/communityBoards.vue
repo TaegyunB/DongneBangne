@@ -244,6 +244,32 @@ const goToDetail = boardId => {
 </script>
 
 <style scoped>
+/* ===== 폰트 등록 ===== */
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-Regular.ttf') format('truetype');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-Bold.ttf') format('truetype');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-ExtraBold.ttf') format('truetype');
+  font-weight: 800; font-style: normal; font-display: swap;
+}
+
+/* 🔹 여기만 바꾸면 페이지 전체 적용 */
+.container{
+  font-family: 'KoddiUDOnGothic', -apple-system, BlinkMacSystemFont,
+               'Segoe UI', Roboto, 'Noto Sans KR', 'Apple SD Gothic Neo',
+               'Malgun Gothic', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 /* ===== 노인 친화 기본값(크게/선명/터치 넓게) ===== */
 .page {
   background: #f7f9fc;
@@ -253,7 +279,7 @@ const goToDetail = boardId => {
   max-width: 900px;
   margin: 0 auto;
   padding: 32px 16px 48px;
-  font-family: 'Noto Sans KR', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  /* font-family: 'Noto Sans KR', system-ui, -apple-system, Segoe UI, Roboto, sans-serif; */
   font-size: 18px;
 }
 
