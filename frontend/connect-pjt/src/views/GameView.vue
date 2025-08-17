@@ -1097,7 +1097,7 @@ export default {
   computed: {
     // YouTube iframe src 계산
     youtubeSrc() {
-      return `https://youtube.com/embed/${this.videoId}?si=8IsRoXmN3OS1AwUH&enablejsapi=1&autoplay=1`
+      return `https://youtube.com/embed/${this.videoId}?si=8IsRoXmN3OS1AwUH&enablejsapi=1`
     }
   },
   
@@ -1123,13 +1123,6 @@ iframe {
   /* 화면 가득히 배치하는 옵션 */
   width: 100vw;
   height: 100vh;
-  
-  /* 정중앙에 배치하는 옵션 (주석 처리) */
-  /* width: 100%;
-  height: 100%;
-  max-width: 2560px;
-  max-height: 1440px;
-  object-fit: contain; */
 }
 .localCamera {
   position: absolute;
