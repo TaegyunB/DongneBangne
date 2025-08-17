@@ -810,6 +810,7 @@ export default {
           console.log('✅ 기본 메시지 수신:', message.body)
         })
 
+        // 2. 특정 게임방 구독 (/sub/games/{roomId})
         this.stompClient.subscribe(`/sub/games/${roomId}`, (message) => {
           console.log('🎮 게임방 메시지 수신:', message.body)
           this.handleGameMessage(JSON.parse(message.body))
@@ -817,9 +818,17 @@ export default {
 
         // 3. 힌트 메시지 구독 (/queue/hint/{userId})
         this.stompClient.subscribe(`/queue/hint/${userId}`, (message) => {
-          console.log('💡 힌트 메시지 수신:', message.body)
+          console.log('💡 힌트 메시지 수신 1:', message.body)
           this.handleHintMessage(JSON.parse(message.body))
         })
+
+        // 4. 힌트 메시지 구독 (/user/queue/hint)
+        this.stompClient.subscribe(`user/queue/hint`, (message) => {
+          console.log('💡 힌트 메시지 수신 2:', message.body)
+          this.handleHintMessage(JSON.parse(message.body))
+        })
+
+
         console.log('📡 STOMP 토픽 구독 완료')
         console.log(`roomId: ${this.roomId}, userId: ${this.userId}`)
       } catch (error) {
@@ -832,26 +841,28 @@ export default {
       console.log('🎮 게임 메시지 처리:', message)
 
       try {
-        const { type, data } = message
+        // message의 type을 제외하고는 전부 형태가 다름
+        // 따라서 type에 따라 분기하고 함수 내부에서 처리
+        const { type } = message
 
         switch (type) {
           case 'GAME_START':            // 게임 시작
-            this.handleGameStart(data)
+            this.handleGameStart(message)
             break
           case 'ROUND_QUESTION':        // 문제 전송
-            this.handleRoundQuestion(data)
+            this.handleRoundQuestion(message)
             break
-          case 'ROUND_END':             // 라운드 종료
-            this.handleRoundEnd(data)
+          case 'ROUND_END':             // 라운드 종료 - 사용하지 않는 것으로 추정
+            this.handleRoundEnd(message)
             break
           case 'GAME_END':              // 게임 종료
-            this.handleGameEnd(data)
+            this.handleGameEnd(message)
             break
           case 'ANSWER_RESULT':         // 정답 결과
-            this.handleAnswerResult(data)
+            this.handleAnswerResult(message)
             break
-          case 'ANSWER_REJECTED':       // 정답 거부
-            this.handleAnswerRejected(data)
+          case 'ANSWER_REJECTED':       // 정답 틀림
+            this.handleAnswerRejected(message)
             break
           default:
             console.warn('알 수 없는 게임 메시지 타입:', type)
@@ -864,14 +875,14 @@ export default {
     handleHintMessage(message) {
       console.log('💡 힌트 메시지 처리:', message)
       try {
-        const { type, data } = message
+        const { type } = message
 
         switch (type) {
           case 'HINT_RESPONSE':         // 힌트 제공공
-            this.handleHintResponse(data)
+            this.handleHintResponse(message)
             break
           case 'HINT_REJECTED':         // 힌트 제공 불가
-            this.handleHintRejected(data)
+            this.handleHintRejected(message)
             break
           default:
             console.warn('알 수 없는 게임 메시지 타입:', type)
@@ -882,58 +893,61 @@ export default {
     },
 
     // 게임 시작 처리
-    handleGameStart(data) {
-      console.log('🎮 게임 시작:', data)
-      this.sendToUnity('game-start', data)
+    handleGameStart(message) {
+      const {type, roomId, payload} = message
+      console.log(`🎮 게임 시작 - 방 번호: ${roomId} 메시지: ${payload}`)
+
+      this.sendToUnity('game-start', message)
     },
 
     // 라운드 문제 처리
-    handleRoundQuestion(data) {
-      console.log('❓ 라운드 문제:', data)
+    handleRoundQuestion(message) {
+      const {type, roomId, payload} = message
+
+      console.log('❓ 라운드 문제:', message)
 
       // 영상 재생
-      const videoId = data.videoId
-      this.changeYouTubeVideo(videoId)
+      this.changeYouTubeVideo(payload)
       this.playYouTubeVideo()
 
       // 라운드 시작을 알림
-      this.sendToUnity('round-question', data)
+      this.sendToUnity('round-question', message)
     },
 
     // 라운드 종료 처리
-    handleRoundEnd(data) {
+    handleRoundEnd(message) {
       console.log('🏁 라운드 종료:', data)
       this.sendToUnity('round-end', data)
     },
 
     // 게임 종료 처리
-    handleGameEnd(data) {
+    handleGameEnd(message) {
       console.log('🎯 게임 종료:', data)
       this.sendToUnity('game-end', data)
     },
 
     // 정답 결과 처리
-    handleAnswerResult(data) {
-      console.log('✅ 정답 결과:', data)
-      this.sendToUnity('answer-result', data)
+    handleAnswerResult(message) {
+      console.log('✅ 정답 결과:', message)
+      this.sendToUnity('answer-result', message)
     },
 
     // 정답 거부 처리
-    handleAnswerRejected(data) {
-      console.log('❌ 정답 거부:', data)
-      this.sendToUnity('answer-rejected', data)
+    handleAnswerRejected(message) {
+      console.log('❌ 정답 틀림:', message)
+      this.sendToUnity('answer-rejected', message)
     },
 
     // 힌트 응답 처리
-    handleHintResponse(data) {
-      console.log('💡 힌트 응답:', data)
-      this.sendToUnity('hint-response', data)
+    handleHintResponse(message) {
+      console.log('💡 힌트 응답:', message)
+      this.sendToUnity('hint-response', message)
     },
 
     // 힌트 거부 처리
-    handleHintRejected(data) {
-      console.log('🚫 힌트 거부:', data)
-      this.sendToUnity('hint-rejected', data)
+    handleHintRejected(message) {
+      console.log('🚫 힌트 거부:', message)
+      this.sendToUnity('hint-rejected', message)
     },
 
     // Unity로 메시지 전송
