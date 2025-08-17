@@ -221,6 +221,9 @@ public class GameService {
         PlayerStatus user2 = game.getUser2();
         log.info("[END] Player1: id={}, correctCount={}", user1.getUserId(), user1.getCorrectCount());
         log.info("[END] Player2: id={}, correctCount={}", user2.getUserId(), user2.getCorrectCount());
+        broadcaster.broadcastToRoom(roomId,
+                messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, "getUser1"+user1));
+
 
         broadcaster.broadcastToRoom(roomId,
                 messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, "endGame 안임"));
@@ -228,6 +231,10 @@ public class GameService {
 
         int count1 = user1.getCorrectCount();
         int count2 = user2.getCorrectCount();
+
+        broadcaster.broadcastToRoom(roomId,
+                messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, "count"+count1+" "+count2));
+
 
         Long winnerId = null;
         if(count1>count2) {
