@@ -258,7 +258,7 @@ const fetchDetail = async () => {
   } catch (e) {
     const status = e?.response?.status
     if (status === 401) {
-      alert('로그인이 필요합니다.')
+      // alert('로그인이 필요합니다.')
       router.push({ name: 'onboarding' })
       return
     }
@@ -359,10 +359,10 @@ const createComment = async () => {
   } catch (e) {
     const s = e?.response?.status
     if (s === 401) {
-      alert('로그인이 필요합니다.')
+      // alert('로그인이 필요합니다.')
       router.push({ name: 'onboarding' })
     } else {
-      alert('댓글 등록에 실패했습니다.')
+      // alert('댓글 등록에 실패했습니다.')
       console.error(e)
     }
   } finally {
@@ -389,12 +389,12 @@ const saveEdit = async (commentId) => {
   } catch (e) {
     const s = e?.response?.status
     if (s === 401) {
-      alert('로그인이 필요합니다.')
+      // alert('로그인이 필요합니다.')
       router.push({ name: 'onboarding' })
     } else if (s === 403) {
-      alert('수정 권한이 없습니다.')
+      // alert('수정 권한이 없습니다.')
     } else {
-      alert('댓글 수정에 실패했습니다.')
+      // alert('댓글 수정에 실패했습니다.')
       console.error(e)
     }
   } finally {
@@ -412,12 +412,12 @@ const removeComment = async (commentId) => {
   } catch (e) {
     const s = e?.response?.status
     if (s === 401) {
-      alert('로그인이 필요합니다.')
+      // alert('로그인이 필요합니다.')
       router.push({ name: 'onboarding' })
     } else if (s === 403) {
-      alert('삭제 권한이 없습니다.')
+      // alert('삭제 권한이 없습니다.')
     } else {
-      alert('댓글 삭제에 실패했습니다.')
+      // alert('댓글 삭제에 실패했습니다.')
       console.error(e)
     }
   } finally {
@@ -448,11 +448,11 @@ const toggleLike = async () => {
     likeCount.value = prevCount
     const status = e?.response?.status
     if (status === 401) {
-      alert('로그인이 필요합니다.')
+      // alert('로그인이 필요합니다.')
       router.push({ name: 'onboarding' })
     } else {
       console.error('좋아요 처리 실패:', e)
-      alert('좋아요 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.')
+      // alert('좋아요 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.')
     }
   } finally {
     likeBusy.value = false
@@ -476,23 +476,19 @@ const confirmDelete = async () => {
   deleting.value = true
   try {
     await api.delete(`/api/v1/boards/${boardId.value}`, { headers: headersWithToken() })
-    alert('삭제되었습니다.')
     closeConfirm()
     goBack()
   } catch (e) {
     const status = e?.response?.status
     if (status === 401) {
-      alert('로그인이 필요합니다.')
       router.push({ name: 'onboarding' })
       return
     }
     if (status === 403) {
-      alert('삭제 권한이 없습니다.')
       closeConfirm()
       return
     }
     console.error('삭제 실패:', e)
-    alert('삭제에 실패했습니다.')
   } finally {
     deleting.value = false
   }

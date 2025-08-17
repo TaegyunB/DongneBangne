@@ -72,14 +72,14 @@ const form = ref({
   category: '잡담',
   title: '',
   content: '',
-  boardImage: null,
+  boardImage: null,   // 표시용(수정 요청엔 파일만 보냄)
 })
 
 // 상세 원본 + 소유자 판별용
 const detail = ref(null)
 const me = ref(null)
 
-// 안내 모달
+/* ===== 안내 모달 ===== */
 const notice = ref({ open: false, title: '안내', message: '', onClose: null })
 const showNotice = (message, title = '안내', onClose = null) => {
   notice.value = { open: true, title, message, onClose }
@@ -91,12 +91,29 @@ const closeNotice = () => {
   if (typeof cb === 'function') cb()
 }
 
-// 토큰 헤더
+/* ===== 인증/헤더 유틸 ===== */
 const headersWithToken = () => {
   const token = getAccessToken?.()
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
+const isOauthRedirectError = (err) => {
+  const url = err?.request?.responseURL || ''
+  return url.includes('kauth.kakao.com') || url.includes('/oauth2/authorization')
+}
 
+/* ===== URL 보정(상대경로 → 절대경로) ===== */
+const normalizeUrl = (url) => {
+  if (!url) return ''
+  let u = String(url).trim()
+  if (u.startsWith('data:') || u.startsWith('blob:')) return u
+  if (u.startsWith('//')) u = 'https:' + u
+  if (u.startsWith('http://')) u = u.replace(/^http:\/\//, 'https://')
+  if (/^https?:\/\//.test(u)) return u
+  const base = api.defaults?.baseURL || '/'
+  return new URL(u.replace(/^\//,''), new URL(base, window.location.origin)).toString()
+}
+
+/* ===== 오너 판별 ===== */
 const isOwner = computed(() => {
   const b = detail.value
   if (!b) return false
@@ -106,33 +123,40 @@ const isOwner = computed(() => {
   if (b.nickname && me.value?.nickname) return b.nickname === me.value.nickname
   return false
 })
-
 const canDecideOwnership = computed(() => {
   const b = detail.value
   if (!b) return false
   return ('isOwner' in b) || ('mine' in b) || (b.userId && me.value?.userId) || (b.nickname && me.value?.nickname)
 })
 
+/* ===== API ===== */
 const fetchMe = async () => {
   try {
-    const { data } = await api.get('/api/v1/main/me', { headers: headersWithToken() })
+    const { data } = await api.get('/api/v1/main/me', {
+      headers: headersWithToken(),
+      withCredentials: true,           // ✅ 쿠키 동반
+    })
     me.value = data
-  } catch {}
+  } catch {
+    me.value = null
+  }
 }
 
 const fetchDetail = async () => {
   const { data } = await api.get(`/api/v1/boards/${boardId.value}`, {
-    headers: headersWithToken()
+    headers: headersWithToken(),
+    withCredentials: true,             // ✅ 쿠키 동반
   })
   detail.value = data
   form.value = {
     category: apiToUi[String(data?.category || '').toUpperCase()] || '잡담',
     title: data?.title || '',
     content: data?.content || '',
-    boardImage: data?.boardImage || null,
+    boardImage: normalizeUrl(data?.boardImage || ''),   // ✅ 절대 URL로 보정
   }
 }
 
+/* ===== lifecycle ===== */
 onMounted(async () => {
   loading.value = true
   try {
@@ -144,6 +168,10 @@ onMounted(async () => {
       return
     }
   } catch (e) {
+    if (isOauthRedirectError(e) || (!e.response && e.code === 'ERR_NETWORK')) {
+      showNotice('로그인이 필요합니다.', '안내', () => router.push({ name: 'onboarding' }))
+      return
+    }
     const s = e?.response?.status
     if (s === 401) {
       showNotice('로그인이 필요합니다.', '안내', () => router.push({ name: 'onboarding' }))
@@ -162,6 +190,7 @@ onMounted(async () => {
   }
 })
 
+/* ===== submit (multipart/form-data) ===== */
 const submitEdit = async () => {
   if (submitting.value) return
 
@@ -172,42 +201,28 @@ const submitEdit = async () => {
 
   submitting.value = true
   try {
-    // 글쓰기와 동일한 규격(소문자 boardCategory)으로 전송
-    const catLower = uiToApiLower[form.value.category] || 'chat'
-    const body = {
-      title: form.value.title.trim(),
-      content: form.value.content.trim(),
-      boardCategory: catLower,
-      // 일부 백엔드 호환용(무시되어도 무방)
-      category: catLower
-    }
+    const fd = new FormData()
+    fd.append('title', form.value.title.trim())
+    fd.append('content', form.value.content.trim())
+    fd.append('boardCategory', uiToApiLower[form.value.category] || 'chat')
+    // 이미지 변경 UI가 없으므로 imageFile은 미첨부
+    // 나중에 변경 기능 넣으면: fd.append('imageFile', file) 형태로 추가
 
-    // 1차: PUT
-    try {
-      await api.put(`/api/v1/boards/${boardId.value}`, body, {
-        headers: {
-          ...headersWithToken()
-          // axios가 application/json 자동 설정
-        },
-        withCredentials: true
-      })
-    } catch (err) {
-      // 메서드가 맞지 않으면 PATCH로 폴백
-      const status = err?.response?.status
-      if (status === 405) {
-        await api.patch(`/api/v1/boards/${boardId.value}`, body, {
-          headers: { ...headersWithToken() },
-          withCredentials: true
-        })
-      } else {
-        throw err
-      }
-    }
+    await api.put(`/api/v1/boards/${boardId.value}`, fd, {
+      headers: { ...headersWithToken() }, // ❌ Content-Type 강제 금지(경계값 필요) → axios가 자동 설정
+      withCredentials: true,
+    })
 
     showNotice('수정이 완료되었습니다.', '완료', () => {
       router.push({ name:'communityDetail', params:{ boardId: boardId.value }, query: route.query })
     })
   } catch (e) {
+    // 카카오로 리다이렉트되면 로그인 필요로 처리
+    if (isOauthRedirectError(e) || (!e.response && e.code === 'ERR_NETWORK')) {
+      showNotice('로그인이 필요합니다.', '안내', () => router.push({ name: 'onboarding' }))
+      submitting.value = false
+      return
+    }
     const s = e?.response?.status
     if (s === 401) {
       showNotice('로그인이 필요합니다.', '안내', () => router.push({ name: 'onboarding' }))
