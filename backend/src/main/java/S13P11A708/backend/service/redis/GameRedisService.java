@@ -45,18 +45,19 @@ public class GameRedisService {
      * roomId로 GameStatusRedis(게임방 정보) 가져오기
      */
     public GameStatusRedis getGameStatusRedis(Long roomId) {
-        Object data = gameStatusRedisTemplate.opsForValue().get(getKey(roomId));
-
-        if (data instanceof GameStatusRedis) {
-            return (GameStatusRedis) data;
-        }
-
-        if (data instanceof Map) {
-            ObjectMapper mapper = new ObjectMapper();
-            return mapper.convertValue(data, GameStatusRedis.class);
-        }
-
-        return null;
+        return gameStatusRedisTemplate.opsForValue().get(getKey(roomId));
+//        Object data = gameStatusRedisTemplate.opsForValue().get(getKey(roomId));
+//
+//        if (data instanceof GameStatusRedis) {
+//            return (GameStatusRedis) data;
+//        }
+//
+//        if (data instanceof Map) {
+//            ObjectMapper mapper = new ObjectMapper();
+//            return mapper.convertValue(data, GameStatusRedis.class);
+//        }
+//
+//        return null;
     }
 
     /**
