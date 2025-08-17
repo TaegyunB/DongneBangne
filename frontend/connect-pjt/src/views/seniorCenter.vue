@@ -5,7 +5,7 @@
 
       <OnboardingGuide v-model="showOnboarding" @confirm="handleOnboardingConfirm" />
 
-      <!-- 검색 폼: 엔터로도 검색, 스크린리더 레이블 제공 -->
+      <!-- 검색 폼 -->
       <form class="search-box" @submit.prevent="onSearch" :aria-busy="isLoading">
         <label for="type" class="sr-only">검색 종류</label>
         <select id="type" v-model="selectedType" class="type-select" aria-label="검색 종류 선택">
@@ -34,6 +34,15 @@
         </button>
       </form>
 
+      <!-- 주소 안내 문구 -->
+      <p
+        v-if="searched"
+        class="addr-hint"
+        aria-live="polite"
+      >
+        검색 결과의 <b>주소를 클릭하면</b> 새 창에서 <b>지도</b>로 연결돼요. 좌표가 있는 항목은 지도만 열려 위치가 바로 표시됩니다.
+      </p>
+
       <table v-if="searchResults.length" class="result-table" aria-describedby="page-title">
         <caption class="sr-only">경로당 검색 결과</caption>
         <thead>
@@ -49,11 +58,11 @@
             <td class="cell-addr">
               <a
                 v-if="center.address"
-                :href="kakaoMapUrl(center.address)"
+                :href="kakaoMapUrl(center)"
                 target="_blank"
                 rel="noopener"
                 class="addr-link"
-                :aria-label="center.address + ' 카카오맵으로 열기'"
+                :aria-label="(center.name || center.address) + ' 위치 지도로 열기'"
               >
                 {{ center.address }}
               </a>
@@ -78,7 +87,7 @@
         검색 결과가 없습니다.
       </div>
 
-      <!-- 모달 -->
+      <!-- (1) 확인 모달 -->
       <div v-if="showModal" class="modal-overlay">
         <div
           class="modal-content"
@@ -94,7 +103,7 @@
           <div class="modal-actions">
             <label class="agree">
               <input type="checkbox" v-model="isConfirmed" />
-              <span>위 경로당이 본인 소속임에 동의합니다</span>
+              <span>위 경로당이 본인 소속임을 확인했습니다.</span>
             </label>
           </div>
           <div class="modal-buttons">
@@ -109,6 +118,31 @@
           </div>
         </div>
       </div>
+
+      <!-- (2) 가입 완료 안내 모달 -->
+      <div v-if="showDoneModal" class="modal-overlay">
+        <div
+          class="modal-content"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="doneTitle"
+        >
+          <h3 id="doneTitle" class="modal-title">회원가입이 완료되었어요!</h3>
+          <p class="modal-text">
+            회원 정보(프로필)를 간단히 수정하신 뒤<br />
+            동네방네를 즐겨주세요.
+          </p>
+          <div class="modal-buttons">
+            <button class="confirm-btn lg" @click="goEditProfile">
+              회원 정보 수정하기
+            </button>
+            <button class="cancel-btn lg" @click="goMain">
+              나중에 할래요
+            </button>
+          </div>
+        </div>
+      </div>
+      <!-- // 모달 끝 -->
     </main>
   </div>
 </template>
@@ -130,6 +164,7 @@ const router = useRouter()
 const store = useOnboardingStore()
 
 const showModal = ref(false)
+const showDoneModal = ref(false)
 const modalCenter = ref({ id: null, name: '', address: '' })
 const showOnboarding = ref(false)
 const isConfirmed = ref(false)
@@ -137,13 +172,23 @@ const selectedId = ref(null)
 
 const isSearchDisabled = computed(() => !keyword.value.trim() || isLoading.value)
 
+// 데이터 정규화: 좌표도 같이 수용
 const normalizeCenter = c => ({
   id: c.id ?? c.seniorCenterId ?? c.senior_center_id ?? null,
   name: c.name ?? c.seniorCenterName ?? c.centerName ?? '',
-  address: c.address ?? c.addr ?? ''
+  address: c.address ?? c.addr ?? '',
+  lat: c.lat ?? c.latitude ?? c.y ?? null,
+  lng: c.lng ?? c.longitude ?? c.x ?? null
 })
 
-const kakaoMapUrl = addr => 'https://map.kakao.com/?q=' + encodeURIComponent(addr)
+// 카카오맵 링크 생성 (좌표 있으면 지도+마커, 없으면 검색)
+const kakaoMapUrl = center => {
+  const n = center?.name || center?.address || '위치'
+  if (center?.lat && center?.lng) {
+    return `https://map.kakao.com/link/map/${encodeURIComponent(n)},${center.lat},${center.lng}`
+  }
+  return `https://map.kakao.com/link/search/${encodeURIComponent(center?.address || '')}`
+}
 
 async function fetchCenters() {
   isLoading.value = true
@@ -188,7 +233,6 @@ function openConfirm(center) {
 
 function closeModal() {
   showModal.value = false
-  // 취소 시 체크 해제
   selectedId.value = null
 }
 
@@ -198,13 +242,20 @@ async function confirmCenter() {
       seniorCenterId: modalCenter.value.id
     })
     showModal.value = false
-    router.push('/senior-center/profile')
+    showDoneModal.value = true
   } catch (err) {
     console.error('경로당 선택 실패:', err)
     alert('경로당 선택에 실패했습니다.')
     showModal.value = false
     selectedId.value = null
   }
+}
+
+function goEditProfile() {
+  router.push('/senior-center/profile')
+}
+function goMain() {
+  router.push('/mainpage')
 }
 
 onMounted(() => {
@@ -223,6 +274,11 @@ function handleOnboardingConfirm(payload) {
 <style scoped>
 /* ========= 접근성/시니어 친화 기본값 ========= */
 .find-senior-center {
+  /* 업로드된 이미지에서 추출한 브랜드 컬러 */
+  --brand: #3074FF;       /* 기본 */
+  --brand-hover: #2966E6; /* hover */
+  --brand-active: #2359CC;/* active */
+
   min-height: 100vh;
   background: #ffffff;
   color: #111;
@@ -232,7 +288,7 @@ function handleOnboardingConfirm(payload) {
 }
 
 :focus-visible {
-  outline: 3px solid #12795a;
+  outline: 3px solid var(--brand);
   outline-offset: 3px;
   border-radius: 6px;
 }
@@ -260,58 +316,74 @@ function handleOnboardingConfirm(payload) {
   margin: 12px 0 24px;
 }
 
-/* ========= 검색 영역 ========= */
+/* ========= 검색 영역 (사이즈 통일) ========= */
 .search-box {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 14px;
   background: #fff;
   border: 2px solid #1e1e1e;
   border-radius: 12px;
-  padding: 14px 16px;
+  padding: 10px 12px;
   max-width: 720px;
+  width: 100%;
   box-sizing: border-box;
 }
 
+.type-select,
+.search-input,
+.search-btn {
+  height: 56px;
+  font-size: 22px;
+  line-height: 56px;
+}
+
 .type-select {
-  font-size: 20px;
-  padding: 12px 12px;
+  padding: 0 12px;
   border: 2px solid #b7b7b7;
   border-radius: 8px;
-  min-width: 120px;
+  min-width: 140px;
 }
 
 .search-input {
-  font-size: 22px;
-  padding: 14px 16px;
+  padding: 0 16px;
   border: none;
   outline: none;
   width: 100%;
   background: transparent;
 }
+.search-input::placeholder {
+  font-size: 22px;
+  color: #9aa1a8;
+}
 
 .search-btn {
-  font-size: 20px;
   font-weight: 800;
-  min-height: 52px;
-  min-width: 120px;
-  padding: 10px 18px;
-  background: #12795a;
+  min-width: 140px;
+  padding: 0 18px;
+  background: var(--brand);
   color: #fff;
   border: none;
   border-radius: 10px;
   cursor: pointer;
   transition: transform .05s ease, background .15s ease;
 }
-.search-btn:hover { background: #0f6148 }
-.search-btn:active { transform: translateY(1px) }
+.search-btn:hover { background: var(--brand-hover) }
+.search-btn:active { transform: translateY(1px); background: var(--brand-active) }
 .search-btn:disabled { opacity: .6; cursor: not-allowed }
+
+/* 주소 안내 문구 */
+.addr-hint {
+  margin-top: 12px;
+  font-size: 14px;
+  color: #666;
+}
 
 /* ========= 결과 테이블 ========= */
 .result-table {
   width: 100%;
   max-width: 980px;
-  margin-top: 28px;
+  margin-top: 20px;
   border-collapse: separate;
   border-spacing: 0;
   background: #fff;
@@ -350,7 +422,7 @@ function handleOnboardingConfirm(payload) {
   text-underline-offset: 3px;
 }
 .addr-link:focus-visible {
-  outline: 3px solid #12795a;
+  outline: 3px solid var(--brand);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -363,7 +435,7 @@ function handleOnboardingConfirm(payload) {
   cursor: pointer;
 }
 
-/* 버튼 공통 (남겨두되 현재 테이블에선 미사용) */
+/* 버튼 공통 */
 .confirm-btn, .cancel-btn {
   font-size: 18px;
   font-weight: 700;
@@ -374,16 +446,15 @@ function handleOnboardingConfirm(payload) {
   cursor: pointer;
   transition: background .15s ease, transform .05s ease;
 }
-.confirm-btn { background: #12795a; color: #fff }
-.confirm-btn:hover { background: #0f6148 }
+.confirm-btn { background: var(--brand); color: #fff }
+.confirm-btn:hover { background: var(--brand-hover) }
+.confirm-btn:active { background: var(--brand-active) }
 .cancel-btn { background: #a6a6a6; color: #fff }
 .cancel-btn:hover { background: #8d8d8d }
-.confirm-btn.lg, .cancel-btn.lg { min-width: 140px; min-height: 52px; font-size: 20px }
 
-.no-result {
-  margin-top: 24px;
-  color: #333;
-  font-size: 20px;
+/* 모달 버튼 크기 */
+.confirm-btn.lg, .cancel-btn.lg {
+  min-width: 140px; min-height: 52px; font-size: 20px;
 }
 
 /* ========= 모달 ========= */
@@ -398,43 +469,35 @@ function handleOnboardingConfirm(payload) {
   padding: 16px;
 }
 
+/* 가로 폭 축소: 최대 420px로 슬림 */
 .modal-content {
   background: #fff;
-  padding: 36px 28px 28px;
+  padding: 28px 22px;
   border-radius: 16px;
-  min-width: 360px;
-  max-width: 92vw;
+  width: min(420px, 92vw);
   box-shadow: 0 6px 24px rgba(0,0,0,.18);
   text-align: center;
 }
 
-.modal-title {
-  font-size: 28px;
-  font-weight: 800;
-  margin-bottom: 10px;
-}
-
-.modal-text { font-size: 20px; margin: 0 0 16px }
+.modal-title { font-size: 26px; font-weight: 800; margin-bottom: 10px }
+.modal-text { font-size: 18px; margin: 0 0 16px }
 
 .modal-actions {
-  display: flex;
-  justify-content: center;
-  margin: 10px 0 18px;
+  display: flex; justify-content: center; margin: 10px 0 18px;
 }
 .agree {
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  font-size: 18px; display: flex; align-items: center; gap: 10px;
 }
 .agree input { width: 22px; height: 22px }
 
 /* ========= 반응형 ========= */
 @media (max-width: 820px) {
   .headline { font-size: 38px }
-  .search-box { min-width: 100%; padding: 16px }
-  .type-select { font-size: 18px }
-  .search-input { font-size: 20px }
+  .search-box { min-width: 100%; padding: 10px 12px }
+  .type-select,
+  .search-input,
+  .search-btn { height: 52px; font-size: 20px; line-height: 52px }
+  .search-input::placeholder { font-size: 20px }
   .result-table { font-size: 18px }
   .result-table thead th { font-size: 20px }
 }
