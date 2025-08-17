@@ -830,6 +830,16 @@ export default {
           this.handleHintMessage(JSON.parse(message.body))
         })
 
+        this.stompClient.subscribe(`${userId}/queue/hint`, (message) => {
+          console.log('💡 힌트 메시지 수신 3:', message.body)
+          this.handleHintMessage(JSON.parse(message.body))
+        })
+
+        this.stompClient.subscribe(`/queue/hint`, (message) => {
+          console.log('💡 힌트 메시지 수신 4:', message.body)
+          this.handleHintMessage(JSON.parse(message.body))
+        })
+
 
         console.log('📡 STOMP 토픽 구독 완료')
         console.log(`roomId: ${this.roomId}, userId: ${this.userId}`)
@@ -977,13 +987,14 @@ export default {
 
     // 정답 제출 (클라이언트 → 서버)
     sendAnswerToServer(answerData) {
-      const {roomId, answer} = answerData
+      const {roomId, userId, submitAnswer} = answerData
 
       try {
         const message = {
           type: 'ANSWER_SUBMIT',
           roomId: roomId,
-          answer: answer,
+          userId: userId,
+          answer: submitAnswer,
         }
 
         this.sendStompMessage('/games/answer', message)
@@ -1044,7 +1055,7 @@ export default {
     
     // YouTube 비디오 ID 변경
     changeYouTubeVideo(newVideoId) {
-      const iframe = this.youtubeIframe;
+      const iframe = this.youtubeFrame;
         if (iframe) {
           iframe.src = `https://youtube.com/embed/${newVideoId}?si=8IsRoXmN3OS1AwUH&enablejsapi=1`;
         }
