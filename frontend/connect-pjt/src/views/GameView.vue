@@ -10,13 +10,13 @@
     ></iframe>
   </div>
   
-  <!-- YouTube 동영상 (테스트용) -->
+  <!-- YouTube 동영상 (숨김) -->
   <div class="youtube-container">
     <iframe
       ref="youtubeFrame"
       :src="youtubeSrc"
-      width="320"
-      height="240"
+      width="1"
+      height="1"
       frameborder="0"
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"
       allowfullscreen
@@ -303,7 +303,17 @@ export default {
       if (this.pc) return
 
       const config = {
-        iceServers: [{ urls: 'stun:stun.1.google.com:19302' }], // 포트 번호 수정
+        iceServers: [
+          // STUN 서버
+          { urls: 'stun:stun.1.google.com:19302' },
+          // TURN 서버
+          {
+            urls: 'turn:3.38.92.35:5000',
+            username: 'turnuser',
+            credential: 'turnpassword'
+          }
+        ],
+        iceCandidatePoolSize: 10
       }
       this.pc = new RTCPeerConnection(config)
 
@@ -327,7 +337,14 @@ export default {
 
       // ICE 후보 발생 시 전송
       this.pc.onicecandidate = (e) => {
+
+        console.log('ICE 후보 발생:', e.candidate)
+
         if (e.candidate) {
+          console.log('ICE 후보 발생:', e.candidate.candidate)
+          console.log('후보 타입:', e.candidate.type)
+          console.log('후보 프로토콜:', e.candidate.protocol)
+          
           this.safeSend({
             type: 'candidate',
             candidate: {
@@ -341,14 +358,22 @@ export default {
             to: this.remoteId,
           })
         } else {
-          // (선택) end-of-candidates 신호 필요 시 보낼 수 있음
-          // this.safeSend({ type: 'candidate', candidate: null, roomId: this.roomId, from: this.localId, to: this.remoteId });
+          console.log('ICE 후보 수집 완료')
+          // end-of-candidates 신호 전송
+          this.safeSend({ 
+            type: 'candidate', 
+            candidate: null, 
+            roomId: this.roomId, 
+            from: this.localId, 
+            to: this.remoteId 
+          })
         }
       }
 
       // ICE 연결 상태 변경 시 로깅
       this.pc.oniceconnectionstatechange = () => {
-        console.log('[ICE]', this.pc.iceConnectionState)
+        console.log('[ICE] Connection State:', this.pc.iceConnectionState)
+        console.log('[ICE] Gathering State:', this.pc.iceGatheringState)
 
         const state = this.pc.iceConnectionState
         if (state == 'connected') {
@@ -359,17 +384,27 @@ export default {
           this.frameIntervalId = setInterval(() => {
             this.sendVideoFrameToUnity(video, canvas, videoSender)
           }, 1000 / 30)
-          console.log('연결 시작')
+          console.log('✅ WebRTC 연결 성공 - 비디오 스트림 시작')
         }
         if (state === 'disconnected' || state === 'closed' || state === 'failed') {
           this.peerClosed = true
-          console.log('상대방이 연결을 종료했습니다')
+          console.log('❌ WebRTC 연결 실패 또는 종료:', state)
 
           if (this.frameIntervalId) {
             clearInterval(this.frameIntervalId)
             this.frameIntervalId = null
           }
         }
+      }
+
+      // ICE 후보 수집 상태 모니터링
+      this.pc.onicegatheringstatechange = () => {
+        console.log('[ICE] Gathering State Changed:', this.pc.iceGatheringState)
+      }
+
+      // 연결 상태 모니터링
+      this.pc.onconnectionstatechange = () => {
+        console.log('[RTC] Connection State:', this.pc.connectionState)
       }
     },
 
@@ -471,24 +506,29 @@ export default {
     },
     async handleRemoteCandidate(data) {
       // 매개변수 수정
-      if (!data.candidate || !data.candidate.candidate) return // data.candidate로 수정
+      if (!data.candidate || !data.candidate.candidate) {
+        console.log('ICE 후보 종료 신호 수신')
+        return
+      }
+
+      console.log('ICE 후보 수신:', data.candidate.candidate)
 
       // Remote SDP 없으면 큐에 저장
       if (!this.pc || !this.pc.remoteDescription) {
-        this.pendingCandidates.push(data.candidate) // data.candidate로 수정
+        console.log('Remote SDP 없음 - 후보를 큐에 저장')
+        this.pendingCandidates.push(data.candidate)
         return
       }
 
       try {
-        await this.pc.addIceCandidate(new RTCIceCandidate(data.candidate)) // data.candidate로 수정
+        await this.pc.addIceCandidate(new RTCIceCandidate(data.candidate))
+        console.log('✅ ICE 후보 추가 성공')
       } catch (error) {
-        console.error('ICE candidate 추가 실패:', error)
+        console.error('❌ ICE candidate 추가 실패:', error)
 
         // 추가 실패시 큐에 다시 추가
-        this.pendingCandidates.push(data.candidate) // data.candidate로 수정
+        this.pendingCandidates.push(data.candidate)
       }
-
-      console.log('candidate 수신완료')
     },
     async flushPendingCandidates() {
       if (!this.pc || !this.pc.remoteDescription) return
@@ -1061,7 +1101,7 @@ export default {
       const iframe = this.$refs.youtubeFrame;
         if (iframe) {
           // autoplay=1 파라미터 추가하여 자동 재생 설정
-          iframe.src = `https://youtube.com/embed/${newVideoId}?si=8IsRoXmN3OS1AwUH&enablejsapi=1&autoplay=1`;
+          iframe.src = `https://youtube.com/embed/${newVideoId}?&enablejsapi=1&autoplay=1`;
         }
 
       console.log('YouTube 비디오 ID 변경:', iframe.src)
@@ -1097,7 +1137,7 @@ export default {
   computed: {
     // YouTube iframe src 계산
     youtubeSrc() {
-      return `https://youtube.com/embed/${this.videoId}?si=8IsRoXmN3OS1AwUH&enablejsapi=1&autoplay=1`
+      return `https://youtube.com/embed/${this.videoId}?&enablejsapi=1`
     }
   },
   
@@ -1113,16 +1153,16 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
-  width: 100vw;
+  height: 100%;
+  width: 100%;
   background-color: #000;
   overflow: hidden;
 }
 iframe {
   border: none;
   /* 화면 가득히 배치하는 옵션 */
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   
   /* 정중앙에 배치하는 옵션 (주석 처리) */
   /* width: 100%;
@@ -1153,14 +1193,11 @@ iframe {
 }
 
 .youtube-container {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  width: 320px;
-  height: 240px;
-  z-index: 1000;
-  border-radius: 8px;
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  width: 1px;
+  height: 1px;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 </style>
