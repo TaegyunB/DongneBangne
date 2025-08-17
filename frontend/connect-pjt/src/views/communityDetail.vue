@@ -22,9 +22,9 @@
 
       <!-- 이미지 표시 -->
       <div v-if="board.boardImage" class="image">
-        <img 
-          :src="getBoardImage(board)" 
-          alt="게시글 이미지" 
+        <img
+          :src="getBoardImage(board)"
+          alt="게시글 이미지"
           crossorigin="anonymous"
           @error="onImageError($event, board)"
           @load="onImageLoad($event, board)"
@@ -72,9 +72,6 @@
           <button class="comment-submit" :disabled="commentBusy || !newComment" @click="createComment">
             {{ commentBusy ? '등록 중...' : '댓글 등록' }}
           </button>
-        </div>
-        <div v-else class="comment-login-hint">
-          댓글을 작성하려면 로그인해 주세요.
         </div>
 
         <!-- 목록 -->
@@ -196,22 +193,35 @@ const targetCommentId = ref(null)
 const openCommentConfirm = (commentId) => { targetCommentId.value = commentId; showCmtConfirm.value = true }
 const closeCmtConfirm = () => { targetCommentId.value = null; showCmtConfirm.value = false }
 
-// 이미지 처리
+/* ========= 이미지 ========= */
 const getBoardImage = (boardData) => boardData.boardImage || defaultImage
 const onImageError = (event, boardData) => { console.error('이미지 로드 실패:', { src: event.target.src, boardId: boardData.boardId }); event.target.src = defaultImage }
-const onImageLoad = (event, boardData) => { /* noop */ }
+const onImageLoad = () => { /* no-op */ }
 
-// 토큰 & AJAX 헤더
+/* ========= 헤더 ========= */
 const headersWithToken = () => {
   const token = getAccessToken?.()
   return {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    'X-Requested-With': 'XMLHttpRequest', // 서버가 리다이렉트 대신 401을 주도록 힌트
-    'Accept': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest',
+    'Accept': 'application/json'
   }
 }
 
-// 내 정보
+/* ========= 로그인 리다이렉트 탐지(서버가 302로 보낼 때) ========= */
+const isLoginRedirect = (err) => {
+  const url = err?.request?.responseURL || ''
+  return url.includes('/login') || url.includes('/oauth2/authorization')
+}
+
+/* ========= 제약오류(FK) 탐지 ========= */
+const isConstraintError = (e) => {
+  const s = e?.response?.status
+  const msg = (e?.response?.data?.message || e?.message || '').toLowerCase()
+  return s === 409 || /constraint|foreign key|integrity/.test(msg)
+}
+
+/* ========= 내 정보 ========= */
 const fetchMe = async () => {
   try {
     const { data } = await api.get('/api/v1/main/me', { headers: headersWithToken(), withCredentials: true })
@@ -219,7 +229,7 @@ const fetchMe = async () => {
   } catch {}
 }
 
-// 카테고리
+/* ========= 카테고리 ========= */
 const apiToKo = { ALL:'전체', POPULAR:'인기', CHAT:'잡담', SHARE:'나눔', INFO:'정보', HOBBY:'취미' }
 const koToQuery = { 전체:'all', 인기:'popular', 잡담:'chat', 나눔:'share', 정보:'info', 취미:'hobby' }
 const displayCategory = code => apiToKo[String(code||'').toUpperCase()] || code
@@ -233,7 +243,7 @@ const badgeClass = (ko) => {
   return map[ko] || 'badge'
 }
 
-// 시간 포맷
+/* ========= 시간 포맷 ========= */
 const formatCreatedAt = (s, { thresholdHours=24 } = {}) => {
   if (!s) return ''
   const d = new Date(s)
@@ -253,7 +263,7 @@ const formatCreatedAt = (s, { thresholdHours=24 } = {}) => {
 
 const normalize = (raw) => ({ ...raw, category: (raw?.category || '').toString().toUpperCase(), likeCount: Number(raw?.likeCount ?? 0) })
 
-// 작성자 판별
+/* ========= 소유자 판별 ========= */
 const isOwner = computed(() => {
   const b = board.value
   if ('isOwner' in b) return !!b.isOwner
@@ -263,6 +273,7 @@ const isOwner = computed(() => {
   return false
 })
 
+/* ========= 상세 ========= */
 const fetchDetail = async () => {
   loading.value = true
   error.value = false
@@ -273,8 +284,8 @@ const fetchDetail = async () => {
     likeCount.value = row.likeCount
     liked.value = Boolean(row?.liked ?? row?.isLiked ?? false)
   } catch (e) {
-    const status = e?.response?.status
-    if (status === 401) { router.push({ name: 'onboarding' }); return }
+    // 로그인 문구는 노출하지 않음(필요시 라우터 가드/인터셉터에서 처리)
+    if (isLoginRedirect(e) || e?.response?.status === 401) return
     console.error('상세 조회 실패:', e)
     error.value = true
   } finally {
@@ -282,7 +293,7 @@ const fetchDetail = async () => {
   }
 }
 
-/* ===== 댓글 상태/로직 ===== */
+/* ========= 댓글 ========= */
 const comments = ref([])
 const commentCount = ref(0)
 const newComment = ref('')
@@ -346,9 +357,7 @@ const createComment = async () => {
     newComment.value = ''
     commentCount.value += 1
   } catch (e) {
-    const s = e?.response?.status
-    if (s === 401) router.push({ name: 'onboarding' })
-    else showNotice('댓글 등록에 실패했습니다.', '오류')
+    console.error(e); showNotice('댓글 등록에 실패했습니다.', '오류')
   } finally { commentBusy.value = false }
 }
 const startEdit = (c) => { editTargetId.value = c.commentId; editContent.value = c.content }
@@ -363,9 +372,7 @@ const saveEdit = async (commentId) => {
     if (idx !== -1) comments.value[idx] = { ...comments.value[idx], content: editContent.value }
     cancelEdit()
   } catch (e) {
-    const s = e?.response?.status
-    if (s === 401) router.push({ name: 'onboarding' })
-    else if (s === 403) showNotice('수정 권한이 없습니다.', '안내')
+    if (e?.response?.status === 403) showNotice('수정 권한이 없습니다.', '안내')
     else { console.error(e); showNotice('댓글 수정에 실패했습니다.', '오류') }
   } finally { commentBusy.value = false }
 }
@@ -378,14 +385,12 @@ const confirmRemoveComment = async () => {
     commentCount.value = Math.max(0, commentCount.value - 1)
     closeCmtConfirm()
   } catch (e) {
-    const s = e?.response?.status
-    if (s === 401) router.push({ name: 'onboarding' })
-    else if (s === 403) showNotice('삭제 권한이 없습니다.', '안내')
+    if (e?.response?.status === 403) showNotice('삭제 권한이 없습니다.', '안내')
     else { console.error(e); showNotice('댓글 삭제에 실패했습니다.', '오류') }
   } finally { commentBusy.value = false }
 }
-/* ===== /댓글 ===== */
 
+/* ========= 좋아요 ========= */
 const toggleLike = async () => {
   if (likeBusy.value) return
   likeBusy.value = true
@@ -404,26 +409,33 @@ const toggleLike = async () => {
   } catch (e) {
     liked.value = prevLiked
     likeCount.value = prevCount
-    const status = e?.response?.status
-    if (status === 401) router.push({ name: 'onboarding' })
-    else console.error('좋아요 처리 실패:', e)
+    console.error('좋아요 처리 실패:', e)
   } finally { likeBusy.value = false }
 }
 
+/* ========= 게시글 삭제 ========= */
 const openConfirm = () => { showConfirm.value = true; document.addEventListener('keydown', onEscClose) }
 const closeConfirm = () => { showConfirm.value = false; document.removeEventListener('keydown', onEscClose) }
 const onEscClose = (e) => { if (e.key === 'Escape') closeConfirm() }
 
-// helper: /login 또는 /oauth2/authorization로 최종 URL이 바뀌었는지 체크
-const isLoginRedirect = (err) => {
-  const url = err?.request?.responseURL || ''
-  return url.includes('/login') || url.includes('/oauth2/authorization')
+/* 댓글 전부 삭제(폴백) */
+const deleteAllComments = async () => {
+  if (!comments.value.length) await fetchComments()
+  for (const c of [...comments.value]) {
+    await api.delete(`/api/v1/boards/${boardId.value}/comments/${c.commentId}`, {
+      headers: headersWithToken(),
+      withCredentials: true
+    })
+  }
+  comments.value = []
+  commentCount.value = 0
 }
 
 const confirmDelete = async () => {
   if (deleting.value) return
   deleting.value = true
   try {
+    // 1차: 곧바로 삭제 시도
     await api.delete(`/api/v1/boards/${boardId.value}`, {
       headers: headersWithToken(),
       withCredentials: true
@@ -431,19 +443,36 @@ const confirmDelete = async () => {
     closeConfirm()
     goBack()
   } catch (e) {
-    // 302→/login 따라간 케이스 or 진짜 401
+    // 서버가 로그인으로 리다이렉트했거나 401인 경우: 문구 없이 이동/무시
     if (isLoginRedirect(e) || e?.response?.status === 401) {
       closeConfirm()
-      showNotice('로그인이 필요합니다.', '안내', () => {
-        router.push({ name: 'onboarding' })
-      })
+      // 필요 시 라우팅 가드/인터셉터에서 처리. 여기서는 메시지 없이 종료.
       return
     }
+    // FK 제약: 댓글 먼저 일괄 삭제 후 재시도
+    if (isConstraintError(e)) {
+      try {
+        await deleteAllComments()
+        await api.delete(`/api/v1/boards/${boardId.value}`, {
+          headers: headersWithToken(),
+          withCredentials: true
+        })
+        closeConfirm()
+        goBack()
+        return
+      } catch (e2) {
+        console.error('댓글 삭제 후 재시도 실패:', e2)
+        showNotice('댓글이 남아 있어 삭제가 막혔습니다. 잠시 후 다시 시도해 주세요.', '오류')
+        return
+      }
+    }
+    // 권한 없음
     if (e?.response?.status === 403) {
       closeConfirm()
       showNotice('삭제 권한이 없습니다.', '안내')
       return
     }
+    // 기타
     console.error('삭제 실패:', e)
     showNotice('삭제에 실패했습니다. 잠시 후 다시 시도해 주세요.', '오류')
   } finally {
@@ -451,8 +480,7 @@ const confirmDelete = async () => {
   }
 }
 
-
-
+/* ========= 기타 ========= */
 const goBack = () => {
   const qcat = typeof route.query.category === 'string' ? route.query.category : listQueryCategory.value
   router.push({ name:'boards', query:{ category: qcat } })
@@ -469,8 +497,35 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onEscClose))
 </script>
 
 <style scoped>
-/* (스타일은 삭제 확인/안내/댓글 모달만 이미 존재하므로 기존 유지) */
-.detail-container{max-width:900px;margin:40px auto;padding:20px;font-family:'Noto Sans KR',sans-serif;border:1px solid #e5e7eb;border-radius:12px;background:#fff}
+
+/* ===== 폰트 등록 ===== */
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-Regular.ttf') format('truetype');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-Bold.ttf') format('truetype');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-ExtraBold.ttf') format('truetype');
+  font-weight: 800; font-style: normal; font-display: swap;
+}
+
+/* 기존 .detail-container의 font-family만 아래처럼 변경 */
+.detail-container{
+  max-width:900px;margin:40px auto;padding:20px;
+  font-family: 'KoddiUDOnGothic', -apple-system, BlinkMacSystemFont,
+               'Segoe UI', Roboto, 'Noto Sans KR', 'Apple SD Gothic Neo',
+               'Malgun Gothic', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  border:1px solid #e5e7eb;border-radius:12px;background:#fff
+}
+
 .state{text-align:center;color:#6b7280;padding:40px 0}.state.error{color:#b91c1c}
 .header{margin-bottom:16px}.title-row{display:flex;align-items:center;gap:10px}
 .title{font-size:24px;font-weight:800;margin:0;color:#0f172a}

@@ -258,6 +258,31 @@ onUnmounted(() => { if (blobUrl.value) URL.revokeObjectURL(blobUrl.value) })
 </script>
 
 <style scoped>
+/* ===== 폰트 등록 (scoped여도 @font-face는 전역으로 처리됩니다) ===== */
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-Regular.ttf') format('truetype');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-Bold.ttf') format('truetype');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-ExtraBold.ttf') format('truetype');
+  font-weight: 800; font-style: normal; font-display: swap;
+}
+
+/* 🔹 이 한 줄로 페이지 전체에 적용 */
+.profile-page{
+  font-family: 'KoddiUDOnGothic', -apple-system, BlinkMacSystemFont,
+               'Segoe UI', Roboto, 'Noto Sans KR', 'Apple SD Gothic Neo',
+               'Malgun Gothic', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 /* 스타일은 이전 메시지와 동일 — 필요 부분만 표시 */
 :root { color-scheme: light }
 .profile-page { max-width: 1080px; margin: 0 auto; padding: 24px }
