@@ -235,10 +235,10 @@ public class GameService {
         log.info("[END] winnerId={}", winnerId);
 
         //1. 포인트 부여 (무승부일 경우 생략)
-        if(winnerId != null){
+//        if(winnerId != null){
             log.info("[END] addWinPoint(winnerId={}) 호출", winnerId);
             userService.addWinPoint(winnerId);
-        }
+//        }
 
         //2. 엔티티 조회
         log.info("[END] find GameRoom from DB");
@@ -260,8 +260,8 @@ public class GameService {
         GameHistory history = GameHistory.of(
                 room,
                 winnerEntity,
-                game.getStartedAt(),
-                LocalDateTime.now(),
+//                game.getStartedAt(),
+//                LocalDateTime.now(),
                 game.getTotalRound()
         );
 

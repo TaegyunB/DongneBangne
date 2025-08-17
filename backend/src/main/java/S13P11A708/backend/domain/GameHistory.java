@@ -34,11 +34,11 @@ public class GameHistory extends BaseEntity {
     @Column(name = "game_round")
     private Integer gameRound;
 
-    @Column(name = "started_at")
-    private LocalDateTime startedAt;
-
-    @Column(name = "ended_at")
-    private LocalDateTime endedAt;
+//    @Column(name = "started_at")
+//    private LocalDateTime startedAt;
+//
+//    @Column(name = "ended_at")
+//    private LocalDateTime endedAt;
 
     @CreatedDate
     @Column(updatable = false)
@@ -50,14 +50,14 @@ public class GameHistory extends BaseEntity {
 
     public static GameHistory of(GameRoom room,
                                  User winner,
-                                 LocalDateTime startedAt,
-                                 LocalDateTime endedAt,
+//                                 LocalDateTime startedAt,
+//                                 LocalDateTime endedAt,
                                  Integer round) {
         return GameHistory.builder()
                 .gameRoomId(room)
                 .winnerUserId(winner)
-                .startedAt(startedAt)
-                .endedAt(endedAt)
+//                .startedAt(startedAt)
+//                .endedAt(endedAt)
                 .gameRound(round)
                 .build();
     }
