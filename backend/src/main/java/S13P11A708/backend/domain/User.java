@@ -60,7 +60,7 @@ public class User extends BaseEntity {
 
     //==Setter 메서드==//
     public Long addPoint(Long currentPoint){
-        return this.personalPoint = personalPoint;
+        return this.personalPoint = currentPoint;
     }
 
 
