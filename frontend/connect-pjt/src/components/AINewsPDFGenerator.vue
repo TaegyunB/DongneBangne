@@ -4,7 +4,7 @@
     <!-- PDF 미리보기 및 생성 버튼 -->
     <div v-if="!pdfGenerated" class="pdf-preview-section">
       <button @click="generateAndUploadPDF" :disabled="generating" class="generate-pdf-btn">
-        {{ generating ? 'PDF 생성 중...' : 'PDF 생성하기' }}
+        {{ generating ? '신문 생성 중...' : '신문 생성하기' }}
       </button>
       <!-- . -->
       <!-- 진행 상태 표시 -->
@@ -22,7 +22,7 @@
         <!-- 헤더 -->
         <div class="newspaper-header">
           <h1 class="newspaper-title">{{ newsData.newsTitle }}</h1>
-          <div class="newspaper-date">{{ newsData.centerName }} - {{ formatDate(newsData.year, newsData.month) }}</div>
+          <div class="newspaper-date">{{ formatDate(newsData.year, newsData.month) }}</div>
         </div>
 
     <!-- 알림 모달 -->
@@ -49,7 +49,7 @@
               <div class="article-header">
                 <h2 class="article-title">{{ challenge.challengeTitle }}</h2>
                 <div class="article-meta">
-                  <span class="article-location-date">{{ challenge.challengePlace }} - {{ formatChallengeDate(challenge.completedAt) }}</span>
+                  <span class="article-location-date">{{ challenge.challengePlace }}</span>
                 </div>
               </div>
 
@@ -79,7 +79,7 @@
               <div class="article-header">
                 <h2 class="article-title">{{ challenge.challengeTitle }}</h2>
                 <div class="article-meta">
-                  <span class="article-location-date">{{ challenge.challengePlace }} - {{ formatChallengeDate(challenge.completedAt) }}</span>
+                  <span class="article-location-date">{{ formatChallengeDate(challenge.completedAt) }}</span>
                 </div>
               </div>
 
@@ -102,7 +102,7 @@
 
         <!-- 푸터 -->
         <div class="newspaper-footer">
-          <div class="footer-text">{{ newsData.centerName }}에서 발행하는 AI 신문</div>
+          <!-- <div class="footer-text">{{ newsData.centerName }}에서 발행하는 AI 신문</div> -->
           <div class="footer-date">발행일: {{ formatDate(newsData.year, newsData.month) }}</div>
         </div>
       </div>
