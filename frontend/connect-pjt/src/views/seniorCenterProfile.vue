@@ -7,7 +7,7 @@
       <div class="profile-pic-area">
         <div class="pic-and-btns">
           <div class="profile-img-preview" aria-label="프로필 사진 미리보기">
-            <img v-if="previewUrl" :src="previewUrl" alt="프로필 사진" class="profile-img" />
+            <img v-if="safePreviewUrl" :src="safePreviewUrl" alt="프로필 사진" class="profile-img" />
             <div v-else class="default-profile" aria-hidden="true"></div>
           </div>
 
@@ -24,9 +24,8 @@
           <div class="pic-restrictions" id="photo-guide">
             <p class="guide-title">사진 안내</p>
             <ul>
-              <li>권장 크기: <b>400×400px 이상</b></li>
+              <li>권장 크기: <b>400×400px</b></li>
               <li>파일 용량: <b>2MB 이하</b></li>
-              <li>필수 아님, <b>나중에 변경 가능</b></li>
             </ul>
           </div>
         </div>
@@ -104,6 +103,13 @@ import api from '@/api/axios'
 
 const router = useRouter()
 
+const isBlobUrl = url => typeof url === 'string' && url.startsWith('blob:')
+const ensureHttps = url => {
+  if (!url) return null
+  if (isBlobUrl(url)) return url
+  return url.replace(/^http:\/\//, 'https://')
+}
+
 const nickname = ref('')
 const nicknameAvailable = ref(false)
 const nicknameMessage = ref('')
@@ -113,6 +119,7 @@ const saving = ref(false)
 
 const previewUrl = ref(null)
 const selectedFile = ref(null)
+const safePreviewUrl = computed(() => ensureHttps(previewUrl.value))
 
 const myCenterName = ref('') // “소속경로당 닉네임”용 접두어
 
@@ -124,13 +131,13 @@ const closeNotice = () => { notice.value.open = false }
 // 진입 시 사용자/센터 정보
 onMounted(async () => {
   try {
-    const res = await api.get('/api/v1/users/profile')
+    const res = await api.get('/api/v1/users/profile', { withCredentials: true })
     nickname.value = res.data?.nickname || ''
-    previewUrl.value = res.data?.profileImage || null
+    previewUrl.value = ensureHttps(res.data?.profileImage || null)
   } catch (e) {}
 
   try {
-    const me = await api.get('/api/v1/me')
+    const me = await api.get('/api/v1/me', { withCredentials: true })
     myCenterName.value =
       me.data?.seniorCenterName ??
       me.data?.centerName ??
@@ -173,7 +180,7 @@ async function checkNickname() {
     const nameForCheck = buildFinalNickname(nickname.value, myCenterName.value)
 
     // 실제 API가 있으면 아래 사용
-    // const { data } = await api.get('/api/v1/users/nickname-check', { params: { nickname: nameForCheck } })
+    // const { data } = await api.get('/api/v1/users/nickname-check', { params: { nickname: nameForCheck }, withCredentials: true })
     // const exists = !!data?.exists
 
     // 데모 금칙어 로직
@@ -231,6 +238,8 @@ function removeFile() {
 }
 
 // 저장 (최종 문자열 = “소속경로당 닉네임”)
+// 백엔드가 이미지 URL을 재수급하므로 닉네임 중심으로 저장하고,
+// 공개 URL(비-blob)만 있으면 선택적으로 함께 전달
 async function completeProfile() {
   if (!nicknameAvailable.value) {
     showNotice('닉네임 중복 확인 후 저장해주세요.', '저장 안내')
@@ -238,26 +247,18 @@ async function completeProfile() {
   }
   try {
     saving.value = true
-    let profileImageUrl = previewUrl.value
-
-    // 실제 업로드 API가 있다면 사용
-    // if (selectedFile.value) {
-    //   const formData = new FormData()
-    //   formData.append('file', selectedFile.value)
-    //   const uploadRes = await api.post('/api/v1/files/profile', formData)
-    //   profileImageUrl = uploadRes.data.url
-    // }
 
     const finalNickname = buildFinalNickname(nickname.value, myCenterName.value)
+    const payload = { nickname: finalNickname }
 
-    await api.put('/api/v1/users/profile', {
-      nickname: finalNickname,
-      profileImage: profileImageUrl
-    })
+    if (previewUrl.value && !isBlobUrl(previewUrl.value)) {
+      payload.profileImage = ensureHttps(previewUrl.value)
+    }
+
+    await api.put('/api/v1/users/profile', payload, { withCredentials: true })
 
     showNotice('저장되었습니다.', '완료')
     const unwatch = watch(() => notice.value.open, v => { if (!v) router.push('/mainpage') })
-    // setTimeout(() => { notice.value.open = false; unwatch() }, 900)
   } catch (e) {
     showNotice('저장에 실패했습니다. 잠시 후 다시 시도해주세요.', '오류')
   } finally {
