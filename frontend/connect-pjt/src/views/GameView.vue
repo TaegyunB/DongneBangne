@@ -3,8 +3,8 @@
     <iframe
       ref="unityFrame"
       src="/unity/index.html"
-      width="2560px"
-      height="1440px"
+      width="1920px"
+      height="1080px"
       frameborder="0"
       allowfullscreen
     ></iframe>
@@ -15,8 +15,8 @@
     <iframe
       ref="youtubeFrame"
       :src="youtubeSrc"
-      width="320"
-      height="240"
+      width="1"
+      height="1"
       frameborder="0"
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"
       allowfullscreen
@@ -1153,13 +1153,11 @@ iframe {
 }
 
 .youtube-container {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  width: 320px;
-  height: 240px;
-  z-index: 1000;
-  border-radius: 8px;
+  position: absolute;
+  left:-9999px;
+  top:-9999px;
+  width: 1px;
+  height: 1px;
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
