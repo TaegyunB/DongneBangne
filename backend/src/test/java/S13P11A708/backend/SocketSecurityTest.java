@@ -56,7 +56,7 @@ public class SocketSecurityTest {
                 new CustomOAuth2User(dto), "N/A", List.of()
         );
 
-        controller.submitAnswer(new GameAnsRequestMessage(GameMessageType.ANSWER_SUBMIT, roomId, answer), principal);
+        controller.submitAnswer(new GameAnsRequestMessage(answer, roomId, GameMessageType.ANSWER_SUBMIT, userId), principal);
 
         // ✅ 정확히 한 번, 정확한 인자
         verify(gameService, times(1)).handleAnswer(roomId, userId, answer);
@@ -66,7 +66,7 @@ public class SocketSecurityTest {
     @Test
     void submitAnswer_throws_when_principal_missing() {
         var ex = assertThrows(IllegalStateException.class, () ->
-                controller.submitAnswer(new GameAnsRequestMessage(GameMessageType.ANSWER_RESULT, 1L, "고향역"), null)
+                controller.submitAnswer(new GameAnsRequestMessage("고향역", 1L, GameMessageType.ANSWER_RESULT, 101L), null)
         );
         System.out.println(ex.getMessage());
         assertTrue(ex.getMessage().contains("없습니다"));
