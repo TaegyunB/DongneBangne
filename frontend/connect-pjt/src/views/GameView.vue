@@ -1101,7 +1101,7 @@ export default {
       const iframe = this.$refs.youtubeFrame;
         if (iframe) {
           // autoplay=1 파라미터 추가하여 자동 재생 설정
-          iframe.src = `https://youtube.com/embed/${newVideoId}?si=8IsRoXmN3OS1AwUH&enablejsapi=1&autoplay=1`;
+          iframe.src = `https://youtube.com/embed/${newVideoId}?&enablejsapi=1&autoplay=1`;
         }
 
       console.log('YouTube 비디오 ID 변경:', iframe.src)
@@ -1137,7 +1137,7 @@ export default {
   computed: {
     // YouTube iframe src 계산
     youtubeSrc() {
-      return `https://youtube.com/embed/${this.videoId}?si=8IsRoXmN3OS1AwUH&enablejsapi=1`
+      return `https://youtube.com/embed/${this.videoId}?&enablejsapi=1`
     }
   },
   
