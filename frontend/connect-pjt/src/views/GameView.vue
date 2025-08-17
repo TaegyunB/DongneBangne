@@ -1137,7 +1137,7 @@ export default {
   computed: {
     // YouTube iframe src 계산
     youtubeSrc() {
-      return `https://youtube.com/embed/${this.videoId}?si=8IsRoXmN3OS1AwUH&enablejsapi=1&autoplay=1`
+      return `https://youtube.com/embed/${this.videoId}?si=8IsRoXmN3OS1AwUH&enablejsapi=1`
     }
   },
   
