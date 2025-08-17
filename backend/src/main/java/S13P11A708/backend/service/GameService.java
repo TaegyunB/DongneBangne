@@ -235,6 +235,8 @@ public class GameService {
         }else if(count1<count2){
             winnerId = user2.getUserId();
         }
+        broadcaster.broadcastToRoom(roomId,
+                messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, "winnerId 받아짐"+winnerId));
 
         log.info("[END] winnerId={}", winnerId);
 
@@ -242,6 +244,8 @@ public class GameService {
 //        if(winnerId != null){
             log.info("[END] addWinPoint(winnerId={}) 호출", winnerId);
             userService.addWinPoint(winnerId);
+        broadcaster.broadcastToRoom(roomId,
+                messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, "addWinPoint 성공"));
 //        }
 
         //2. 엔티티 조회
@@ -250,6 +254,9 @@ public class GameService {
                 .orElseThrow(() -> new RuntimeException("게임방을 찾을 수 없습니다."));
         log.info("[END] GameRoom 조회 성공");
 
+        broadcaster.broadcastToRoom(roomId,
+                messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, "GameRoom 정보"+room));
+
         log.info("[END] find Users from DB");
         User user1Entity = userRepository.findById(user1.getUserId())
                 .orElseThrow(() -> new RuntimeException("User not found: " + user1.getUserId()));
@@ -257,9 +264,15 @@ public class GameService {
                 .orElseThrow(() -> new RuntimeException("User not found: " + user2.getUserId()));
         log.info("[END] User 조회 성공");
 
+        broadcaster.broadcastToRoom(roomId,
+                messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, "userEntity"+user1Entity));
+
         User winnerEntity = (winnerId != null)
                 ? (winnerId.equals(user1.getUserId()) ? user1Entity : user2Entity)
                 : null;
+
+        broadcaster.broadcastToRoom(roomId,
+                messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, "winnerEntity"+winnerEntity));
 
         //3-1. 게임 결과 기록 GameHistory
         log.info("[END] save GameHistory");
@@ -270,6 +283,8 @@ public class GameService {
 //                LocalDateTime.now(),
                 game.getTotalRound()
         );
+        broadcaster.broadcastToRoom(roomId,
+                messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, "history"+history));
 
         //3-2. 게임 결과 기록 GameHistoryUser
         log.info("[END] save GameHistoryUser1,2");
@@ -292,6 +307,9 @@ public class GameService {
                         winnerId != null && winnerId.equals(user2.getUserId())
                 )
         );
+        broadcaster.broadcastToRoom(roomId,
+                messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, "GameHistoryUser"+historyUsers));
+
         log.info("[END] GameHistoryUser 저장 완료");
         historyUsers.forEach(history::addHistoryUser);
 
