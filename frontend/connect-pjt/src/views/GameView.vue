@@ -1101,7 +1101,7 @@ export default {
       const iframe = this.$refs.youtubeFrame;
         if (iframe) {
           // autoplay=1 파라미터 추가하여 자동 재생 설정
-          iframe.src = `https://youtube.com/embed/${newVideoId}?&enablejsapi=1&autoplay=1`;
+          iframe.src = `https://www.youtube.com/embed/${newVideoId}?&enablejsapi=1&autoplay=1`;
         }
 
       console.log('YouTube 비디오 ID 변경:', iframe.src)

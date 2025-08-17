@@ -45,7 +45,7 @@ export default defineComponent({
       } else {
         const iframe = youtubeIframe.value;
         if (iframe) {
-          iframe.src = `https://youtube.com/embed/${state.videoId}?si=8IsRoXmN3OS1AwUH&enablejsapi=1`;
+          iframe.src = `https://www.youtube.com/embed/SiQzf2MyHl0?&enablejsapi=1&autoplay=1`;
         }
       }
     };
@@ -83,7 +83,7 @@ export default defineComponent({
     onMounted(() => {
       // YouTube iframe API 로드
       const tag = document.createElement('script');
-      tag.src = 'https://www.youtube.com/iframe_api';
+      tag.src = 'https://www.youtube.com/embed/SiQzf2MyHl0?&enablejsapi=1&autoplay=1';
       const firstScriptTag = document.getElementsByTagName('script')[0];
       firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
 
