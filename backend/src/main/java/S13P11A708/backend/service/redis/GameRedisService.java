@@ -17,7 +17,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class GameRedisService {
 
-    private final RedisTemplate<String, GameStatusRedis> redisTemplate;
+    private final RedisTemplate<String, GameStatusRedis> gameStatusRedisTemplate;
 
     private static final int HINT_COST = 20;
     //우승 시 100
@@ -31,21 +31,21 @@ public class GameRedisService {
      * 60분이 지나면 자동으로 삭제되도록 설정
      */
     public void saveGameStatus(Long roomId, GameStatusRedis status) {
-        redisTemplate.opsForValue().set(getKey(roomId), status, Duration.ofMinutes(60));
+        gameStatusRedisTemplate.opsForValue().set(getKey(roomId), status, Duration.ofMinutes(60));
     }
 
     /**
      * 게임이 끝나면, Redis에 저장된 게임 상태 데이터 삭제
      */
     public void deleteGameStatus(Long roomId) {
-        redisTemplate.delete(getKey(roomId));
+        gameStatusRedisTemplate.delete(getKey(roomId));
     }
 
     /**
      * roomId로 GameStatusRedis(게임방 정보) 가져오기
      */
     public GameStatusRedis getGameStatusRedis(Long roomId) {
-        Object data = redisTemplate.opsForValue().get(getKey(roomId));
+        Object data = gameStatusRedisTemplate.opsForValue().get(getKey(roomId));
 
         if (data instanceof GameStatusRedis) {
             return (GameStatusRedis) data;
@@ -193,7 +193,7 @@ public class GameRedisService {
         if (status != null) {
             status.updateStatus(GameStatus.FINISHED);
             saveGameStatus(roomId, status);
-            redisTemplate.opsForValue().set(key, status, Duration.ofMinutes(10));
+            gameStatusRedisTemplate.opsForValue().set(key, status, Duration.ofMinutes(10));
         }
         //redis 정보 삭제
 //        String key = getKey(roomId);
