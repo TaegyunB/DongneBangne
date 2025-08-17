@@ -249,7 +249,30 @@ const goBack = () => {
 </script>
 
 <style scoped>
-.write-container{max-width:700px;margin:40px auto;padding:20px;border:1px solid #ddd;border-radius:12px;background:#fff;font-family:'Noto Sans KR',sans-serif}
+/* ===== 폰트 등록 ===== */
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-Regular.ttf') format('truetype');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-Bold.ttf') format('truetype');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-ExtraBold.ttf') format('truetype');
+  font-weight: 800; font-style: normal; font-display: swap;
+}
+
+.write-container{
+  max-width:700px;margin:40px auto;padding:20px;border:1px solid #ddd;border-radius:12px;background:#fff;
+  font-family:'KoddiUDOnGothic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+               'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+}
+
 .page-title{font-size:26px;font-weight:800;margin-bottom:24px;color:#0f172a}
 .hint{color:#6b7280}
 .form-group{margin-bottom:20px}

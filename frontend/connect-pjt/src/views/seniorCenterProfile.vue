@@ -291,10 +291,34 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* ===== 폰트 등록(페이지 단위) ===== */
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-Regular.ttf') format('truetype');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-Bold.ttf') format('truetype');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'KoddiUDOnGothic';
+  src: url('@/assets/fonts/KoddiUDOnGothic-ExtraBold.ttf') format('truetype');
+  font-weight: 800; font-style: normal; font-display: swap;
+}
+
 /* (기존 스타일 유지) */
 .profile-wrap {
   --brand:#3074FF; --brand-hover:#2866E6; --brand-active:#2258CC;
   --notice:#4B5563; --notice-hover:#374151; --notice-active:#1F2937;
+
+  /* 🔹 페이지 전체 폰트 적용 */
+  font-family: 'KoddiUDOnGothic', -apple-system, BlinkMacSystemFont,
+               'Segoe UI', Roboto, 'Noto Sans KR', 'Apple SD Gothic Neo',
+               'Malgun Gothic', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 .profile-wrap { width:100%; min-height:100vh; background:#fff; display:flex; flex-direction:column; align-items:center; color:#111 }
 :focus-visible { outline:3px solid var(--brand); outline-offset:3px; border-radius:8px }
