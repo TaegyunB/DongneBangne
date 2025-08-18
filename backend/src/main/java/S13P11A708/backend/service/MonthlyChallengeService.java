@@ -38,48 +38,48 @@ public class MonthlyChallengeService {
         Map<Integer, List<ServiceChallenge>> challenges = new HashMap<>();
 
         challenges.put(1, List.of(
-                new ServiceChallenge("눈 오는 날 시 쓰기", "눈 오는 날 시 쓰기를 함께 해보세요", "경로당"),
-                new ServiceChallenge("올해 목표 종이에 적기", "올해 목표 종이에 적기를 함께 해보세요", "경로당")
+                new ServiceChallenge("새해 덕담 나누기", "따뜻한 덕담과 새해 소망을 서로 나누기", "경로당"),
+                new ServiceChallenge("떡국 먹으며 옛이야기", "떡국을 먹으며 어린 시절 이야기 나누기", "경로당")
         ));
 
         challenges.put(2, List.of(
-                new ServiceChallenge("물 많이 마시기 챌린지", "물 많이 마시기 챌린지를 함께 해보세요", "경로당"),
-                new ServiceChallenge("마트에서 반찬거리 장보기", "함께 장을 보며 요리 아이디어도 나눠보세요", "동네 마트")
+                new ServiceChallenge("우리 경로당 사진첩 만들기", "지난 1년간 활동 사진을 모아 앨범 만들기", "경로당"),
+                new ServiceChallenge("겨울 건강 운동", "실내에서 할 수 있는 간단한 체조와 스트레칭", "동네 마트")
         ));
 
         challenges.put(3, List.of(
-                new ServiceChallenge("어르신 인터뷰하기", "서로의 삶의 이야기를 들어보는 시간을 가져보세요", "경로당"),
-                new ServiceChallenge("강원도 계곡 나들이", "계곡 물소리를 들으며 힐링 시간을 가져보세요", "강원도 계곡")
+                new ServiceChallenge("봄나들이 걷기", "근처 공원이나 산책로를 함께 걸으며 꽃 구경", "근처 산책로"),
+                new ServiceChallenge("작은 선물 뽑기 이벤트", "선물 상자 속 행운을 뽑아보세요", "경로당 마당")
         ));
 
         challenges.put(4, List.of(
-                new ServiceChallenge("물 많이 마시기 챌린지", "물 많이 마시기 챌린지를 함께 해보세요", "경로당"),
-                new ServiceChallenge("근처 뒷산 등산하기", "가벼운 등산으로 건강도 챙기고 자연도 느껴보세요", "동네 뒷산")
+                new ServiceChallenge("전통놀이 한마당", "제기차기, 투호, 윷놀이로 팀별 대결", "경로당"),
+                new ServiceChallenge("경로당 영화관", "큰 화면으로 추억의 영화나 드라마를 함께 보고 이야기 나누기", "경로당")
         ));
 
         challenges.put(5, List.of(
-                new ServiceChallenge("어르신 인터뷰하기", "서로의 삶의 이야기를 들어보는 시간을 가져보세요", "경로당"),
-                new ServiceChallenge("같이 팩하며 피부관리", "서로 팩을 나눠주며 웃음꽃 피워보세요", "경로당")
+                new ServiceChallenge("아침 스트레칭", "10분 동안 음악에 맞춰 스트레칭! 사진 인증 필수", "공원"),
+                new ServiceChallenge("어린 시절 놀이 체험", "딱지치기, 구슬치기, 고무줄놀이 함께 하기", "경로당")
         ));
 
         challenges.put(6, List.of(
-                new ServiceChallenge("장마철 건강관리법 공유", "서로의 건강을 위해 혈압과 혈당을 체크해보세요", "경로당"),
-                new ServiceChallenge("시장 구경하며 간식 사먹기", "시장의 다양한 음식과 분위기를 즐겨보세요", "전통시장")
+                new ServiceChallenge("여름나기 비법 공유", "더위를 피하는 나만의 방법 이야기", "경로당"),
+                new ServiceChallenge("시원한 음식 만들기", "냉국, 오이무침 등 여름 음식 함께 조리", "경로당 주방")
         ));
 
         challenges.put(7, List.of(
-                new ServiceChallenge("동네 서점 가서 책 한 권 골라보기", "책을 통해 새로운 세상을 만나보세요", "동네 서점"),
-                new ServiceChallenge("문화센터 수업 체험해보기", "새로운 활동을 배우며 친구들과 이야기 나눠보세요", "근처 문화센터")
+                new ServiceChallenge("부채 꾸미기", "부채에 그림이나 글귀를 적어 꾸미기", "경로당"),
+                new ServiceChallenge("여름 노래방", "여름 노래나 신나는 곡으로 노래자랑", "경로당")
         ));
 
         challenges.put(8, List.of(
-                new ServiceChallenge("물 많이 마시기 챌린지", "물 많이 마시기 챌린지를 함께 해보세요", "경로당"),
-                new ServiceChallenge("근처 미용실 가서 헤어 스타일 바꾸기", "새로운 스타일로 기분 전환해보세요", "근처 미용실")
+                new ServiceChallenge("물놀이 소풍", "근처 계곡이나 냇가에서 발 담그기", "인근 야외"),
+                new ServiceChallenge("빙수 만들기", "과일과 팥을 넣은 빙수 만들어 먹기", "경로당 주방")
         ));
 
         challenges.put(9, List.of(
-                new ServiceChallenge("고향 이야기 나누기", "고향 이야기 나누기를 함께 해보세요", "경로당"),
-                new ServiceChallenge("동네 서점 가서 책 한 권 골라보기", "책을 통해 새로운 세상을 만나보세요", "동네 서점")
+                new ServiceChallenge("송편 빚기 대회", "팀별로 예쁜 송편 만들고 시식 투표", "경로당 주방"),
+                new ServiceChallenge("추석 노래·시 대회", "추석 주제로 노래 부르기나 시 낭송", "경로당")
         ));
 
         challenges.put(10, List.of(
@@ -101,9 +101,9 @@ public class MonthlyChallengeService {
     }
 
     /**
-     * 매월 11일 오전 1시 자동 실행 - 서비스 제공 미션만 생성
+     * 서비스 제공 미션만 생성
      */
-    @Scheduled(cron = "0 13 5 11 * ?")  // 매월 11일 오전 1시 (테스트용)
+    @Scheduled(cron = "0 07 17 17 * ?")  // 초 분 시 일 월
     public void createServiceChallengesForAllSeniorCenters() {
         LocalDateTime now = LocalDateTime.now();
         int currentMonth = now.getMonthValue();

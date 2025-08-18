@@ -8,6 +8,4 @@ import lombok.Getter;
 public class CreateGameRoomRequestDto {
     private String roomTitle;
     private Integer gameRound;
-    private String musicEra;
-    private String category;
 }

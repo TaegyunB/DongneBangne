@@ -46,16 +46,14 @@ public class GameService {
                 .orElseThrow(()-> new RuntimeException("게임방이 존재하지 않습니다."));
 
         int totalRounds = room.getGameRound();
-        String musicEra = room.getMusicEra();
-        String category = room.getCategory();
 
         //2. 각 참가자 포인트 조회
         Long point1 = userRepository.findPointByUserId(user1Id);
         Long point2 = userRepository.findPointByUserId(user2Id);
 
         //3. 방설정 조건 기반 trotQuiz 추출
-        List<TrotQuiz> quizList = trotQuizRepository.findRandomQuestionsByCondition(
-                musicEra, category, totalRounds
+        List<TrotQuiz> quizList = trotQuizRepository.findRandomQuestions(
+                totalRounds
         );
         if(quizList.size() < totalRounds){
             throw new RuntimeException("조건에 맞는 트로트 퀴즈가 부족합니다.");
@@ -72,7 +70,7 @@ public class GameService {
         gameRedisService.initGame(roomId, totalRounds, user1Id, point1, user2Id, point2, quizIdList, firstQuiz);
 
         // 6. WebSocket을 통해 참가자들에게 GAME_START 및 ROUND_QUESTION 메시지 전송
-        GameInfoSocketMessage startMessage = messageFactory.createInfoMessage(GameMessageType.GAME_START, roomId, "게임이 시작됩니다!");
+        GameInfoSocketMessage startMessage = messageFactory.createInfoMessage(GameMessageType.GAME_START, roomId, "게임시작");
         GameInfoSocketMessage questionMessage = messageFactory.createInfoMessage(GameMessageType.ROUND_QUESTION, roomId, firstQuiz.getUrl());
 
         broadcaster.broadcastToRoom(roomId, startMessage);
@@ -89,7 +87,6 @@ public class GameService {
         log.info("[FLOW] ===== handleAnswer START =====");
         log.info("[1] 방 ID={}, 제출자 ID={}, 제출 답안='{}'", roomId, senderId, answer);
 
-
         //1. 현재 게임상태 불러오기
         GameStatusRedis game = gameRedisService.getGameStatusRedis(roomId);
         if(game == null) throw new RuntimeException("게임 상태를 찾을 수 없습니다.");
@@ -98,16 +95,25 @@ public class GameService {
                 game.getRound(), game.getTotalRound(), game.getCurrentAnswer());
 
         //2. 이미 정답을 맞춘 사람인지
-        PlayerStatus player = gameRedisService.getPlayer(roomId, senderId);
+//        PlayerStatus player = gameRedisService.getPlayer(roomId, senderId);
+        //redis 호출 최소화
+        PlayerStatus player = game.getPlayerStatus(senderId);
         log.info("[3] 플레이어 상태: answered={}, correctCount={}",
                 player.isAnswered(), player.getCorrectCount());
 
-        if(player == null) return;
+        if(player == null){
+            log.warn("[FLOW] 플레이어 없음 -> 리턴");
+            return;
+        }
+
+        // 정답 채팅을 방에 먼저 broadcast (참여자 모두 해당 내용 공유)
+        broadcaster.broadcastAns(roomId,
+                messageFactory.createAnsMessage(GameMessageType.ANSWER_SUBMIT, roomId, senderId, answer, false, "정답제출"));
 
         if(player.isAnswered()){
             log.info("[FLOW] 이미 정답 맞춘 상태 → 리턴");
-            broadcaster.broadcastToRoom(senderId,
-                    messageFactory.createInfoMessage(GameMessageType.ANSWER_REJECTED, roomId, "이미 정답을 맞추셨습니다."));
+            broadcaster.broadcastAns(roomId,
+                    messageFactory.createAnsMessage(GameMessageType.ANSWER_REJECTED, roomId, senderId, answer, true, "이미 맞춘 유저"));
             return;
         }
 
@@ -116,24 +122,33 @@ public class GameService {
         boolean isCorrect = correctAnswer.equalsIgnoreCase(answer.trim()); //입력받은 string 앞뒤 공백 지우기
         log.info("[4] 정답 여부 → {}", isCorrect);
 
+        //오답일 경우
         if (!isCorrect) {
-            broadcaster.broadcastToRoom(roomId,
-                    messageFactory.createInfoMessage(GameMessageType.ANSWER_REJECTED, roomId, "틀렸습니다."));
+            broadcaster.broadcastAns(roomId,
+                    messageFactory.createAnsMessage(GameMessageType.ANSWER_REJECTED, roomId, senderId, answer, false, "오답"));
             log.info("[FLOW] 오답 → 라운드 유지");
             return;
         }
 
         //4. 정답 처리
         gameRedisService.increaseCount(roomId, senderId);
+        broadcaster.broadcastAns(roomId,
+                messageFactory.createAnsMessage(GameMessageType.ANSWER_RESULT, roomId, senderId, answer, true, "정답"));
         log.info("[5] 정답자 카운트 증가");
 
         //5. 다음 라운드 진행
-        boolean isLastRound = game.getRound() >= game.getTotalRound();
-        if(isLastRound) {
+        int current = game.getRound();
+        int total   = game.getTotalRound();
+
+//        boolean isLastRound = game.getRound() >= game.getTotalRound();
+        if(current == total) {
             log.info("[FLOW] 마지막 라운드 → 게임 종료 처리");
-            gameRedisService.finishGame(roomId);
             log.info("[FLOW] broadcasting GAME_END to /sub/game/"+ roomId);
+//            broadcaster.broadcastToRoom(roomId,
+//                    messageFactory.createInfoMessage(GameMessageType.GAME_END, roomId, "game 종료 로직으로 들어옴"));
             endGame(roomId, game); // db 저장, 최종 승자 판단
+            log.info("레디스 정보 삭제");
+//            gameRedisService.finishGame(roomId);
             return;
         }
 
@@ -168,15 +183,16 @@ public class GameService {
         //1. 이미 힌트 사용 가능한지(포인트, 사용여부)
         if(!gameRedisService.canUseHint(roomId, userId)){
             broadcaster.sendToUser(userId,
-                    messageFactory.createHintMessage(GameMessageType.HINT_REJECTED, roomId, userId, "힌트를 더 이상 사용할 수 없습니다."));
+                    messageFactory.createHintMessage(GameMessageType.HINT_REJECTED, roomId, userId, false, "힌트를 더 이상 사용할 수 없습니다."));
             return;
         }
 
         //2. 포인트 차감 시도
         boolean deducted = gameRedisService.deductPointForHint(roomId, userId);
         if(!deducted){
+            log.info("[HINT] NO_POINT: send -> /queue/hint/{}, msg='포인트가 부족합니다.'", userId);
             broadcaster.sendToUser(userId,
-                    messageFactory.createHintMessage(GameMessageType.HINT_REJECTED, roomId, userId, "포인트가 부족합니다."));
+                    messageFactory.createHintMessage(GameMessageType.HINT_REJECTED, roomId, userId, false, "포인트가 부족합니다."));
             return;
         }
 
@@ -188,7 +204,7 @@ public class GameService {
         String hint = answer.substring(0,1);
 
         broadcaster.sendToUser(userId,
-                messageFactory.createHintMessage(GameMessageType.HINT_RESPONSE, roomId, userId, hint));
+                messageFactory.createHintMessage(GameMessageType.HINT_RESPONSE, roomId, userId, true, hint));
     }
 
     /**
@@ -198,8 +214,10 @@ public class GameService {
     public void endGame(Long roomId, GameStatusRedis game){
         log.info("[END] >>> enter endGame(roomId={})", roomId);
 
-        PlayerStatus user1 = game.getUser1();
-        PlayerStatus user2 = game.getUser2();
+        GameStatusRedis latest = gameRedisService.getGameStatusRedis(roomId);
+
+        PlayerStatus user1 = latest.getUser1();
+        PlayerStatus user2 = latest.getUser2();
         log.info("[END] Player1: id={}, correctCount={}", user1.getUserId(), user1.getCorrectCount());
         log.info("[END] Player2: id={}, correctCount={}", user2.getUserId(), user2.getCorrectCount());
 
@@ -219,6 +237,7 @@ public class GameService {
         if(winnerId != null){
             log.info("[END] addWinPoint(winnerId={}) 호출", winnerId);
             userService.addWinPoint(winnerId);
+            gameRedisService.updatePoint(roomId, winnerId);
         }
 
         //2. 엔티티 조회
@@ -228,8 +247,10 @@ public class GameService {
         log.info("[END] GameRoom 조회 성공");
 
         log.info("[END] find Users from DB");
-        User user1Entity = userRepository.getReferenceById(user1.getUserId());
-        User user2Entity = userRepository.getReferenceById(user2.getUserId());
+        User user1Entity = userRepository.findById(user1.getUserId())
+                .orElseThrow(() -> new RuntimeException("User not found: " + user1.getUserId()));
+        User user2Entity = userRepository.findById(user2.getUserId())
+                .orElseThrow(() -> new RuntimeException("User not found: " + user2.getUserId()));
         log.info("[END] User 조회 성공");
 
         User winnerEntity = (winnerId != null)
@@ -241,11 +262,9 @@ public class GameService {
         GameHistory history = GameHistory.of(
                 room,
                 winnerEntity,
-                game.getStartedAt(),
-                LocalDateTime.now(),
-                game.getTotalRound(),
-                room.getMusicEra(),
-                room.getCategory()
+//                game.getStartedAt(),
+//                LocalDateTime.now(),
+                game.getTotalRound()
         );
 
         //3-2. 게임 결과 기록 GameHistoryUser
@@ -269,6 +288,7 @@ public class GameService {
                         winnerId != null && winnerId.equals(user2.getUserId())
                 )
         );
+
         log.info("[END] GameHistoryUser 저장 완료");
         historyUsers.forEach(history::addHistoryUser);
 
@@ -277,6 +297,10 @@ public class GameService {
         room.changeGameStatus(GameStatus.FINISHED);
         log.info("[END] GameRoom 상태 변경 -> FINISHED");
 
+        GameStatusRedis last = gameRedisService.getGameStatusRedis(roomId);
+
+        PlayerStatus user1_end = last.getUser1();
+        PlayerStatus user2_end = last.getUser2();
         //4. webSocket 알림 전송
         String winnerNickname = (winnerEntity != null) ? winnerEntity.getNickname() : null;
         String resultMessage = (winnerEntity != null)
@@ -286,7 +310,7 @@ public class GameService {
         log.info("[END] broadcasting GAME_END to /sub/games/{}", roomId);
         broadcaster.broadcastEndToRoom(roomId,
                 messageFactory.createEndMessage(GameMessageType.GAME_END, roomId, winnerId, winnerNickname,
-                        user1.getPoint(), user2.getPoint(), resultMessage));
+                        user1_end.getPoint(), user2_end.getPoint(), resultMessage));
 
         //5. redis 정리
         gameRedisService.finishGame(roomId);

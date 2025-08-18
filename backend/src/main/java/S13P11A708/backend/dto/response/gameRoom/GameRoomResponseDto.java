@@ -19,8 +19,6 @@ public class GameRoomResponseDto {
     Long id;
     String roomTitle;
     Integer gameRound;
-    String musicEra;
-    String category;
     String gameStatus;
     int participantCount; //방 속 참가자 수
     LocalDateTime createdAt;
@@ -30,8 +28,6 @@ public class GameRoomResponseDto {
                 .id(room.getId())
                 .roomTitle(room.getRoomTitle())
                 .gameRound(room.getGameRound())
-                .musicEra(room.getMusicEra())
-                .category(room.getCategory())
                 .gameStatus(room.getGameStatus().name())
                 .build();
     }

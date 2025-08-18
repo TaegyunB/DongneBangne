@@ -11,21 +11,32 @@
       <h3>{{percent}}%</h3>
     </div>
      
-    <div class="message-box">
-      <p>{{ currentMessage }}</p>
-    </div>
+    <div class="message-and-ai-container">
+      <div class="message-box">
+        <p>{{ currentMessage }}</p>
+      </div>
 
-    <!-- AI 신문 생성 섹션 -->
-    <div v-if="shouldShowAINewsButton" class="ai-news-section">
-      <div class="ai-news-card">
-        <div class="ai-news-content">
-          <div class="ai-news-icon">📰</div>
-          <h3>이번 달 도전을 AI 신문으로 만들어보세요!</h3>
-          <p>완료된 도전과제들을 바탕으로 특별한 신문을 생성할 수 있습니다.</p>
-        </div>
-        <button @click="goToAINews" class="btn-ai-news" :disabled="creatingAINews">
-          {{ creatingAINews ? '🤖 AI 신문 생성 중...' : '✨ AI 신문 생성하기' }}
+      <!-- AI 신문 생성 버튼을 메시지 박스 우측에 배치 -->
+      <div v-if="userRole === 'ADMIN'" class="ai-news-section">
+        <button 
+          @click="goToAINews" 
+          class="btn-ai-news" 
+          :disabled="creatingAINews || !isAINewsButtonEnabled"
+          :title="getAINewsButtonTooltip"
+        >
+          {{ creatingAINews ? ' AI 신문 생성 중...' : 'AI 신문 생성하기' }}
         </button>
+        
+        <!-- AI 신문 생성 가이드 팝업 (항상 표시) -->
+        <div 
+          class="ai-news-guide-popup"
+        >
+          <div class="popup-content">
+            <span v-if="!isAINewsButtonEnabled">도전인증을을 해주세요</span>
+            <span v-else>완료된 도전과제로 신문을 생성합니다</span>
+            <div class="popup-arrow"></div>
+          </div>
+        </div>
       </div>
     </div>
      
@@ -36,11 +47,19 @@
         :key="index"
         class="single-challenge"
         :class="`challenge-${index + 1}`"
-        @click="openModal(challenge, index)" 
       >
         <!-- 이미지 영역 -->
         <div class="challenge-image">
+          <!-- 인증되지 않은 도전: 회색 배경만 -->
+          <div 
+            v-if="!isCompleted(challenge)" 
+            class="challenge-placeholder"
+          >
+            <!-- 텍스트 제거 -->
+          </div>
+          <!-- 인증된 도전 또는 빈 도전: 이미지 표시 -->
           <img 
+            v-else
             :src="getChallengeImage(challenge)" 
             :alt="challenge.challengeTitle || challenge.title"
             class="challenge-img"
@@ -55,28 +74,25 @@
           <div class="text-content">
             <div class="title-with-buttons">
               <h2>{{ getDisplayTitle(challenge, index) }}</h2>
-              <!-- 기존 수정/삭제 버튼 또는 새로운 생성 버튼 -->
-              <div v-if="shouldShowActionButtons(challenge, index)" class="action-buttons">
-                <!-- 도전이 있을 때: 수정/삭제 버튼 -->
-                <template v-if="!challenge.isEmpty">
-                  <button class="edit-btn" @click.stop="editChallenge(index)">수정</button>
-                  <button class="delete-btn" @click.stop="showDeleteConfirm(index)">삭제</button>
-                </template>
-                <!-- 도전이 없을 때: 생성 버튼 -->
-                <template v-else>
-                  <button class="create-btn" @click.stop="moveToCreate()">생성</button>
-                </template>
-              </div>
             </div>
-            <p>{{ getDisplayDescription(challenge, index) }}</p>
           </div>
-          <!-- 완료/미완료 상태 표시만 (클릭 불가) -->
+          <!-- 상태별 버튼 -->
           <div 
             v-if="!challenge.isEmpty"
             class="challenge-complete-btn"
-            :class="{ 'completed': isCompleted(challenge) }"
+            :class="getButtonClass(challenge)"
+            @click="handleButtonClick(challenge, index)"
           >
             {{ getButtonText(challenge) }}
+          </div>
+          <!-- 빈 도전일 때 버튼 -->
+          <div 
+            v-else-if="challenge.isEmpty"
+            class="challenge-complete-btn"
+            :class="userRole === 'ADMIN' ? 'btn-create' : 'btn-not-created'"
+            @click="userRole === 'ADMIN' ? moveToCreate() : showNotCreatedModal()"
+          >
+            {{ userRole === 'ADMIN' ? '도전 생성' : '도전 생성 전' }}
           </div>
         </div>
       </div>
@@ -93,24 +109,63 @@
           장소: {{ selectedChallenge.challengePlace || selectedChallenge.place || '장소 정보 없음' }}
         </div>
         
-        <!-- 모달 내 이미지 표시 -->
-        <div v-if="selectedChallenge.challengeImage" class="modal-image">
-          <img :src="selectedChallenge.challengeImage" :alt="selectedChallenge.challengeTitle" />
+        <!-- 인증 전 상태일 때 대형 인증 버튼 (ADMIN만) -->
+        <div v-if="userRole === 'ADMIN' && !selectedChallenge.isEmpty && !isCompleted(selectedChallenge)">
+          <button class="large-verify-btn" @click="moveToFinish">
+            도전 인증하기
+          </button>
         </div>
         
-        <button 
-          v-if="userRole === 'ADMIN' && !selectedChallenge.isEmpty && !isCompleted(selectedChallenge)" 
-          class="modal-button" 
-          @click="moveToFinish"
-        >
-          도전 인증하기
-        </button>
+        <!-- 모달 내 이미지 표시 (완료된 도전만) -->
+        <div v-else-if="selectedChallenge.challengeImage && isCompleted(selectedChallenge)" class="modal-image">
+          <img 
+            :src="getChallengeImage(selectedChallenge)" 
+            :alt="selectedChallenge.challengeTitle"
+            crossorigin="anonymous"
+            @error="onImageError($event, selectedChallenge)"
+            @load="onImageLoad($event, selectedChallenge)"
+          />
+        </div>
         
-        <div 
-          v-if="!selectedChallenge.isEmpty && isCompleted(selectedChallenge)"
-          class="completed-message"
-        >
-          완료된 도전입니다
+        <!-- 모달 내 버튼들 -->
+        <div class="modal-action-buttons">
+          <!-- 완료 메시지 (완료된 도전) -->
+          <div 
+            v-if="!selectedChallenge.isEmpty && isCompleted(selectedChallenge)"
+            class="completed-message"
+          >
+            완료된 도전입니다
+          </div>
+          
+          <!-- 수정/삭제 버튼 (ADMIN이고 커스텀 도전과제인 경우) -->
+          <div v-if="shouldShowEditDeleteButtons(selectedChallenge)" class="modal-edit-delete-buttons">
+            <button 
+              v-if="shouldShowEditButton(selectedChallenge)" 
+              class="modal-edit-btn" 
+              @click="editChallenge(getSelectedChallengeIndex())"
+            >
+              수정
+            </button>
+            <button 
+              v-if="shouldShowDeleteButton(selectedChallenge)" 
+              class="modal-delete-btn" 
+              @click="showDeleteConfirm(getSelectedChallengeIndex())"
+            >
+              삭제
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 도전 생성 전 알림 모달 -->
+    <div v-if="showNotCreatedAlertModal" class="modal-overlay" @click.self="closeNotCreatedAlertModal">
+      <div class="modal-content">
+        <button class="modal-close-btn" @click="closeNotCreatedAlertModal">×</button>
+        <h2>알림</h2>
+        <p class="modal-description">아직 도전이 생성되지 않았습니다</p>
+        <div class="modal-action-buttons">
+          <button class="modal-button" @click="closeNotCreatedAlertModal">확인</button>
         </div>
       </div>
     </div>
@@ -176,6 +231,18 @@
       </div>
     </div>
   </div>
+  
+  <!-- 알림 모달 -->
+  <div v-if="showAlertModal" class="modal-overlay" @click.self="closeAlertModal">
+    <div class="modal-content">
+      <button class="modal-close-btn" @click="closeAlertModal">×</button>
+      <h2>{{ alertTitle }}</h2>
+      <p class="modal-description">{{ alertMessage }}</p>
+      <div class="modal-action-buttons">
+        <button class="modal-button" @click="closeAlertModal">확인</button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -203,12 +270,27 @@ const challenges = ref([])
 const challengeDetails = ref({}) // 도전 상세 정보 캐시
 const creatingAINews = ref(false) // AI 신문 생성 중 상태
 
-// 모달 상태
+// 모달 상태 - 새로운 알림 모달 추가
 const modals = ref({
   detail: { show: false, selectedChallenge: { challengeTitle: '', description: '', challengePlace: '' }, selectedChallengeId: null },
   edit: { show: false, form: { title: '', description: '', place: '' }, editingIndex: null, showSuccess: false },
-  delete: { show: false, showFinal: false, selectedChallenge: null, selectedIndex: null }
+  delete: { show: false, showFinal: false, selectedChallenge: null, selectedIndex: null },
+  notCreatedAlert: { show: false }, // 새로운 모달 추가
+  alert: { show: false, title: '', message: '' }
 })
+
+// 알림 모달 computed와 함수들 추가
+const showAlertModal = computed(() => modals.value.alert.show)
+const alertTitle = computed(() => modals.value.alert.title)
+const alertMessage = computed(() => modals.value.alert.message)
+
+const showAlert = (title, message) => {
+  modals.value.alert = { show: true, title, message }
+}
+
+const closeAlertModal = () => {
+  modals.value.alert = { show: false, title: '', message: '' }
+}
 
 // 모달 상태 단축 접근
 const showModal = computed(() => modals.value.detail.show)
@@ -219,6 +301,7 @@ const showEditSuccessModal = computed(() => modals.value.edit.showSuccess)
 const editForm = computed(() => modals.value.edit.form)
 const showDeleteModal = computed(() => modals.value.delete.show)
 const showFinalDeleteModal = computed(() => modals.value.delete.showFinal)
+const showNotCreatedAlertModal = computed(() => modals.value.notCreatedAlert.show) // 새로운 모달
 
 // 새로운 유틸리티 함수들
 const getDisplayTitle = (challenge, index) => {
@@ -229,37 +312,59 @@ const getDisplayTitle = (challenge, index) => {
   // 빈 도전인 경우
   if (index >= 2) { // 3, 4번째 칸 (커스텀 도전)
     return userRole.value === 'ADMIN' 
-      ? '도전과제를 생성해주세요' 
-      : '아직 도전과제가 등록되지 않았습니다'
+      ? '다 같이 재밌는 도전을 수행해보는 것은 어때요?' 
+      : '관리자가 재밌는 도전 주제를 고민하고 있어요'
   } else { // 1, 2번째 칸 (서비스 제공 도전)
     return '준비 중입니다.'
   }
 }
 
-const getDisplayDescription = (challenge, index) => {
-  if (!challenge.isEmpty) {
-    return challenge.description
-  }
-  
-  // 빈 도전인 경우
-  if (index >= 2) { // 3, 4번째 칸 (커스텀 도전)
-    return userRole.value === 'ADMIN' 
-      ? '새로운 도전과제를 만들어보세요.' 
-      : '관리자가 도전과제를 등록하면 참여할 수 있습니다.'
-  } else { // 1, 2번째 칸 (서비스 제공 도전)
-    return '곧 새로운 도전과제가 업데이트됩니다.'
-  }
+// 수정 버튼 표시 조건 (완료 전에만)
+const shouldShowEditButton = (challenge) => {
+  return userRole.value === 'ADMIN' && 
+         !challenge.isEmpty && 
+         challenge.challengeType === 'CUSTOM' &&
+         !isCompleted(challenge)
 }
 
-const shouldShowActionButtons = (challenge, index) => {
-  // ADMIN이고 3,4번째 칸(커스텀 도전과제)인 경우에만 버튼 표시
-  return userRole.value === 'ADMIN' && index >= 2
+// 삭제 버튼 표시 조건 (완료 전후 모두)
+const shouldShowDeleteButton = (challenge) => {
+  return userRole.value === 'ADMIN' && 
+         !challenge.isEmpty && 
+         challenge.challengeType === 'CUSTOM'
 }
 
-// AI 신문 버튼 표시 조건
-const shouldShowAINewsButton = computed(() => {
-  // 완료된 도전이 1개 이상 있을 때 AI 신문 버튼 표시
+// 수정/삭제 버튼 영역 표시 조건 (둘 중 하나라도 보여야 할 때)
+const shouldShowEditDeleteButtons = (challenge) => {
+  return shouldShowEditButton(challenge) || shouldShowDeleteButton(challenge)
+}
+
+// 선택된 도전과제의 인덱스 찾기
+const getSelectedChallengeIndex = () => {
+  const selectedId = selectedChallengeId.value
+  return challenges.value.findIndex(challenge => challenge.id === selectedId)
+}
+
+// AI 신문 버튼 활성화 조건
+const isAINewsButtonEnabled = computed(() => {
+  // 완료된 도전이 1개 이상 있을 때만 활성화
   return count.value > 0
+})
+
+// AI 신문 버튼 툴팁 메시지
+const getAINewsButtonTooltip = computed(() => {
+  if (count.value === 0) {
+    return '미션을 하나라도 인증해야 활성화됩니다'
+  }
+  return `완료된 ${count.value}개의 도전과제로 AI 신문을 생성합니다`
+})
+
+// AI 신문 설명 텍스트
+const getAINewsDescription = computed(() => {
+  if (count.value === 0) {
+    return '미션을 한 개라도 인증해야 AI 신문을 생성할 수 있습니다.'
+  }
+  return '완료된 도전과제들을 바탕으로 특별한 신문을 생성할 수 있습니다.'
 })
 
 // 기존 핵심 기능 함수들 
@@ -273,12 +378,48 @@ const isCompleted = (challenge) => {
   }
 }
 
+// 새로운 버튼 텍스트 함수
 const getButtonText = (challenge) => {
   if (isCompleted(challenge)) {
     return '완료'
-  } else {
-    return '도전 인증하기'
   }
+  
+  if (userRole.value === 'ADMIN') {
+    return '도전 인증'
+  } else {
+    return '도전 인증 전'
+  }
+}
+
+// 새로운 버튼 클래스 함수
+const getButtonClass = (challenge) => {
+  if (isCompleted(challenge)) {
+    return 'btn-completed'
+  }
+  
+  if (userRole.value === 'ADMIN') {
+    return 'btn-verify'
+  } else {
+    return 'btn-not-verified'
+  }
+}
+
+// 새로운 버튼 클릭 핸들러
+const handleButtonClick = (challenge, index) => {
+  modals.value.detail = { 
+    show: true, 
+    selectedChallenge: challenge, 
+    selectedChallengeId: challenge.id 
+  }
+}
+
+// 새로운 알림 모달 함수들
+const showNotCreatedModal = () => {
+  modals.value.notCreatedAlert.show = true
+}
+
+const closeNotCreatedAlertModal = () => {
+  modals.value.notCreatedAlert.show = false
 }
 
 // 이미지 처리 함수 (S3 디버깅 포함)
@@ -454,27 +595,6 @@ const fetchChallengeDetail = async (challengeId) => {
 }
 
 // 모달 함수
-const openModal = async (challenge, index) => {
-  if (challenge.isEmpty) return
-  
-  if (challenge.id) {
-    const detailChallenge = await fetchChallengeDetail(challenge.id)
-    if (detailChallenge) {
-      modals.value.detail = { 
-        show: true, 
-        selectedChallenge: detailChallenge, 
-        selectedChallengeId: challenge.id 
-      }
-    }
-  } else {
-    modals.value.detail = { 
-      show: true, 
-      selectedChallenge: challenge, 
-      selectedChallengeId: challenge.id 
-    }
-  }
-}
-
 const closeModal = () => {
   modals.value.detail.show = false
 }
@@ -491,6 +611,8 @@ const editChallenge = (index) => {
     editingIndex: index,
     showSuccess: false
   }
+  // 상세 모달 닫기
+  closeModal()
 }
 
 const closeEditModal = () => {
@@ -504,7 +626,7 @@ const closeEditSuccessModal = () => {
 const saveEditChallenge = async () => {
   const { form, editingIndex } = modals.value.edit
   if (!form.title.trim() || !form.description.trim()) {
-    alert('제목과 설명을 모두 입력해주세요.')
+    showAlert('제목과 설명을 모두 입력해주세요.')
     return
   }
 
@@ -512,7 +634,7 @@ const saveEditChallenge = async () => {
     const challenge = challenges.value[editingIndex]
     
     if (challenge.challengeType === 'SERVICE') {
-      alert('서비스 제공 도전과제는 수정할 수 없습니다.')
+      showAlert('서비스 제공 도전과제는 수정할 수 없습니다.')
       return
     } 
     else if (challenge.challengeType === 'CUSTOM' && challenge.id) {
@@ -541,9 +663,9 @@ const saveEditChallenge = async () => {
     console.error('도전과제 수정 실패:', error)
     
     if (error.response?.status === 401 || error.response?.status === 403) {
-      alert('로그인이 필요합니다. 다시 로그인해주세요.')
+      showAlert('로그인이 필요합니다. 다시 로그인해주세요.')
     } else {
-      alert('도전과제 수정에 실패했습니다.')
+      showAlert('도전과제 수정에 실패했습니다.')
     }
     return
   }
@@ -556,6 +678,8 @@ const confirmEdit = () => {
 
 const showDeleteConfirm = (index) => {
   modals.value.delete = { show: true, showFinal: false, selectedChallenge: challenges.value[index], selectedIndex: index }
+  // 상세 모달 닫기
+  closeModal()
 }
 
 const closeDeleteModal = () => {
@@ -570,7 +694,6 @@ const showFinalDeleteConfirm = () => {
 const closeFinalDeleteModal = () => {
   modals.value.delete.showFinal = false
 }
-
 const confirmDelete = async () => {
   const selectedIndex = modals.value.delete.selectedIndex
   if (selectedIndex !== null) {
@@ -578,7 +701,7 @@ const confirmDelete = async () => {
     
     try {
       if (challenge.challengeType === 'SERVICE') {
-        alert('서비스 제공 도전과제는 삭제할 수 없습니다.')
+        showAlert('서비스 제공 도전과제는 삭제할 수 없습니다.')
         return
       } 
       else if (challenge.challengeType === 'CUSTOM' && challenge.id) {
@@ -594,9 +717,9 @@ const confirmDelete = async () => {
       console.error('도전과제 삭제 실패:', error)
       
       if (error.response?.status === 401 || error.response?.status === 403) {
-        alert('로그인이 필요합니다. 다시 로그인해주세요.')
+        showAlert('로그인이 필요합니다. 다시 로그인해주세요.')
       } else {
-        alert('도전과제 삭제에 실패했습니다.')
+        showAlert('도전과제 삭제에 실패했습니다.')
       }
       return
     }
@@ -624,6 +747,12 @@ const moveToFinish = () => {
 }
 
 const goToAINews = async () => {
+  // 완료된 도전이 없으면 실행하지 않음
+  if (!isAINewsButtonEnabled.value) {
+    showAlert('미션을 하나라도 인증해야 AI 신문을 생성할 수 있습니다.')
+    return
+  }
+  
   // AI 신문 생성 API 호출
   creatingAINews.value = true
   
@@ -644,7 +773,7 @@ const goToAINews = async () => {
       router.push('/news')
     }
     
-    alert('AI 신문이 성공적으로 생성되었습니다!')
+    showAlert('AI 신문이 성공적으로 생성되었습니다!')
     
   } catch (error) {
     console.error('AI 신문 생성 실패:', error)
@@ -668,7 +797,7 @@ const goToAINews = async () => {
       errorMessage = 'AI 신문 생성에 실패했습니다: 서버와 연결할 수 없습니다.'
     }
     
-    alert(errorMessage)
+    showAlert(errorMessage)
     
     // 에러가 발생해도 신문 목록 페이지로 이동 (선택사항)
     router.push('/news')
@@ -691,18 +820,37 @@ onMounted(async () => {
 })
 
 watch(percent, updateMessage)
-watch(() => router.currentRoute.value, async () => {
-  await fetchChallenges()
-  updateCompletedCount()
-}, { immediate: true })
 </script>
 
 <style>
-    /* 기본 스타일 */
+ /* 글꼴 정의 */
+    @font-face {
+      font-family: 'KoddiUD';
+      src: url('@/assets/fonts/KoddiUDOnGothic-Regular.ttf') format('truetype');
+      font-weight: 400;
+      font-style: normal;
+    }
+
+    @font-face {
+      font-family: 'KoddiUD';
+      src: url('@/assets/fonts/KoddiUDOnGothic-Bold.ttf') format('truetype');
+      font-weight: 700;
+      font-style: normal;
+    }
+
+    @font-face {
+      font-family: 'KoddiUD';
+      src: url('@/assets/fonts/KoddiUDOnGothic-ExtraBold.ttf') format('truetype');
+      font-weight: 800;
+      font-style: normal;
+    }
+
+/* 기본 스타일 */
     * {
         margin: 0;
         padding: 0;
         box-sizing: border-box;
+        font-family: 'KoddiUD', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
 
     body {
@@ -723,22 +871,26 @@ watch(() => router.currentRoute.value, async () => {
         --dark-gray: #666;
         --text-black: #333;
         --border-light: #e0e0e0;
+        --pastel-yellow: #FFF9C4;
+        --sky-blue: #87CEEB;
+        --hover-blue: linear-gradient(135deg, #4A90E2, #87CEEB);
     }
 
     /* 헤더 */
     .header {
         text-align: center;
-        margin: 30px auto;
+        margin: 20px auto;
         font-size: 32px;
         font-weight: 700;
         color: var(--text-black);
+        font-family: 'KoddiUD', sans-serif;
     }
 
     /* 진행률 섹션 */
     .progress-container {
         max-width: 800px;
         width: 90%;
-        margin: 30px auto;
+        margin: 15px auto;
         display: flex;
         align-items: center;
         gap: 20px;
@@ -746,13 +898,15 @@ watch(() => router.currentRoute.value, async () => {
         padding: 25px;
         border-radius: 16px;
         box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+        position: relative;
     }
 
     .progress-container h3 {
         font-size: 20px;
-        font-weight: 600;
+        font-weight: 500;
         color: var(--text-black);
         min-width: 80px;
+        font-family: 'KoddiUD', sans-serif;
     }
 
     .progress-bar {
@@ -766,95 +920,146 @@ watch(() => router.currentRoute.value, async () => {
     .inner-bar {
         height: 100%;
         border-radius: 8px;
-        background: linear-gradient(90deg, var(--primary-orange), var(--primary-blue));
+        background: linear-gradient(90deg, var(--pastel-yellow), var(--sky-blue));
         transition: width 0.3s ease;
+    }
+
+    /* 메시지 박스와 AI 신문 버튼 컨테이너 */
+    .message-and-ai-container {
+        max-width: 800px;
+        width: 90%;
+        margin: 15px auto;
+        display: flex;
+        align-items: stretch; /* 높이를 동일하게 맞춤 */
+        gap: 20px;
     }
 
     /* 메시지 박스 */
     .message-box {
-        max-width: 800px;
-        width: 90%;
-        margin: 20px auto;
-        color: var(--primary-blue);
+        flex: 1;
+        color: rgb(0, 0, 0);
         font-weight: 600;
         text-align: center;
-        padding: 20px;
-        background: var(--secondary-blue);
+        padding: 15px;
+        background: rgba(248, 239, 104, 0.225);
         border-radius: 16px;
         font-size: 18px;
-        border: 2px solid rgba(74, 144, 226, 0.1);
-    }
-
-    /* AI 신문 생성 섹션 */
-    .ai-news-section {
-        max-width: 800px;
-        width: 90%;
-        margin: 20px auto;
-    }
-
-    .ai-news-card {
-        background: white;
-        border-radius: 16px;
-        padding: 25px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        border: 2px solid var(--primary-orange);
-        box-shadow: 0 4px 16px rgba(255, 107, 53, 0.15);
-        transition: all 0.3s ease;
-    }
-
-    .ai-news-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 24px rgba(255, 107, 53, 0.25);
-        border-color: #e55a2b;
-    }
-
-    .ai-news-content {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        gap: 20px;
-    }
-
-    .ai-news-icon {
-        font-size: 48px;
-        color: var(--primary-orange);
-        filter: drop-shadow(0 2px 4px rgba(255, 107, 53, 0.3));
-    }
-
-    .ai-news-content h3 {
-        font-size: 22px;
-        font-weight: 700;
-        margin: 0 0 8px 0;
-        color: var(--text-black);
-    }
-
-    .ai-news-content p {
-        font-size: 16px;
+        border: 3px solid rgb(255, 225, 0);
+        box-shadow: 0 4px 16px rgba(255, 207, 17, 0.15);
+        font-family: 'KoddiUD', sans-serif;
         margin: 0;
-        color: var(--dark-gray);
-        line-height: 1.5;
+        display: flex;
+        align-items: center; /* 텍스트를 세로 중앙 정렬 */
+        justify-content: center;
+    }
+
+    .message-box p {
+        margin: 0;
+    }
+
+    /* AI 신문 생성 섹션 - 메시지 박스 우측 */
+    .ai-news-section {
+        flex-shrink: 0;
+        position: relative;
+        display: flex;
+        align-items: stretch; /* 버튼 높이를 메시지 박스와 맞춤 */
     }
 
     .btn-ai-news {
-        background: var(--primary-orange);
-        color: white;
+        background: rgba(255, 204,0);;
+        color: rgb(0, 0, 0);
         border: none;
-        padding: 14px 28px;
+        padding: 0 20px; /* 세로 패딩 제거하고 가로 패딩만 */
         border-radius: 12px;
-        font-size: 16px;
+        font-size: 18px;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s ease;
         white-space: nowrap;
-        min-width: 180px;
+        box-shadow: 0 4px 16px rgba(255, 207, 17, 0.15);
+        font-family: 'KoddiUD', sans-serif;
+        height: 100%; /* 컨테이너 높이에 맞춤 */
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
-    .btn-ai-news:hover {
-        background: #e55a2b;
+        .btn-ai-news:hover:not(:disabled) {
+        background: rgb(255, 157, 0);
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+        box-shadow: 0 6px 16px rgba(255, 107, 53, 0.4);
+    }
+
+    .btn-ai-news:disabled {
+        background: #9ca3af;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: 0 2px 8px rgba(156, 163, 175, 0.3);
+        opacity: 0.6;
+    }
+
+    .btn-ai-news:disabled:hover {
+        background: #9ca3af;
+        transform: none;
+        box-shadow: 0 2px 8px rgba(156, 163, 175, 0.3);
+    }
+
+    /* AI 신문 가이드 팝업 */
+    .ai-news-guide-popup {
+        position: absolute;
+        right: -270px; /* 버튼 오른쪽에 표시 */
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 1000;
+        animation: fadeInRight 0.3s ease-out;
+    }
+
+    .ai-news-guide-popup .popup-content {
+        background: rgba(248, 239, 104, 0.225);
+        color: black;
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        white-space: nowrap;
+        position: relative;
+        border: 1px solid rgb(255, 225, 0);
+        box-shadow: 0 4px 16px rgba(255, 207, 17, 0.15);
+        font-family: 'KoddiUD', sans-serif;
+    }
+
+    .ai-news-guide-popup .popup-arrow {
+        position: absolute;
+        left: -9px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 0;
+        height: 0;
+        border-right: 8px solid rgba(248, 239, 104, 0.225);
+        border-top: 6px solid transparent;
+        border-bottom: 6px solid transparent;
+    }
+    
+    .ai-news-guide-popup .popup-arrow::before {
+        content: '';
+        position: absolute;
+        left: 1px;
+        top: -6px;
+        width: 0;
+        height: 0;
+        border-right: 8px solid rgb(255, 225, 0);
+        border-top: 6px solid transparent;
+        border-bottom: 6px solid transparent;
+    }
+
+    @keyframes fadeInLeft {
+        0% {
+            opacity: 0;
+            transform: translateY(-50%) translateX(-10px);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(-50%) translateX(0);
+        }
     }
 
     /* 도전과제 컨테이너 */
@@ -863,15 +1068,15 @@ watch(() => router.currentRoute.value, async () => {
         grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         max-width: 1200px;
         width: 90%;
-        margin: 30px auto;
-        gap: 24px;
+        margin: 20px auto;
+        gap: 20px;
     }
 
     .single-challenge {
         background: white;
         border-radius: 16px;
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-        cursor: pointer;
+        cursor: default; /* 카드 클릭 비활성화 */
         overflow: hidden;
         display: flex;
         flex-direction: column;
@@ -883,7 +1088,8 @@ watch(() => router.currentRoute.value, async () => {
     .single-challenge:hover {
         transform: translateY(-2px);
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-        border-color: var(--primary-orange);
+        border: 2px solid;
+        border-image: var(--hover-blue) 1;
     }
 
     .challenge-image {
@@ -891,6 +1097,7 @@ watch(() => router.currentRoute.value, async () => {
         height: 200px;
         overflow: hidden;
         background: var(--neutral-gray);
+        position: relative;
     }
 
     .challenge-img {
@@ -898,6 +1105,18 @@ watch(() => router.currentRoute.value, async () => {
         height: 100%;
         object-fit: cover;
         object-position: center;
+    }
+
+    /* 인증 전 플레이스홀더 텍스트 스타일 - 텍스트 제거 */
+    .challenge-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgb(220, 220, 220);
+        color: var(--text-black);
+        font-family: 'KoddiUD', sans-serif;
     }
 
     .challenge-content {
@@ -927,6 +1146,7 @@ watch(() => router.currentRoute.value, async () => {
         flex: 1;
         color: var(--text-black);
         line-height: 1.3;
+        font-family: 'KoddiUD', sans-serif;
     }
 
     .action-buttons {
@@ -935,7 +1155,7 @@ watch(() => router.currentRoute.value, async () => {
         margin-left: 12px;
     }
 
-    .edit-btn, .delete-btn, .create-btn {
+    .create-btn {
         padding: 6px 12px;
         border: none;
         border-radius: 8px;
@@ -944,25 +1164,7 @@ watch(() => router.currentRoute.value, async () => {
         cursor: pointer;
         color: white;
         transition: all 0.2s ease;
-    }
-
-    .edit-btn {
-        background-color: var(--primary-blue);
-    }
-
-    .edit-btn:hover {
-        background-color: #357abd;
-    }
-
-    .delete-btn {
-        background-color: #e74c3c;
-    }
-
-    .delete-btn:hover {
-        background-color: #c0392b;
-    }
-
-    .create-btn {
+        font-family: 'KoddiUD', sans-serif;
         background-color: var(--primary-green);
     }
 
@@ -976,9 +1178,10 @@ watch(() => router.currentRoute.value, async () => {
         font-weight: 400;
         line-height: 1.5;
         color: var(--dark-gray);
+        font-family: 'KoddiUD', sans-serif;
     }
 
-    /* 완료 버튼 */
+    /* 완료 버튼 - 새로운 버튼 클래스들 */
     .challenge-complete-btn {
         position: absolute;
         bottom: 24px;
@@ -986,7 +1189,7 @@ watch(() => router.currentRoute.value, async () => {
         transform: translateX(-50%);
         font-weight: 600;
         color: white;
-        width: 100px;
+        width: 120px;
         height: 36px;
         border: none;
         font-size: 16px;
@@ -994,12 +1197,61 @@ watch(() => router.currentRoute.value, async () => {
         display: flex;
         align-items: center;
         justify-content: center;
-        background-color: var(--dark-gray);
         transition: all 0.2s ease;
+        font-family: 'KoddiUD', sans-serif;
+        cursor: pointer;
     }
 
-    .challenge-complete-btn.completed {
-        background-color: var(--primary-blue);
+    /* 도전 인증 버튼 (ADMIN, 인증 전) */
+    .btn-verify {
+        background-color: #FFA500;
+        color: black;
+    }
+
+    .btn-verify:hover {
+        background-color: #FF8C00;
+        transform: translateX(-50%) translateY(-2px);
+    }
+
+    /* 도전 생성 버튼 (ADMIN, 빈 도전) */
+    .btn-create {
+        background-color: #28a745;
+        color: white;
+    }
+
+    .btn-create:hover {
+        background-color: #218838;
+        transform: translateX(-50%) translateY(-2px);
+    }
+
+    /* 완료 버튼 */
+    .btn-completed {
+        background-color: rgb(30, 58, 138); /* 진한 파란색 */
+    }
+
+    .btn-completed:hover {
+        background-color: rgb(23, 37, 84); /* 더 진한 파란색 */
+        transform: translateX(-50%) translateY(-2px);
+    }
+
+    /* 도전 생성 전 버튼 (MEMBER) */
+    .btn-not-created {
+        background-color: #6c757d;
+    }
+
+    .btn-not-created:hover {
+        background-color: #5a6268;
+        transform: translateX(-50%) translateY(-2px);
+    }
+
+    /* 도전 인증 전 버튼 (MEMBER) */
+    .btn-not-verified {
+        background-color: #17a2b8;
+    }
+
+    .btn-not-verified:hover {
+        background-color: #138496;
+        transform: translateX(-50%) translateY(-2px);
     }
 
     /* 모달 스타일 */
@@ -1056,6 +1308,7 @@ watch(() => router.currentRoute.value, async () => {
         font-weight: 700;
         margin-bottom: 16px;
         color: var(--text-black);
+        font-family: 'KoddiUD', sans-serif;
     }
 
     .modal-description {
@@ -1063,6 +1316,7 @@ watch(() => router.currentRoute.value, async () => {
         line-height: 1.6;
         margin-bottom: 20px;
         color: var(--dark-gray);
+        font-family: 'KoddiUD', sans-serif;
     }
 
     .modal-place {
@@ -1072,6 +1326,7 @@ watch(() => router.currentRoute.value, async () => {
         padding: 12px;
         background: var(--neutral-gray);
         border-radius: 12px;
+        font-family: 'KoddiUD', sans-serif;
     }
 
     .modal-image {
@@ -1088,8 +1343,38 @@ watch(() => router.currentRoute.value, async () => {
         object-fit: cover;
     }
 
+    /* 대형 도전 인증하기 버튼 */
+    .large-verify-btn {
+        background-color: var(--primary-blue);
+        color: white;
+        padding: 40px 60px;
+        font-size: 24px;
+        font-weight: 700;
+        border-radius: 16px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-family: 'KoddiUD', sans-serif;
+        width: 100%;
+        margin: 20px 0;
+    }
+
+    .large-verify-btn:hover {
+        background-color: #2b6ce5;
+        transform: translateY(-2px);
+    }
+
+    /* 모달 내 액션 버튼들 컨테이너 */
+    .modal-action-buttons {
+        margin-top: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        align-items: center;
+    }
+
     .modal-button {
-        background-color: var(--primary-orange);
+        background-color: var(--primary-blue);
         color: white;
         padding: 14px 28px;
         font-size: 16px;
@@ -1098,10 +1383,11 @@ watch(() => router.currentRoute.value, async () => {
         border: none;
         cursor: pointer;
         transition: all 0.2s ease;
+        font-family: 'KoddiUD', sans-serif;
     }
 
     .modal-button:hover {
-        background-color: #e55a2b;
+        background-color: #2b6ce5;
         transform: translateY(-1px);
     }
 
@@ -1113,12 +1399,54 @@ watch(() => router.currentRoute.value, async () => {
         font-size: 16px;
         font-weight: 600;
         border: 2px solid rgba(74, 144, 226, 0.2);
+        font-family: 'KoddiUD', sans-serif;
+    }
+
+    /* 모달 내 수정/삭제 버튼들 */
+    .modal-edit-delete-buttons {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+    }
+
+    .modal-edit-btn, .modal-delete-btn, .modal-edit-btn-small {
+        padding: 12px 20px;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        color: white;
+        transition: all 0.2s ease;
+        font-family: 'KoddiUD', sans-serif;
+    }
+
+    .modal-edit-btn, .modal-edit-btn-small {
+        background-color: var(--primary-blue);
+    }
+
+    .modal-edit-btn:hover, .modal-edit-btn-small:hover {
+        background-color: #357abd;
+    }
+
+    .modal-delete-btn {
+        background-color: #e74c3c;
+    }
+
+    .modal-delete-btn:hover {
+        background-color: #c0392b;
     }
 
     /* 수정 모달 */
     .edit-modal {
         max-width: 520px;
         text-align: left;
+    }
+
+    .edit-modal h1 {
+        font-family: 'KoddiUD', sans-serif;
+        text-align: center;
+        margin-bottom: 24px;
     }
 
     .form-group {
@@ -1131,6 +1459,7 @@ watch(() => router.currentRoute.value, async () => {
         font-weight: 600;
         color: var(--text-black);
         font-size: 16px;
+        font-family: 'KoddiUD', sans-serif;
     }
 
     .form-input, .form-textarea {
@@ -1140,7 +1469,7 @@ watch(() => router.currentRoute.value, async () => {
         border-radius: 12px;
         font-size: 16px;
         transition: border-color 0.3s ease;
-        font-family: inherit;
+        font-family: 'KoddiUD', sans-serif;
     }
 
     .form-input:focus, .form-textarea:focus {
@@ -1169,6 +1498,7 @@ watch(() => router.currentRoute.value, async () => {
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s ease;
+        font-family: 'KoddiUD', sans-serif;
     }
 
     .btn-cancel {
@@ -1181,12 +1511,12 @@ watch(() => router.currentRoute.value, async () => {
     }
 
     .btn-save, .delete-confirm-btn, .delete-success-btn {
-        background-color: var(--primary-orange);
+        background-color: var(--primary-blue);
         color: white;
     }
 
     .btn-save:hover:not(:disabled), .delete-confirm-btn:hover, .delete-success-btn:hover {
-        background-color: #e55a2b;
+        background-color: #2ba7e5;
         transform: translateY(-1px);
     }
 
@@ -1198,6 +1528,10 @@ watch(() => router.currentRoute.value, async () => {
 
     .delete-modal {
         max-width: 400px;
+    }
+
+    .delete-modal h2 {
+        font-family: 'KoddiUD', sans-serif;
     }
 
     .delete-confirm-btn {
@@ -1225,6 +1559,45 @@ watch(() => router.currentRoute.value, async () => {
             min-width: auto;
         }
 
+        .message-and-ai-container {
+            flex-direction: column;
+            gap: 15px;
+            align-items: stretch;
+        }
+
+        .ai-news-section {
+            width: 100%;
+        }
+
+        .btn-ai-news {
+            width: 100%;
+            padding: 14px 20px;
+            font-size: 16px;
+            height: auto; /* 모바일에서는 자동 높이 */
+        }
+
+        .ai-news-guide-popup {
+            position: static;
+            transform: none;
+            margin-top: 10px;
+            animation: fadeInUp 0.3s ease-out;
+        }
+
+        .ai-news-guide-popup .popup-arrow {
+            display: none; /* 모바일에서는 화살표 숨김 */
+        }
+
+        @keyframes fadeInUp {
+            0% {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         .challenge-container {
             grid-template-columns: 1fr;
             gap: 16px;
@@ -1240,6 +1613,7 @@ watch(() => router.currentRoute.value, async () => {
             margin-top: 8px;
         }
 
+        /* 모달 버튼들 - 모바일에서 세로로 배치하고 전체 너비 */
         .modal-buttons {
             flex-direction: column;
             gap: 12px;
@@ -1249,36 +1623,22 @@ watch(() => router.currentRoute.value, async () => {
             width: 100%;
         }
 
-        /* AI 신문 섹션 반응형 */
-        .ai-news-card {
+        .modal-edit-delete-buttons {
             flex-direction: column;
-            text-align: center;
-            gap: 20px;
-            padding: 20px;
+            gap: 12px;
         }
 
-        .ai-news-content {
-            flex-direction: column;
-            gap: 15px;
-            text-align: center;
-        }
-
-        .ai-news-icon {
-            font-size: 40px;
-        }
-
-        .ai-news-content h3 {
-            font-size: 20px;
-        }
-
-        .ai-news-content p {
-            font-size: 15px;
-        }
-
-        .btn-ai-news {
+        .modal-edit-btn, .modal-delete-btn, .modal-edit-btn-small {
             width: 100%;
-            min-width: auto;
-            padding: 14px 20px;
+        }
+
+        .delete-confirm-btn, .delete-success-btn {
+            width: 100%;
+        }
+
+        .large-verify-btn {
+            padding: 30px 40px;
+            font-size: 20px;
         }
     }
 
@@ -1296,12 +1656,20 @@ watch(() => router.currentRoute.value, async () => {
         .single-challenge {
             border: 2px solid var(--text-black);
         }
-        
+
         .modal-content {
             border: 2px solid var(--text-black);
         }
-        
-        .ai-news-card {
+
+        .ai-news-section .btn-ai-news {
+            border: 2px solid var(--text-black);
+        }
+
+        .challenge-placeholder {
+            border: 2px solid var(--text-black);
+        }
+
+        .ai-news-guide-popup .popup-content {
             border: 2px solid var(--text-black);
         }
     }

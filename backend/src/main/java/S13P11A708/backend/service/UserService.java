@@ -21,7 +21,7 @@ public class UserService {
     private final SeniorCenterRepository seniorCenterRepository;
     private final JWTUtil jwtUtil;
 
-    private static final int WIN_POINT = 100;
+    private static final int WIN_POINT = 200;
 
     // userId 기준으로 유저 조회
     // 해당 유저가 경로당에 소속되어 있는지 확인

@@ -4,7 +4,6 @@
         <div class="header">
             <h1>도전을 성공적으로 수행하셨나요?</h1>
             <h2>도전을 인증해주세요</h2>
-            <h2>인증을 완료해야 순위에 반영이 됩니다.</h2>
         </div>
         
         <!-- 메인 콘텐츠 -->
@@ -14,7 +13,7 @@
                 <h3>도전 상세</h3>
                 <textarea 
                     v-model="form.description"
-                    placeholder="도전을 어떻게 수행하셨나요? &#10;도전을 수행하면서 느꼈던 감정 등을 자유롭게 작성해주세요"
+                    placeholder="도전을 수행하면서 느꼈던 감정 등을 자유롭게 작성해주세요"
                     class="textarea"
                 />
             </div>
@@ -26,7 +25,7 @@
                     <div v-if="!form.image" class="upload-placeholder">
                         <div class="upload-icon">📁</div>
                         <button type="button" class="upload-btn">파일 선택</button>
-                        <p>도전 인증을 위한 이미지를<br>업로드해주세요</p>
+                        <p>도전 인증을 위한 이미지를<br>올려주세요</p>
                     </div>
                     <div v-else class="preview">
                         <img :src="previewUrl" alt="preview" />
@@ -45,10 +44,13 @@
             </button>
         </div>
         
-        <!-- 확인 모달 -->
+<!-- 확인 모달 -->
         <div v-if="showConfirmModal" class="modal" @click="closeConfirmModal">
             <div class="modal-content" @click.stop>
                 <h2>도전 인증 내용을 확인해주세요</h2>
+                <div class="warning-message">
+                    <p>⚠️ 도전을 인증하면 수정이 불가합니다</p>
+                </div>
                 <div class="confirm-content">
                     <div class="form-group">
                         <label>도전 상세:</label>
@@ -62,7 +64,7 @@
                     </div>
                 </div>
                 <div class="modal-buttons">
-                    <button @click="closeConfirmModal" class="btn-modal-cancel">수정하기</button>
+                    <button @click="closeConfirmModal" class="btn-modal-cancel">취소</button>
                     <button @click="confirmSubmit" class="btn-modal-confirm" :disabled="confirming">
                         {{ confirming ? '제출 중...' : '확인' }}
                     </button>
@@ -80,7 +82,20 @@
                 </div>
             </div>
         </div>
+        
+        <!-- 알림 모달 -->
+        <div v-if="showAlertModal" class="modal-overlay" @click.self="closeAlertModal">
+          <div class="alert-modal" @click.stop>
+            <button class="modal-close-btn" @click="closeAlertModal">×</button>
+            <h2>{{ alertTitle }}</h2>
+            <p class="modal-description">{{ alertMessage }}</p>
+            <div class="modal-action-buttons">
+              <button class="modal-button" @click="closeAlertModal">확인</button>
+            </div>
+          </div>
+</div>
     </div>
+    
 </template>
 
 <script setup>
@@ -117,13 +132,13 @@ const handleFileUpload = (event) => {
     // 파일 크기 검사 (10MB 제한)
     const maxSize = 10 * 1024 * 1024
     if (file.size > maxSize) {
-      alert(`파일 크기가 너무 큽니다. 최대 ${Math.round(maxSize / 1024 / 1024)}MB까지 업로드 가능합니다.`)
+      showAlert(`파일 크기가 너무 큽니다. 최대 ${Math.round(maxSize / 1024 / 1024)}MB까지 업로드 가능합니다.`)
       return
     }
     
     // 파일 타입 검사
     if (!file.type.startsWith('image/')) {
-      alert('이미지 파일만 업로드 가능합니다.')
+      showAlert('이미지 파일만 업로드 가능합니다.')
       return
     }
     
@@ -144,12 +159,12 @@ const cancel = () => router.go(-1)
 
 const submit = () => {
   if (!form.value.description.trim()) {
-    alert('도전 상세 내용을 입력해주세요.')
+    showAlert('도전 상세 내용을 입력해주세요.')
     return
   }
   
   if (!form.value.image) {
-    alert('도전 인증을 위한 이미지를 업로드해주세요.')
+    showAlert('도전 인증을 위한 이미지를 업로드해주세요.')
     return
   }
   
@@ -245,11 +260,28 @@ const confirmSubmit = async () => {
       }
     }
     
-    alert(errorMessage)
+    showAlert(errorMessage)
     
   } finally {
     confirming.value = false
   }
+}
+
+// 알림 모달 관련
+const showAlertModal = ref(false)
+const alertTitle = ref('')
+const alertMessage = ref('')
+
+const showAlert = (title, message) => {
+  alertTitle.value = title
+  alertMessage.value = message
+  showAlertModal.value = true
+}
+
+const closeAlertModal = () => {
+  showAlertModal.value = false
+  alertTitle.value = ''
+  alertMessage.value = ''
 }
 
 const closeSuccessModal = () => showSuccessModal.value = false
@@ -270,8 +302,8 @@ const goToChallenge = () => {
     text-align: center; 
     margin-bottom: 40px; 
 }
-.header h1 { margin: 30px 10px 10px; font-size: 32px; font-weight: bold; }
-.header h2 { margin: 5px 0; font-weight: normal; color: #666; }
+.header h1 { margin: 30px 10px 10px; font-size: 40px; font-weight: bold; }
+.header h2 { margin: 5px 0; font-size: 35px;font-weight: normal; color: #666; }
 
 .content { display: flex; gap: 40px; margin-bottom: 40px; }
 .section { flex: 1; }
@@ -362,6 +394,109 @@ const goToChallenge = () => {
 .btn-modal-cancel { background: #f5f5f5; color: #666; }
 .btn-modal-cancel:hover { background: #e0e0e0; }
 .btn-modal-confirm:disabled { background: #ccc; cursor: not-allowed; }
+
+.warning-message {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 20px 0;
+    text-align: center;
+}
+
+.warning-message p {
+    margin: 0;
+    color: #856404;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+/* 일반 알림 모달 스타일 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.alert-modal {
+  background: white;
+  border-radius: 20px;
+  padding: 32px;
+  width: 90%;
+  max-width: 480px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  text-align: center;
+  z-index: 1001;
+  position: relative;
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s ease;
+}
+
+.modal-close-btn:hover {
+  background-color: #f3f4f6;
+}
+
+.alert-modal h2 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: #333;
+}
+
+.modal-description {
+  font-size: 16px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+  color: #666;
+}
+
+.modal-action-buttons {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+
+.modal-button {
+  background-color: #4A90E2;
+  color: white;
+  padding: 14px 28px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modal-button:hover {
+  background-color: #2b6ce5;
+  transform: translateY(-1px);
+}
 
 @media (max-width: 768px) {
     .content { flex-direction: column; gap: 20px; }

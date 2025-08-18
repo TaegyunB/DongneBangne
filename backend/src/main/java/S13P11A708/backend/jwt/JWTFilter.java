@@ -1,6 +1,8 @@
 package S13P11A708.backend.jwt;
 
+import S13P11A708.backend.domain.User;
 import S13P11A708.backend.domain.enums.UserRole;
+import S13P11A708.backend.repository.UserRepository;
 import S13P11A708.backend.security.CustomOAuth2User;
 import S13P11A708.backend.security.UserDto;
 import jakarta.servlet.FilterChain;
@@ -28,20 +30,20 @@ public class JWTFilter extends OncePerRequestFilter {
         String uri = request.getRequestURI();
         String upgrade = request.getHeader("Upgrade");
 
-        // 1) WebSocket 업그레이드 요청이면 필터 스킵
-        if ("websocket".equalsIgnoreCase(upgrade)) {
-            System.out.println("🚫 shouldNotFilter(Upgrade) → " + uri + " → true");
-            return true;
-        }
-
-        // 2) 소켓 관련 경로는 스킵 (순수 WS + SockJS 양쪽)
-        if (uri.startsWith("/ws-game")
-                || uri.startsWith("/sockjs")
-                || uri.startsWith("/websocket")    // 일부 컨테이너/프록시 경유 시
-                || uri.startsWith("/stomp")) {     // 환경에 따라 쓰는 경우 대비
-            System.out.println("🚫 shouldNotFilter(WS path) → " + uri + " → true");
-            return true;
-        }
+//        // 1) WebSocket 업그레이드 요청이면 필터 스킵
+//        if ("websocket".equalsIgnoreCase(upgrade)) {
+//            System.out.println("🚫 shouldNotFilter(Upgrade) → " + uri + " → true");
+//            return true;
+//        }
+//
+//        // 2) 소켓 관련 경로는 스킵 (순수 WS + SockJS 양쪽)
+//        if (uri.startsWith("/ws-game")
+//                || uri.startsWith("/sockjs")
+//                || uri.startsWith("/websocket")    // 일부 컨테이너/프록시 경유 시
+//                || uri.startsWith("/stomp")) {     // 환경에 따라 쓰는 경우 대비
+//            System.out.println("🚫 shouldNotFilter(WS path) → " + uri + " → true");
+//            return true;
+//        }
 
         boolean skip = uri.startsWith("/api/v1/senior-centers")
             || uri.startsWith("/oauth2")
@@ -115,6 +117,7 @@ public class JWTFilter extends OncePerRequestFilter {
         UserDto userDTO = new UserDto();
         userDTO.setUserId(userId);
         userDTO.setUserRole(UserRole.valueOf(enumRole));
+
 
         //UserDetails에 회원 정보 객체 담기
         CustomOAuth2User customOAuth2User = new CustomOAuth2User(userDTO);

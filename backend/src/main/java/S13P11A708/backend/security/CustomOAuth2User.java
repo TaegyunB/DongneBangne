@@ -32,9 +32,13 @@ public class CustomOAuth2User implements OAuth2User {
     }
     
     // properties의 nickname 홍길동 반환
-    @Override
-    public String getName() {
-        return userDTO.getNickname();
+//    @Override
+//    public String getName() {
+//        return userDTO.getNickname();
+//    }
+
+    public String getName(){
+        return String.valueOf(userDTO.getUserId());
     }
     
     // DB의 user_name과 연결됨. kakao 고유 id 가져옴.

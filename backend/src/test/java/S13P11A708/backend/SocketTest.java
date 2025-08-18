@@ -40,7 +40,7 @@ public class SocketTest {
                         GameAnsSocketMessage msg = (GameAnsSocketMessage) payload;
                         System.out.println("📩 type=" + msg.getType() +
                                 ", roomId=" + msg.getRoomId() +
-                                ", payload=" + msg.getPayload());
+                                ", isCorrect=" + msg.isCorrect());
                         messageArrived.countDown();
                     }
                 });

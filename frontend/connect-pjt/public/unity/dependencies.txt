@@ -1,6 +1,6 @@
 com.endel.nativewebsocket@1.1.5
 com.github.kou-yeung@1.4.2
-com.singularitygroup.hotreload@1.13.7
+com.singularitygroup.hotreload@1.13.9
 com.unity.collab-proxy@2.8.2
 com.unity.connect.share@4.2.3
 com.unity.feature.2d@2.0.0
