@@ -5,7 +5,7 @@ const api = axios.create({
   withCredentials: true,
 })
 
-// ▼ 추가: access_token 쿠키 → Authorization 헤더 자동 세팅
+// 추가: access_token 쿠키 → Authorization 헤더 자동 세팅
 function getCookie(name) {
   return document.cookie
     .split('; ')

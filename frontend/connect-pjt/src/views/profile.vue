@@ -9,8 +9,8 @@
 
         <div class="top-row">
           <img
-            v-if="imageOk && (blobUrl || me.profileImage)"
-            :src="blobUrl || normalizeImageUrl(me.profileImage)"
+            v-if="imageOk && displaySrc"
+            :src="displaySrc"
             alt="프로필 이미지"
             class="avatar"
             crossorigin="anonymous"
@@ -23,14 +23,14 @@
             <div class="name-line">
               <div class="name-and-role">
                 <span class="nickname">{{ me.nickname || '닉네임 없음' }}</span>
-                <!-- ▼ 역할 칩: 매핑된 한글 표시 -->
                 <span class="role-chip" :title="roleLabel">{{ roleLabel }}</span>
               </div>
-              <button class="btn" @click="startEdit" :disabled="loading">닉네임 수정</button>
+              <button class="btn" @click="startEdit" :disabled="loading">프로필 수정</button>
             </div>
 
             <!-- 편집 모드 -->
-            <div v-if="editing" class="edit-row" role="group" aria-label="닉네임 편집">
+            <div v-if="editing" class="edit-row" role="group" aria-label="프로필 편집">
+              <!-- 닉네임 -->
               <input
                 v-model.trim="formNickname"
                 class="input"
@@ -40,11 +40,32 @@
                 :aria-invalid="!!nickError"
                 :aria-errormessage="nickError ? 'nick-error' : undefined"
               />
+              <p v-if="nickError" id="nick-error" class="error">{{ nickError }}</p>
+
+              <!-- 이미지 편집 -->
+              <div class="img-edit">
+                <div class="img-controls">
+                  <label class="btn">
+                    사진 첨부
+                    <input type="file" accept="image/*" @change="onFileChange" hidden />
+                  </label>
+
+                  <input
+                    v-model.trim="imageUrlInput"
+                    class="input"
+                    :disabled="submitting"
+                    placeholder="이미지 URL 붙여넣기 (https://...)"
+                  />
+                  <button class="btn" @click="applyImageUrl" :disabled="submitting || !imageUrlInput">적용</button>
+                  <button class="btn" @click="clearLocalPreview" :disabled="submitting || !localPreviewUrl">미리보기 취소</button>
+                </div>
+                <!-- <p class="hint">* 업로드 엔드포인트가 없어 <b>URL만 저장</b>돼요. 파일 선택은 미리보기용입니다. (권장 400×400px, 2MB 이하)</p> -->
+              </div>
+
               <div class="edit-actions">
                 <button class="btn primary" @click="save" :disabled="submitting || !canSave">저장</button>
                 <button class="btn" @click="cancel" :disabled="submitting">취소</button>
               </div>
-              <p v-if="nickError" id="nick-error" class="error">{{ nickError }}</p>
             </div>
 
             <!-- 포인트 요약 -->
@@ -65,7 +86,7 @@
         <p v-if="loadError" class="error mt">{{ loadError }}</p>
       </section>
 
-      <!-- === 내 경로당 === (이전 레이아웃 유지) -->
+      <!-- === 내 경로당 === -->
       <section class="card">
         <h2 class="card-title">내 경로당</h2>
 
@@ -111,21 +132,26 @@
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import api from '@/api/axios'
 
-/* 조회/수정: 동일 리소스(닉네임만 수정) */
+/* 조회: GET /api/v1/main/me
+   수정(닉네임/이미지): PUT /api/v1/users/profile { nickname, profileImage? } */
 const ME_ENDPOINT = '/api/v1/main/me'
-const NICKNAME_ENDPOINT = '/api/v1/main/me'
+const NICKNAME_ENDPOINT = '/api/v1/users/profile'
 
 const me = reactive({})
 const loading = ref(true)
 const loadError = ref('')
+
+/* 이미지 표시 관련 */
 const imageOk = ref(true)
+const blobUrl = ref('')            // 서버 이미지(동일 오리진) blob 캐시
+const localPreviewUrl = ref('')    // 편집중 로컬/외부 미리보기 우선 표시
+const imageUrlInput = ref('')      // 사용자가 입력한 URL
+const selectedFile = ref(null)
 
 const editing = ref(false)
 const formNickname = ref('')
 const nickError = ref('')
 const submitting = ref(false)
-
-const blobUrl = ref('')
 
 const initials = computed(() => (me.nickname || '').slice(0, 2) || '유저')
 const n = v => (v ?? 0).toLocaleString()
@@ -134,7 +160,7 @@ const n = v => (v ?? 0).toLocaleString()
 const roleLabel = computed(() => {
   const raw = me.userRole ?? ''
   const key = String(raw).toUpperCase()
-  const map = { ADMIN: '대표', MEMBER: '맴버' }
+  const map = { ADMIN: '대표', MEMBER: '멤버' }
   return map[key] ?? (raw || '-')
 })
 
@@ -143,7 +169,7 @@ const centerName = computed(() =>
   me.seniorCenter?.centerName || me.seniorCenterName || ''
 )
 
-/* 닉네임 조립/제거 */
+/* 닉네임 접두어 유틸 */
 const buildFinalNickname = (base, center) => {
   const b = (base || '').trim()
   return center ? `${center} ${b}` : b
@@ -154,7 +180,17 @@ const stripCenterPrefix = (full, center) => {
   return c && f.startsWith(c + ' ') ? f.slice(c.length + 1) : f
 }
 
-/* 이미지 URL 정규화 */
+/* URL 헬퍼 */
+const isBlobUrl = u => typeof u === 'string' && u.startsWith('blob:')
+const ensureHttps = (u) => {
+  if (!u) return ''
+  let s = String(u).trim()
+  if (s.startsWith('//')) s = 'https:' + s
+  if (s.startsWith('http://')) s = s.replace(/^http:\/\//, 'https://')
+  return s
+}
+
+/* 이미지 URL 정규화 & 동일 오리진 판단 */
 const normalizeImageUrl = (url) => {
   if (!url) return ''
   let u = String(url).trim()
@@ -175,7 +211,12 @@ const isSameOriginAsApi = (url) => {
   } catch { return false }
 }
 
-/* 동일 오리진이면 인증 붙여서 blob 변환 */
+/* 최종 표시 소스: 로컬 미리보기 > blob(서버) > 원본 URL */
+const displaySrc = computed(() =>
+  localPreviewUrl.value || blobUrl.value || normalizeImageUrl(me.profileImage)
+)
+
+/* 동일 오리진이면 인증 붙여서 blob 변환(표시 품질/권한용) */
 const loadProfileImage = async (url) => {
   if (blobUrl.value) { URL.revokeObjectURL(blobUrl.value); blobUrl.value = '' }
   if (!url) return
@@ -192,22 +233,64 @@ const loadProfileImage = async (url) => {
 }
 const onImgError = () => { imageOk.value = false }
 
-/* 닉네임 유효성 & 저장 가능 여부(최종 문자열 기준 비교) */
+/* 닉네임 유효성 & 저장 가능 여부(항상 '순수 닉네임' 기준) */
 const validateNickname = (nick) => {
-  if (!nick) { nickError.value = '닉네임을 입력하세요'; return false }
-  if (nick.length < 2 || nick.length > 12) { nickError.value = '2~12자만 가능해요'; return false }
-  const ok = /^[\p{L}\p{N}_\- ]+$/u.test(nick)
+  const base = stripCenterPrefix(nick, centerName.value)
+  if (!base) { nickError.value = '닉네임을 입력하세요'; return false }
+  if (base.length < 2 || base.length > 12) { nickError.value = '2~12자만 가능해요'; return false }
+  const ok = /^[\p{L}\p{N}_\- ]+$/u.test(base)
   if (!ok) { nickError.value = '특수문자 불가 (공백, _ , - 만 허용)'; return false }
   nickError.value = ''
   return true
 }
 const canSave = computed(() => {
   if (!validateNickname(formNickname.value)) return false
-  const finalNickname = buildFinalNickname(formNickname.value, centerName.value)
-  return finalNickname !== (me.nickname || '')
+  const pure = stripCenterPrefix(formNickname.value, centerName.value)
+  const finalNickname = buildFinalNickname(pure, centerName.value)
+  const imageChanged =
+    !!imageUrlInput.value ||
+    (!!localPreviewUrl.value && !isBlobUrl(localPreviewUrl.value))
+  return finalNickname !== (me.nickname || '') || imageChanged
 })
 
-/* 내 정보 불러오기 */
+/* 파일 선택(미리보기 전용, 400x400 / 2MB 제한) */
+function onFileChange(e) {
+  const file = e.target.files?.[0]
+  if (!file) return
+  if (file.size > 2 * 1024 * 1024) { alert('파일 용량은 2MB 이하만 가능합니다.'); return }
+
+  const tempUrl = URL.createObjectURL(file)
+  const img = new Image()
+  img.onload = () => {
+    if (img.width < 400 || img.height < 400) {
+      alert('이미지는 400×400픽셀 이상이어야 합니다.')
+      URL.revokeObjectURL(tempUrl)
+      return
+    }
+    if (localPreviewUrl.value && isBlobUrl(localPreviewUrl.value)) URL.revokeObjectURL(localPreviewUrl.value)
+    localPreviewUrl.value = tempUrl
+    imageUrlInput.value = ''
+    selectedFile.value = file
+  }
+  img.onerror = () => { alert('이미지 파일을 불러올 수 없습니다.'); URL.revokeObjectURL(tempUrl) }
+  img.src = tempUrl
+}
+
+/* URL 적용 / 미리보기 취소 */
+function applyImageUrl() {
+  if (!imageUrlInput.value) return
+  const u = ensureHttps(imageUrlInput.value)
+  // URL 미리보기로 전환(파일 미리보기 해제)
+  if (localPreviewUrl.value && isBlobUrl(localPreviewUrl.value)) URL.revokeObjectURL(localPreviewUrl.value)
+  localPreviewUrl.value = u
+  selectedFile.value = null
+}
+function clearLocalPreview() {
+  if (localPreviewUrl.value && isBlobUrl(localPreviewUrl.value)) URL.revokeObjectURL(localPreviewUrl.value)
+  localPreviewUrl.value = ''
+}
+
+/* 데이터 불러오기 */
 const fetchMe = async () => {
   loading.value = true
   loadError.value = ''
@@ -229,23 +312,46 @@ const startEdit = () => {
   editing.value = true
   formNickname.value = stripCenterPrefix(me.nickname || '', centerName.value)
   nickError.value = ''
+  imageUrlInput.value = ''
+  clearLocalPreview()
 }
 const cancel = () => {
   editing.value = false
   formNickname.value = ''
   nickError.value = ''
+  imageUrlInput.value = ''
+  clearLocalPreview()
 }
 const save = async () => {
   if (!canSave.value || submitting.value) return
   submitting.value = true
   try {
-    const finalNickname = buildFinalNickname(formNickname.value, centerName.value)
-    await api.put(NICKNAME_ENDPOINT, { nickname: finalNickname }, { withCredentials: true })
+    // 닉네임: 접두어 제거 후 다시 붙여 저장
+    const pure = stripCenterPrefix(formNickname.value, centerName.value)
+    const finalNickname = buildFinalNickname(pure, centerName.value)
+
+    // 이미지: URL만 저장(파일 미리보기는 저장 불가)
+    let newImage = ''
+    if (imageUrlInput.value) newImage = ensureHttps(imageUrlInput.value)
+    else if (localPreviewUrl.value && !isBlobUrl(localPreviewUrl.value)) newImage = ensureHttps(localPreviewUrl.value)
+
+    const payload = { nickname: finalNickname }
+    if (newImage) payload.profileImage = newImage
+
+    await api.put(NICKNAME_ENDPOINT, payload, { withCredentials: true })
+
+    // 로컬 상태 반영
     me.nickname = finalNickname
+    if (newImage) {
+      me.profileImage = newImage
+      clearLocalPreview()
+      imageOk.value = true
+    }
+
     editing.value = false
     nickError.value = ''
   } catch (e) {
-    console.error('PUT 닉네임 실패', e)
+    console.error('프로필 저장 실패', e)
     nickError.value = e?.response?.data?.message || '저장에 실패했어요'
   } finally {
     submitting.value = false
@@ -254,11 +360,14 @@ const save = async () => {
 
 onMounted(fetchMe)
 watch(() => me.profileImage, loadProfileImage, { immediate: true })
-onUnmounted(() => { if (blobUrl.value) URL.revokeObjectURL(blobUrl.value) })
+onUnmounted(() => {
+  if (blobUrl.value) URL.revokeObjectURL(blobUrl.value)
+  if (localPreviewUrl.value && isBlobUrl(localPreviewUrl.value)) URL.revokeObjectURL(localPreviewUrl.value)
+})
 </script>
 
 <style scoped>
-/* ===== 폰트 등록 (scoped여도 @font-face는 전역으로 처리됩니다) ===== */
+/* ===== 폰트 등록 (scoped여도 @font-face는 전역) ===== */
 @font-face {
   font-family: 'KoddiUDOnGothic';
   src: url('@/assets/fonts/KoddiUDOnGothic-Regular.ttf') format('truetype');
@@ -275,7 +384,7 @@ onUnmounted(() => { if (blobUrl.value) URL.revokeObjectURL(blobUrl.value) })
   font-weight: 800; font-style: normal; font-display: swap;
 }
 
-/* 🔹 이 한 줄로 페이지 전체에 적용 */
+/* 🔹 페이지 폰트 */
 .profile-page{
   font-family: 'KoddiUDOnGothic', -apple-system, BlinkMacSystemFont,
                'Segoe UI', Roboto, 'Noto Sans KR', 'Apple SD Gothic Neo',
@@ -283,7 +392,6 @@ onUnmounted(() => { if (blobUrl.value) URL.revokeObjectURL(blobUrl.value) })
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-/* 스타일은 이전 메시지와 동일 — 필요 부분만 표시 */
 :root { color-scheme: light }
 .profile-page { max-width: 1080px; margin: 0 auto; padding: 24px }
 .page-title { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 16px }
@@ -302,10 +410,12 @@ onUnmounted(() => { if (blobUrl.value) URL.revokeObjectURL(blobUrl.value) })
 .nickname { font-size: 24px; font-weight: 900; white-space: nowrap }
 .role-chip { font-size: 12px; font-weight: 800; padding: 4px 8px; border-radius: 999px; background:#eef2ff; color:#3730a3; white-space: nowrap; border:1px solid #e5e7eb }
 
-.edit-row { display:flex; flex-direction: column; gap: 8px }
+.edit-row { display:flex; flex-direction: column; gap: 10px }
+.img-edit { display:flex; flex-direction: column; gap: 8px }
+.img-controls { display:flex; gap:8px; flex-wrap: wrap; align-items: center }
 .input { font-size: 18px; padding: 10px 12px; border: 1px solid #d5d5d5; border-radius: 10px; min-width: 260px; max-width: 440px }
 .input:focus { outline: 3px solid #f5b30155 }
-.edit-actions { display:flex; gap:8px }
+.edit-actions { display:flex; gap:8px; margin-top: 4px }
 .btn { font-size: 16px; padding: 10px 14px; border: 1px solid #cfcfcf; background: #fafafa; border-radius: 12px; cursor: pointer }
 .btn:hover { background: #f4f4f4 }
 .btn[disabled] { opacity:.6; cursor:not-allowed }
@@ -318,7 +428,6 @@ onUnmounted(() => { if (blobUrl.value) URL.revokeObjectURL(blobUrl.value) })
 .stat-value { font-size: 22px; font-weight: 900; min-width: 0; font-variant-numeric: tabular-nums; letter-spacing: -0.01em }
 .nowrap { white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 
-/* 내 경로당/포인트 영역 스타일은 기존과 동일 */
 .center-block { display: flex; flex-direction: column; gap: 8px }
 .info { display:flex; gap: 8px; font-size: 18px; min-width: 0 }
 .label { min-width: 72px; color:#555; white-space: nowrap }
@@ -331,7 +440,7 @@ onUnmounted(() => { if (blobUrl.value) URL.revokeObjectURL(blobUrl.value) })
 .point-value { font-size: 20px; font-weight: 800; min-width: 0 }
 .point-value.no-wrap { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; letter-spacing: -0.01em }
 
-.hint { margin-top: 12px; color:#666; font-size: 16px }
+.hint { margin-top: 6px; color:#666; font-size: 14px }
 .error { color: #b42318; margin-top: 6px; font-size: 14px }
 .mt { margin-top: 12px }
 </style>
