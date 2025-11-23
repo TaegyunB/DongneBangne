@@ -48,11 +48,14 @@
 - **OpenAI GPT-4o-mini** 
 - **Custom Prompt Engineering** 
 
-### Database & Infrastructure
+### Database
 - **MySQL 8** 
-- **AWS S3** 
+- **AWS S3**
+
+### Infrastructure
 - **Docker**
 - **Jenkins**
+- **Nginx**
 
 ## ✨ 핵심 기능 (Core Features)
 
