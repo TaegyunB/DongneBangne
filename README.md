@@ -29,33 +29,14 @@
 
 ## 🛠️ 기술 스택
 
-### Frontend
-- **Vue.js 3** 
-- **HTML5/CSS3** 
-- **JavaScript ES6+** 
-
-### Backend
-- **Spring Boot 3.5.3** 
-- **Spring Security** 
-- **Spring Data JPA** 
-
-### Game & Real-time Communication
-- **Redis 7** 
-- **WebSocket (STOMP)** 
-- **WebRTC** 
-
-### AI & External API
-- **OpenAI GPT-4o-mini** 
-- **Custom Prompt Engineering** 
-
-### Database
-- **MySQL 8** 
-- **AWS S3**
-
-### Infrastructure
-- **Docker**
-- **Jenkins**
-- **Nginx**
+| 분류 | 기술 |
+|------|------|
+| **Frontend** | ![Vue.js](https://img.shields.io/badge/Vue.js_3-4FC08D?style=for-the-badge&logo=vue.js&logoColor=white) ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white) ![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white) ![JavaScript](https://img.shields.io/badge/JavaScript_ES6+-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black) |
+| **Backend** | ![Spring Boot](https://img.shields.io/badge/Spring_Boot_3.5.3-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white) ![Spring Security](https://img.shields.io/badge/Spring_Security-6DB33F?style=for-the-badge&logo=spring-security&logoColor=white) ![Spring Data JPA](https://img.shields.io/badge/Spring_Data_JPA-6DB33F?style=for-the-badge&logo=spring&logoColor=white) |
+| **Real-time** | ![Redis](https://img.shields.io/badge/Redis_7-DC382D?style=for-the-badge&logo=redis&logoColor=white) ![WebSocket](https://img.shields.io/badge/WebSocket-010101?style=for-the-badge&logo=websocket&logoColor=white) ![WebRTC](https://img.shields.io/badge/WebRTC-333333?style=for-the-badge&logo=webrtc&logoColor=white) |
+| **AI** | ![OpenAI](https://img.shields.io/badge/OpenAI_GPT--4o--mini-412991?style=for-the-badge&logo=openai&logoColor=white) |
+| **Database** | ![MySQL](https://img.shields.io/badge/MySQL_8-4479A1?style=for-the-badge&logo=mysql&logoColor=white) ![AWS S3](https://img.shields.io/badge/AWS_S3-569A31?style=for-the-badge&logo=amazon-s3&logoColor=white) |
+| **Infrastructure** | ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white) ![Jenkins](https://img.shields.io/badge/Jenkins-D24939?style=for-the-badge&logo=jenkins&logoColor=white) ![Nginx](https://img.shields.io/badge/Nginx-009639?style=for-the-badge&logo=nginx&logoColor=white) |
 
 ## ✨ 핵심 기능 (Core Features)
 
