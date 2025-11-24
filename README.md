@@ -1,4 +1,4 @@
-# 🏠 동네방네 (DongneBoangne)
+# 🏠 동네방네 (DongnaeBangnae)
 
 **지역 경로당 간 교류와 프로그램 활성화를 위한 디지털 플랫폼**
 
