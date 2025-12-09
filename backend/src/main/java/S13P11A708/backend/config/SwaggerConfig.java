@@ -49,10 +49,10 @@ public class SwaggerConfig {
     public Components createComponents() {
         return new Components().addSecuritySchemes(jwtSchemeName, new SecurityScheme()
                 .name(jwtSchemeName)  // "bearerAuth"라는 이름으로 실제 JWT Bearer 토큰 인증 방식을 정의
-                .type(SecurityScheme.Type.HTTP)  // HTTP 인증 방식
-                .scheme("bearer")  // Bearer 토큰 사용
-                .bearerFormat("JWT")  // JWT 형식
-                .in(SecurityScheme.In.HEADER)  // HEADER에 포함
+                .type(SecurityScheme.Type.HTTP)  // HTTP 인증 방식 사용
+                .scheme("bearer")  // Bearer 토큰 방식 사용
+                .bearerFormat("JWT")  // JWT 형식임을 명시
+                .in(SecurityScheme.In.HEADER)  // Authorization 헤더에 토큰 전달
                 .name("Authorization"));  // Authorization 헤더 사용
     }
 }
