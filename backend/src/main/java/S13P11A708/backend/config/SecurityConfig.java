@@ -47,7 +47,7 @@ public class SecurityConfig {
         http
                 .httpBasic((basic) -> basic.disable());
 
-        //JWTFillter 추가
+        //JWTFilter 추가
         http
                 .addFilterBefore(new JWTFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class);
 
@@ -65,8 +65,9 @@ public class SecurityConfig {
                         .requestMatchers("/", "/oauth2/**", "/login/**", "/api/v1/senior-centers", "/api/v1/senior-centers/**").permitAll() // "/api/v1/senior-centers" 추가 // 와일드 카드 추가
                         .requestMatchers("/ws-game/**", "/ws-game", "/signal", "/signal/**").permitAll()
                         .requestMatchers("/websocket/**", "/sockjs/**").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/**").authenticated()
+                        .requestMatchers("/api/v1/**").authenticated()  // 모든 /api/v1/** 요청은 인증 필요
                 );
         http
                 .sessionManagement((session) -> session
